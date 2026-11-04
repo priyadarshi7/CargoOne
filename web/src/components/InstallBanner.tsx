@@ -1,9 +1,7 @@
 import { Download, Share, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useSyncExternalStore, useState } from 'react'
 import { useAuth } from '../lib/auth'
-
-// Chrome/Edge/Android fire this when the page can be installed; it is not in the standard DOM typings.
-interface InstallEvent extends Event { prompt: () => Promise<void>; userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }> }
+import { clearInstallEvent, installEvent, subscribeInstall } from '../lib/install'
 
 const T = {
   en: { title: 'Install CargoOne', body: 'Put it on your home screen. It opens fast and works with a weak network.', btn: 'Install', ios: 'Tap Share, then "Add to Home Screen".', hide: 'Not now' },
@@ -18,25 +16,17 @@ const read = () => { try { return localStorage.getItem(KEY) === '1' } catch { re
 export default function InstallBanner() {
   const { user } = useAuth()
   const tx = T[user?.language ?? 'en']
-  const [evt, setEvt] = useState<InstallEvent | null>(null)
+  const evt = useSyncExternalStore(subscribeInstall, installEvent)
   const [hidden, setHidden] = useState(read)
   const standalone = window.matchMedia('(display-mode: standalone)').matches || ('standalone' in navigator && (navigator as { standalone?: boolean }).standalone === true)
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent)
-
-  useEffect(() => {
-    const onPrompt = (e: Event) => { e.preventDefault(); setEvt(e as InstallEvent) }
-    const onInstalled = () => setEvt(null)
-    window.addEventListener('beforeinstallprompt', onPrompt)
-    window.addEventListener('appinstalled', onInstalled)
-    return () => { window.removeEventListener('beforeinstallprompt', onPrompt); window.removeEventListener('appinstalled', onInstalled) }
-  }, [])
 
   if (standalone || hidden || (!evt && !ios)) return null
   const dismiss = () => { try { localStorage.setItem(KEY, '1') } catch { /* private mode: it just shows again */ } setHidden(true) }
   async function install() {
     if (!evt) return
     await evt.prompt()
-    if ((await evt.userChoice).outcome === 'accepted') setEvt(null)
+    if ((await evt.userChoice).outcome === 'accepted') clearInstallEvent()
   }
 
   return (
