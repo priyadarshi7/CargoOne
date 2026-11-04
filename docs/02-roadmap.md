@@ -64,7 +64,7 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [x] Billing queue: verified trips grouped by client and billing-cycle period (weekly Mon-Sun / fortnightly 1-15 & 16-end / monthly, in IST), oldest first, select trips, create draft invoice (one client per invoice, numbered `CO/26-27/00001` from a DB sequence, row-locked against double billing, audited)
 - [x] Invoice PDF with each trip's POD photo attached as an appendix page (no consignee personal data printed). **Draft layout only: GST, company address/bank details and logo still to come**
 - [~] Tally export: Sales-voucher XML + CSV done and unit-tested; **not yet imported into a real Tally** — needs Company A's ledger names / a sample voucher; GST lines, per-trip bill allocation pending
-- [ ] Missing-POD dashboard: trips without POD by age bucket/branch/client, POD-to-invoice days, KPIs vs targets (24h, 18→4 days, 1.5→0.5%)
+- [x] Missing-POD dashboard: trips without POD by age bucket and branch, oldest-first chase list, KPIs vs the brief's targets (24 h share, POD-to-invoice days, lost/disputed %), branch comparison, weekly trends, pipeline counts (`/office`, ops head + MD). Metrics are a pure, unit-tested module (`api/app/dashboard/metrics.py`)
 - [ ] Client portal link: read-only POD view per trip/invoice, expiring, watermark, access log
 - [ ] Notifications (mock SMS/WhatsApp/email adapters): reminders to drivers, alerts to ops on aged missing PODs
 
@@ -77,7 +77,7 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 | Billing executive | Review queue → fix fields → approve → billing queue by client/cycle → invoice + POD pack → Tally export |
 | Managing Director | Read-only executive dashboard: working capital released (₹), POD-to-invoice days vs 18→4 target, % PODs within 24h vs 80%, lost/disputed rate vs 1.5→0.5%, ₹ at risk, branch league table, weekly digest email/PDF |
 | Client (external) | Expiring link → view POD images for their trips (no login) |
-- [ ] Add `md` (executive, read-only) role; ROI panel computes savings from live data using the brief's formula
+- [x] `md` role with read-only executive dashboard; ROI panel uses the brief's own formula (reproduced exactly in a test: Rs 3.24 crore / Rs 38.9 lakh). Weekly MD digest email/PDF still pending
 - [ ] Ops head role distinct from billing: assignment, escalation, dispute workflow
 
 ## Phase 6 — Privacy, security, quality (P0/P1, continuous)

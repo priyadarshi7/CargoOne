@@ -27,7 +27,8 @@ export function OfficeShell({ children }: { children: ReactNode }) {
             <Truck size={20} className="text-accent" aria-hidden /> CargoOne
           </Link>
           <nav className="flex gap-1">
-            <NavLink to="/office" end className={link}>Trips</NavLink>
+            {user?.role !== 'billing' && <NavLink to="/office" end className={link}>Dashboard</NavLink>}
+            <NavLink to="/office/trips" className={link}>Trips</NavLink>
             {canReview && (
               <NavLink to="/office/review" className={link}>
                 Review{reviewCount > 0 && <span className="ml-1.5 rounded-full bg-warn-soft px-1.5 text-xs text-warn">{reviewCount}</span>}

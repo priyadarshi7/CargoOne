@@ -127,3 +127,20 @@ export async function download(path: string, fallbackName: string): Promise<void
   a.click()
   setTimeout(() => URL.revokeObjectURL(url), 10_000)
 }
+
+export interface Dashboard {
+  window_days: number
+  includes_demo_data: boolean
+  kpis: { within_24h_pct: number | null; pod_to_invoice_days: number | null; lost_pct: number | null; trips_in_window: number; eligible_trips: number }
+  targets: { within_24h_pct: number; pod_to_invoice_days: number; baseline_pod_to_invoice_days: number; lost_pct: number; baseline_lost_pct: number }
+  working_capital: { annual_freight: number; days_saved: number | null; released: number | null; interest_saved_per_year: number | null; interest_rate: number }
+  missing: {
+    total: number; amount: number; at_risk_amount: number
+    buckets: { label: string; count: number }[]
+    by_branch: { branch: string; buckets: { label: string; count: number }[] }[]
+  }
+  pipeline: { awaiting_review: number; ready_to_bill: number; ready_to_bill_amount: number }
+  branches: { branch: string; trips: number; within_24h_pct: number | null; pod_to_invoice_days: number | null; lost_pct: number | null; missing: number; missing_amount: number }[]
+  trend: { week: string; label: string; within_24h_pct: number | null; pod_to_invoice_days: number | null }[]
+  oldest_missing: { trip_code: string; client: string; branch: string; vehicle: string; driver: string | null; age_days: number; freight: number; status: string }[]
+}
