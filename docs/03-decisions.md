@@ -21,3 +21,7 @@ Status: Accepted unless noted. Newest decisions go at the bottom; supersede rath
 | 15 | Mock AI provider reads ground-truth labels embedded in synthetic PNGs | Whole pipeline + decision rules testable offline, deterministic, free. Does NOT measure real accuracy. |
 | 16 | Gemini model name is config (`GEMINI_MODEL`), key sent in header not URL | Model names change; keys must not leak into URLs/logs. |
 | 17 | If all providers fail, caller queues POD for human review | Driver is never blocked by an AI outage. |
+| 19 | Server stores the uploaded bytes unmodified; validates by decoding (not by client MIME), 300 KB / 25 MP limits | Re-encoding on server would alter evidence; web client already compresses and strips EXIF. |
+| 20 | Driver sees a trip as "not found" (404) if it is not theirs; POD upload idempotent on `client_upload_id` | No existence leak; offline retries are safe. |
+| 21 | Native camera app via `<input capture>` instead of getUserMedia (for now) | Works on every cheap Android/WebView, handles focus/flash natively; in-app camera + framing guide is a later enhancement. |
+| 22 | Offline queue id == server idempotency key; FIFO with strictly increasing stamps | Retries never double-submit or double-count a retake. |

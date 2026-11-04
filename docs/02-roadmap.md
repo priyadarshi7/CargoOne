@@ -34,16 +34,16 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [ ] E-way bill field validation (12 digits) + mock lookup adapter
 
 ## Phase 3 — Driver capture (P0, the hard part)
-- [ ] Driver home: assigned trips, one giant "Photograph POD" button, big status icons
-- [ ] Camera capture (getUserMedia + file-input fallback), framing guide overlay, flash/torch toggle
-- [ ] GPS + timestamp stamped on capture (with permission handling and "no GPS" fallback)
-- [ ] On-device compression to <300 KB (resize, quality ladder, EXIF strip/orient), perceptual quality check
+- [x] Driver home: assigned trips, one giant "POD" button (opens the next open trip), big status icons, pending-upload counter
+- [~] Camera capture via the phone's native camera (file input, `capture=environment`) done — most reliable on cheap Android; in-app camera with framing guide + torch pending
+- [x] GPS + timestamp attached on capture; never blocks the driver if GPS is denied/slow (4 s)
+- [x] On-device compression to <300 KB (WebP/JPEG quality ladder, then shrink, EXIF orientation applied, metadata stripped; refuses below 900 px) — unit-tested logic; **real-phone photo test pending**
 - [ ] Client-side quick checks: blur, brightness, document edges → instant "retake" before upload
-- [ ] Offline queue (IndexedDB): persist photo + metadata, background sync, retry with backoff, idempotent upload
+- [~] Offline queue (IndexedDB): persisted, FIFO, idempotent, retries on reconnect + every 30 s, permanent errors isolated — done & tested; exponential backoff + Background Sync API pending
 - [ ] PWA: installable, service worker, offline shell, update prompt, storage-quota handling
-- [ ] Upload status UI usable by non-readers: ⏳ saved · ☁️ uploading · ✅ done · 🔁 retake
-- [ ] Voice prompts hi/mr/en (recorded audio, TTS fallback), replay button
-- [ ] Retake flow, capped at 2; then auto-route to human review
+- [x] Result screens usable by non-readers: green ✓ done · amber ↺ retake (with retakes left) · amber 👁 sent for checking · cloud-off saved offline
+- [~] Voice prompts hi/mr/en via browser TTS + replay button done; **Hindi/Marathi wording needs native-speaker review**, recorded audio pending
+- [x] Retake flow, capped at 2; then auto-routed to human review (server-enforced + DB constraint)
 - [ ] SMS-link capture page (no login, same capture engine, lighter shell)
 
 ## Phase 4 — AI POD verification (P0)
@@ -54,6 +54,7 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [~] Extraction schema + prompt for LR no., stamp, quantity, shortage/damage remarks, date, signature, confidence done; tuning on real PODs pending
 - [ ] Prompt + structured output schema + validation; Hindi/Marathi handwriting cases
 - [x] Deterministic decision engine (verified / needs review / retake) — unit-tested rule table (`api/app/pod/decision.py`)
+- [~] Upload endpoint `POST /trips/{id}/pod` runs AI + decision engine and returns the verdict; AI outage parks POD for review; idempotent; image access role-checked + audited. Latency target (<10 s) unmeasured until real Gemini key
 - [ ] Real-time result to driver while at the gate (<10 s target), graceful degrade if AI is down (queue as "review")
 - [ ] Cost/latency controls: timeouts, retries, caching by image hash, provider fallback
 - [ ] Evaluation harness: labelled POD image set, accuracy/recall report, regression gate

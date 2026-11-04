@@ -1,17 +1,24 @@
-import { Camera, LogOut } from 'lucide-react'
+import { Camera, CircleCheck, CloudUpload, LogOut } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { statusIcon } from '../components/StatusBadge'
-import { api, type Trip } from '../lib/api'
+import { api, type PodStatus, type Trip } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { useSyncedQueue } from '../lib/capture/sync'
 
-/** Driver surface: one primary action, icons over text, no forms. Camera capture ships in the next PR. */
+const OPEN: PodStatus[] = ['pending', 'retake_requested']
+
+/** Driver surface: one primary action, icons over text, no forms. */
 export default function DriverHome() {
   const { user, logout } = useAuth()
+  const pending = useSyncedQueue()
   const [trips, setTrips] = useState<Trip[] | null>(null)
 
   useEffect(() => {
     api<Trip[]>('/trips/mine').then(setTrips).catch(() => setTrips([]))
-  }, [])
+  }, [pending]) // refresh statuses after queued photos finish uploading
+
+  const next = trips?.find((t) => OPEN.includes(t.pod_status))
 
   return (
     <div className="mx-auto flex min-h-full max-w-md flex-col px-5 pb-8 pt-6">
@@ -22,13 +29,27 @@ export default function DriverHome() {
         </button>
       </header>
 
-      <button disabled aria-describedby="soon"
-        className="mt-8 grid h-48 w-full place-items-center rounded-3xl bg-accent text-white disabled:opacity-90">
-        <span className="flex flex-col items-center gap-3 text-xl font-semibold">
-          <Camera size={64} aria-hidden /> POD
-        </span>
-      </button>
-      <p id="soon" className="mt-2 text-center text-xs text-muted">Camera capture is being built.</p>
+      {pending > 0 && (
+        <div className="mt-4 flex items-center gap-3 rounded-2xl bg-accent-soft p-4 text-accent" role="status">
+          <CloudUpload aria-hidden /> <span className="text-lg font-semibold tabular-nums">{pending}</span>
+        </div>
+      )}
+
+      {next ? (
+        <Link to={`/driver/trip/${next.id}`}
+          className="mt-6 grid h-48 w-full place-items-center rounded-3xl bg-accent text-white active:scale-[0.98]">
+          <span className="flex flex-col items-center gap-3 text-xl font-semibold">
+            <Camera size={64} aria-hidden /> POD
+            <span className="text-base font-normal opacity-90">{next.destination}</span>
+          </span>
+        </Link>
+      ) : (
+        trips && (
+          <div className="mt-6 grid h-48 w-full place-items-center rounded-3xl bg-ok-soft text-ok">
+            <CircleCheck size={80} aria-label="All done" />
+          </div>
+        )
+      )}
 
       <ul className="mt-8 space-y-3">
         {trips?.map((t) => {
