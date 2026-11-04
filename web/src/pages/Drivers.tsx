@@ -78,7 +78,7 @@ function ResetDialog({ driver, onClose, onDone }: { driver: Driver; onClose: () 
         {error && <p role="alert" className="text-sm text-bad">{error}</p>}
         <div className="flex justify-end gap-3">
           <button onClick={() => ref.current?.close()} className="rounded-lg border border-line px-4 py-2 text-sm">Cancel</button>
-          <button disabled={busy} onClick={() => void go()} className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-60">{busy ? 'Resetting…' : 'Reset PIN'}</button>
+          <button disabled={busy} onClick={() => void go()} className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-solid disabled:opacity-60">{busy ? 'Resetting…' : 'Reset PIN'}</button>
         </div>
       </div>
     </dialog>

@@ -69,14 +69,14 @@ export function CaptureFlow({ tripId, linkToken, destination, lang, backTo }: Ca
     <button onClick={() => input.current?.click()} className={cls}>{children}</button>
   )
   const back = backTo ? (
-    <Link to={backTo} aria-label="Back" className="grid h-14 w-14 place-items-center rounded-full bg-white/70 text-ink">
+    <Link to={backTo} aria-label="Back" className="grid h-14 w-14 place-items-center rounded-full bg-surface/70 text-ink">
       <ArrowLeft size={28} aria-hidden />
     </Link>
   ) : null
 
   if (phase.kind === 'working') {
     return (
-      <Screen tone="bg-white">
+      <Screen tone="bg-surface">
         <LoaderCircle size={96} className="animate-spin text-accent" aria-label="Working" />
       </Screen>
     )
@@ -91,8 +91,8 @@ export function CaptureFlow({ tripId, linkToken, destination, lang, backTo }: Ca
       <Screen tone={ok ? 'bg-ok-soft text-ok' : 'bg-warn-soft text-warn'} top={back}>
         <Icon size={160} aria-label={r.decision} />
         {picker}
-        {retake && trigger('flex h-24 w-full items-center justify-center gap-3 rounded-3xl bg-warn text-2xl font-semibold text-white', <><Camera size={40} aria-hidden /> {r.retakes_left}</>)}
-        <button onClick={() => speak(lang, r.voice)} aria-label="Repeat" className="grid h-16 w-16 place-items-center rounded-full bg-white/70">
+        {retake && trigger('flex h-24 w-full items-center justify-center gap-3 rounded-3xl bg-warn text-2xl font-semibold text-on-solid', <><Camera size={40} aria-hidden /> {r.retakes_left}</>)}
+        <button onClick={() => speak(lang, r.voice)} aria-label="Repeat" className="grid h-16 w-16 place-items-center rounded-full bg-surface/70">
           <Volume2 size={32} aria-hidden />
         </button>
       </Screen>
@@ -104,11 +104,11 @@ export function CaptureFlow({ tripId, linkToken, destination, lang, backTo }: Ca
       <Screen tone="bg-accent-soft text-accent" top={back}>
         <div className="relative" role="img" aria-label="Saved, waiting for network">
           <CloudOff size={160} aria-hidden />
-          <span className="absolute -bottom-2 -right-2 grid h-16 w-16 place-items-center rounded-full bg-ok text-white">
+          <span className="absolute -bottom-2 -right-2 grid h-16 w-16 place-items-center rounded-full bg-ok text-on-solid">
             <CircleCheck size={40} aria-hidden />
           </span>
         </div>
-        <button onClick={() => speak(lang, 'saved_offline')} aria-label="Repeat" className="grid h-16 w-16 place-items-center rounded-full bg-white/70">
+        <button onClick={() => speak(lang, 'saved_offline')} aria-label="Repeat" className="grid h-16 w-16 place-items-center rounded-full bg-surface/70">
           <Volume2 size={32} aria-hidden />
         </button>
       </Screen>
@@ -120,16 +120,16 @@ export function CaptureFlow({ tripId, linkToken, destination, lang, backTo }: Ca
       <Screen tone="bg-warn-soft text-warn" top={back}>
         <TriangleAlert size={160} aria-label="Problem" />
         {picker}
-        {trigger('flex h-24 w-full items-center justify-center rounded-3xl bg-warn text-white', <Camera size={48} aria-hidden />)}
+        {trigger('flex h-24 w-full items-center justify-center rounded-3xl bg-warn text-on-solid', <Camera size={48} aria-hidden />)}
       </Screen>
     )
   }
 
   return (
-    <Screen tone="bg-white" top={back}>
+    <Screen tone="bg-surface" top={back}>
       {picker}
       <p className="text-center text-3xl font-semibold">{destination}</p>
-      {trigger('grid h-72 w-full place-items-center rounded-[2rem] bg-accent text-white active:scale-[0.98]', (
+      {trigger('grid h-72 w-full place-items-center rounded-[2rem] bg-accent text-on-solid active:scale-[0.98]', (
         <span className="flex flex-col items-center gap-4 text-2xl font-semibold">
           <Camera size={96} aria-hidden /> POD
         </span>

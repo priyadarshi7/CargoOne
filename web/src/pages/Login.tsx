@@ -49,7 +49,7 @@ export default function Login() {
         </label>
         {error && <p role="alert" className="text-sm text-bad">{error}</p>}
         <button disabled={busy}
-          className="w-full rounded-lg bg-accent py-3 font-medium text-white disabled:opacity-60">
+          className="w-full rounded-lg bg-accent py-3 font-medium text-on-solid disabled:opacity-60">
           {busy ? t('login.busy') : t('login.submit')}
         </button>
         <p className="text-center text-sm text-muted">

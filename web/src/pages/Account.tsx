@@ -49,7 +49,7 @@ export default function Account() {
           <input className={input} type="password" autoComplete="new-password" value={again} onChange={(e) => setAgain(e.target.value)} required /></label>
         {error && <p role="alert" className="text-sm text-bad">{error}</p>}
         {done && <p role="status" className="flex items-center gap-2 text-sm text-ok"><CircleCheck size={16} aria-hidden /> Password changed. Your other devices were signed out.</p>}
-        <button disabled={busy} className="rounded-lg bg-accent px-5 py-2.5 font-medium text-white disabled:opacity-60">{busy ? 'Saving…' : 'Change password'}</button>
+        <button disabled={busy} className="rounded-lg bg-accent px-5 py-2.5 font-medium text-on-solid disabled:opacity-60">{busy ? 'Saving…' : 'Change password'}</button>
       </form>
     </div>
   )

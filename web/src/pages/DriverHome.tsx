@@ -40,7 +40,7 @@ export default function DriverHome() {
 
       {next ? (
         <Link to={`/driver/trip/${next.id}`}
-          className="mt-6 grid h-48 w-full place-items-center rounded-3xl bg-accent text-white active:scale-[0.98]">
+          className="mt-6 grid h-48 w-full place-items-center rounded-3xl bg-accent text-on-solid active:scale-[0.98]">
           <span className="flex flex-col items-center gap-3 text-xl font-semibold">
             <Camera size={64} aria-hidden /> POD
             <span className="text-base font-normal opacity-90">{next.destination}</span>

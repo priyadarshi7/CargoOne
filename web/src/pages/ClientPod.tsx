@@ -41,7 +41,7 @@ export default function ClientPod() {
   if (state.kind === 'error') return <Msg icon={<LinkIcon size={40} className="text-accent" />} text="The page could not be opened. Check your connection and try again." />
 
   const { pod } = state
-  const btn = 'grid h-9 w-9 place-items-center rounded-lg border border-line bg-white text-muted hover:text-ink'
+  const btn = 'grid h-9 w-9 place-items-center rounded-lg border border-line bg-surface text-muted hover:text-ink'
   const facts: [string, string][] = [
     ['LR number', pod.lr_no], ['Vehicle', pod.vehicle], ['From', pod.origin], ['To', pod.destination], ['Delivered', day(pod.delivered_at)],
   ]

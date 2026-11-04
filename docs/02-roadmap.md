@@ -21,7 +21,7 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [~] i18n framework (`lib/i18n.tsx`, English fallback, choice remembered, switch in the header). Translated so far: navigation, login, trips table, status badges, review queue. **Still English:** dashboard, billing, import, review detail, dialogs, dates. Wording is a first draft and needs native-speaker review
 - [ ] Accessibility: contrast AA, 64px+ driver targets, focus states, reduced motion
 - [~] Two shells: basic driver home (placeholder POD button + own trips) and office shell (header nav + trips table) done; sidebar, keyboard nav, real capture pending
-- [ ] Dark mode for office shell (optional)
+- [x] Dark mode everywhere (office, driver, public pages): follows the device by default, toggle in the office header (device / light / dark), applied before first paint; own dark colour steps incl. chart ramp
 
 ## Phase 2 — Data, auth, roles (P0)
 - [x] DB schema + migration 0001 + seed from client sample data (fake PII)

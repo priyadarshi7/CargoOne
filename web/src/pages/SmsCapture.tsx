@@ -23,7 +23,7 @@ export default function SmsCapture() {
       .catch(() => setState({ kind: 'error' })) // offline when opening the link: nothing to show yet
   }, [token])
 
-  if (state.kind === 'loading') return <Center tone="bg-white"><LoaderCircle size={96} className="animate-spin text-accent" aria-label="Loading" /></Center>
+  if (state.kind === 'loading') return <Center tone="bg-surface"><LoaderCircle size={96} className="animate-spin text-accent" aria-label="Loading" /></Center>
   if (state.kind === 'gone') return <Center tone="bg-warn-soft text-warn"><Clock size={140} aria-label="Link expired" /><p className="text-center text-xl font-semibold">{TEXT[lang].gone}</p></Center>
   if (state.kind === 'unknown') return <Center tone="bg-bad-soft text-bad"><LinkIcon size={140} aria-label="Link not valid" /><p className="text-center text-xl font-semibold">{TEXT[lang].unknown}</p></Center>
   if (state.kind === 'error') return <Center tone="bg-accent-soft text-accent"><LinkIcon size={140} aria-label="Cannot open link" /><p className="text-center text-xl font-semibold">{TEXT[lang].error}</p></Center>

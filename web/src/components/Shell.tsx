@@ -1,9 +1,10 @@
-import { ListChecks, LogOut, Truck } from 'lucide-react'
+import { ListChecks, LogOut, Monitor, Moon, Sun, Truck } from 'lucide-react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { useEffect, useState, type ReactNode } from 'react'
 import { api, type ReviewItem } from '../lib/api'
 import { LANGUAGES, useI18n } from '../lib/i18n'
+import { useTheme, type Theme } from '../lib/theme'
 
 /** Re-reads the count on every navigation, so the badge never goes stale after an approval. */
 function useReviewCount(enabled: boolean): number {
@@ -19,6 +20,9 @@ function useReviewCount(enabled: boolean): number {
 export function OfficeShell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth()
   const { t, lang, setLang } = useI18n()
+  const { theme, setTheme } = useTheme()
+  const nextTheme: Record<Theme, Theme> = { system: 'light', light: 'dark', dark: 'system' }
+  const ThemeIcon = { system: Monitor, light: Sun, dark: Moon }[theme]
   const canReview = user?.role === 'billing' || user?.role === 'ops' || user?.role === 'admin'
   const reviewCount = useReviewCount(canReview)
   const link = ({ isActive }: { isActive: boolean }) =>
@@ -44,8 +48,11 @@ export function OfficeShell({ children }: { children: ReactNode }) {
             <NavLink to="/progress" className={link}>{t('nav.progress')}</NavLink>
           </nav>
           <div className="ml-auto flex items-center gap-3 text-sm">
+            <button onClick={() => setTheme(nextTheme[theme])} aria-label={`Theme: ${theme}`} title={`Theme: ${theme}`} className="grid h-8 w-8 place-items-center rounded-md text-muted hover:text-ink">
+              <ThemeIcon size={18} aria-hidden />
+            </button>
             <select value={lang} onChange={(e) => setLang(e.target.value as typeof lang)} aria-label={t('shell.language')}
-              className="rounded-md border border-line bg-white px-1.5 py-1 text-sm text-muted">
+              className="rounded-md border border-line bg-surface px-1.5 py-1 text-sm text-muted">
               {LANGUAGES.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
             </select>
             <Link to="/office/account" className="hidden text-muted hover:text-ink sm:inline" title="Account" aria-label="Account">{user?.name} · {user?.role}</Link>

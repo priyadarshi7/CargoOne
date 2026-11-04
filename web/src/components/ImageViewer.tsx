@@ -25,7 +25,7 @@ export function ImageViewer({ submissionId }: { submissionId: string }) {
     }
   }, [submissionId])
 
-  const btn = 'grid h-9 w-9 place-items-center rounded-lg border border-line bg-white text-muted hover:text-ink'
+  const btn = 'grid h-9 w-9 place-items-center rounded-lg border border-line bg-surface text-muted hover:text-ink'
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex gap-2">

@@ -124,16 +124,16 @@ export default function ReviewDetail() {
 
           <div className="grid gap-2 sm:grid-cols-3">
             <button disabled={busy} onClick={() => void submit('approve')}
-              className="flex items-center justify-center gap-2 rounded-lg bg-ok px-4 py-3 font-medium text-white disabled:opacity-60">
+              className="flex items-center justify-center gap-2 rounded-lg bg-ok px-4 py-3 font-medium text-on-solid disabled:opacity-60">
               <Check size={18} aria-hidden /> Approve <kbd className="text-xs opacity-70">A</kbd>
             </button>
             <button disabled={busy || item.retakes_left === 0} onClick={() => void submit('request_retake')}
               title={item.retakes_left === 0 ? 'Retake limit reached' : undefined}
-              className="flex items-center justify-center gap-2 rounded-lg bg-warn px-4 py-3 font-medium text-white disabled:opacity-40">
+              className="flex items-center justify-center gap-2 rounded-lg bg-warn px-4 py-3 font-medium text-on-solid disabled:opacity-40">
               <RotateCcw size={18} aria-hidden /> Retake <kbd className="text-xs opacity-70">R</kbd>
             </button>
             <button disabled={busy} onClick={() => void submit('reject')}
-              className={`flex items-center justify-center gap-2 rounded-lg px-4 py-3 font-medium disabled:opacity-60 ${confirmReject ? 'bg-bad text-white' : 'border border-bad text-bad'}`}>
+              className={`flex items-center justify-center gap-2 rounded-lg px-4 py-3 font-medium disabled:opacity-60 ${confirmReject ? 'bg-bad text-on-solid' : 'border border-bad text-bad'}`}>
               <X size={18} aria-hidden /> {confirmReject ? 'Confirm reject' : 'Reject'} <kbd className="text-xs opacity-70">X</kbd>
             </button>
           </div>

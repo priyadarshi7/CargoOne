@@ -2,7 +2,7 @@ import { useState } from 'react'
 
 /** Ordinal sequential ramp (one hue, light -> dark), validated step range from the dataviz palette:
  *  the lightest step is no lighter than step 250 so every segment stays visible on white. */
-export const AGE_RAMP = ['#86b6ef', '#3987e5', '#1c5cab', '#0d366b']
+export const AGE_RAMP = ['var(--ramp-0)', 'var(--ramp-1)', 'var(--ramp-2)', 'var(--ramp-3)'] // light/dark steps live in index.css
 
 interface Bucket { label: string; count: number }
 
@@ -30,7 +30,7 @@ export function StackedBars({ rows }: { rows: { name: string; buckets: Bucket[] 
                 {r.buckets.map((b, i) => b.count > 0 && (
                   <div key={b.label} title={`${r.name} · ${b.label}: ${b.count}`}
                     className="grid min-w-[4px] place-items-center text-[11px] font-medium text-white first:rounded-l last:rounded-r"
-                    style={{ width: `${(b.count / max) * 100}%`, background: AGE_RAMP[i], color: i === 0 ? '#0b0b0b' : '#fff' }}>
+                    style={{ width: `${(b.count / max) * 100}%`, background: AGE_RAMP[i], color: `var(--ramp-ink-${i})` }}>
                     {(b.count / max) > 0.07 ? b.count : ''}
                   </div>
                 ))}
@@ -83,20 +83,20 @@ export function LineChart({ points, target, max, unit, targetLabel, fmt = (v: nu
         onMouseMove={onMove} onMouseLeave={() => setHover(null)}>
         {[0, max / 2, max].map((v) => (
           <g key={v}>
-            <line x1={L} x2={W - R} y1={y(v)} y2={y(v)} stroke="#e2e8f0" strokeWidth="1" />
-            <text x={L - 6} y={y(v) + 3} textAnchor="end" fontSize="10" fill="#898781">{fmt(v)}</text>
+            <line x1={L} x2={W - R} y1={y(v)} y2={y(v)} stroke="var(--color-line)" strokeWidth="1" />
+            <text x={L - 6} y={y(v) + 3} textAnchor="end" fontSize="10" fill="var(--color-muted)">{fmt(v)}</text>
           </g>
         ))}
-        <line x1={L} x2={W - R} y1={y(target)} y2={y(target)} stroke="#15803d" strokeWidth="1.5" strokeDasharray="4 4" />
-        <text x={W - R} y={y(target) - 4} textAnchor="end" fontSize="10" fill="#15803d">{targetLabel}</text>
-        {segs.map((d, i) => <path key={i} d={d} fill="none" stroke="#2a78d6" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />)}
+        <line x1={L} x2={W - R} y1={y(target)} y2={y(target)} stroke="var(--color-ok)" strokeWidth="1.5" strokeDasharray="4 4" />
+        <text x={W - R} y={y(target) - 4} textAnchor="end" fontSize="10" fill="var(--color-ok)">{targetLabel}</text>
+        {segs.map((d, i) => <path key={i} d={d} fill="none" stroke="var(--series)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />)}
         {points.map((p, i) => p.value !== null && (
-          <circle key={i} cx={x(i)} cy={y(p.value)} r={hover === i ? 5 : 3.5} fill="#2a78d6" stroke="#fff" strokeWidth="2" />
+          <circle key={i} cx={x(i)} cy={y(p.value)} r={hover === i ? 5 : 3.5} fill="var(--series)" stroke="var(--color-surface)" strokeWidth="2" />
         ))}
         {points.map((p, i) => (i % 2 === 0 || points.length < 6) && (
-          <text key={p.label} x={x(i)} y={H - 8} textAnchor="middle" fontSize="10" fill="#898781">{p.label}</text>
+          <text key={p.label} x={x(i)} y={H - 8} textAnchor="middle" fontSize="10" fill="var(--color-muted)">{p.label}</text>
         ))}
-        {hover !== null && <line x1={x(hover)} x2={x(hover)} y1={T} y2={H - B} stroke="#64748b" strokeWidth="1" />}
+        {hover !== null && <line x1={x(hover)} x2={x(hover)} y1={T} y2={H - B} stroke="var(--color-muted)" strokeWidth="1" />}
       </svg>
       <p className="h-5 text-xs text-muted" aria-live="polite">
         {hp ? <>Week of <b className="text-ink">{hp.label}</b>: {hp.value === null ? 'no data' : <b className="text-ink">{fmt(hp.value)}</b>}</> : ' '}
