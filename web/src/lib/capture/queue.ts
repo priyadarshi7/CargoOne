@@ -46,11 +46,15 @@ const db = () =>
 const DONE_TTL_MS = 24 * 3600 * 1000
 
 // Strictly increasing, so FIFO order holds even for photos queued in the same millisecond.
+// crypto.randomUUID() only exists in secure contexts (https/localhost); getRandomValues works over plain http
+// too, which matters for LAN testing and for any non-https dev setup.
+const newId = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('')
+
 let lastStamp = 0
 const nextStamp = () => (lastStamp = Math.max(Date.now(), lastStamp + 1))
 
 export async function enqueue(p: Pick<QueuedPod, 'tripId' | 'blob' | 'capturedAt' | 'lat' | 'lng'>): Promise<QueuedPod> {
-  const item: QueuedPod = { ...p, id: crypto.randomUUID().replaceAll('-', ''), createdAt: nextStamp(), attempts: 0, status: 'queued' }
+  const item: QueuedPod = { ...p, id: newId(), createdAt: nextStamp(), attempts: 0, status: 'queued' }
   await (await db()).put('pods', item)
   return item
 }
