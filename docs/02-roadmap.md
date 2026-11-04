@@ -54,7 +54,7 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [~] Extraction schema + prompt for LR no., stamp, quantity, shortage/damage remarks, date, signature, confidence done; tuning on real PODs pending
 - [ ] Prompt + structured output schema + validation; Hindi/Marathi handwriting cases
 - [x] Deterministic decision engine (verified / needs review / retake) — unit-tested rule table (`api/app/pod/decision.py`)
-- [ ] Real-time result to driver while at the gate (<10 s target), graceful degrade if AI is down (queue as "review")
+- [~] Upload endpoint `POST /trips/{id}/pod` runs AI + decision engine and returns the verdict; AI outage parks POD for review; idempotent; image access role-checked + audited. Latency target (<10 s) unmeasured until real Gemini key
 - [ ] Cost/latency controls: timeouts, retries, caching by image hash, provider fallback
 - [ ] Evaluation harness: labelled POD image set, accuracy/recall report, regression gate
 - [ ] Never auto-send invoices; image remains source of truth
