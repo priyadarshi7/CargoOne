@@ -93,7 +93,8 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 **Live GPS tracking**
 - [ ] Trip tracking via driver PWA location pings (battery-aware), live map for ops, geofenced delivery arrival (auto-prompt POD at consignee gate), ETA, route deviation & stoppage alerts, share-tracking link for clients
 **Trip planning**
-- [ ] Order → trip creation, own vs hired vehicle allocation, driver assignment, load/vehicle matching, backhaul suggestions, planning board (drag-drop), hired-vehicle vendor management
+- [x] Trip lifecycle (planned / on the road / delivered / cancelled; a POD photo marks delivered), trip creation by ops with generated trip codes, vehicle + driver assignment for a time window, **clash detection** (vehicle and driver double-booking, explicit "book anyway"), 15-day planning board per vehicle, driver "Start trip" button, cancel, audit trail, English/Hindi/Marathi
+- [ ] Still to do here: orders before trips, load/vehicle matching, backhaul suggestions, drag-and-drop on the board, hired-vehicle vendor management
 **Fuel & driver expenses**
 - [ ] Driver expense capture by photo (fuel, toll, repairs) with the same AI extraction, advances & settlement, trip P&L, fuel mileage anomaly flags, per-trip profitability dashboard
 **Platform polish**

@@ -16,7 +16,7 @@ from app.ai.providers.mock import MockProvider
 from app.config import get_settings
 from app.db import SessionLocal
 from app.devtools.synthetic_pod import SCENARIOS, render
-from app.models import Branch, Client, PodStatus, PodSubmission, Role, Trip, User, Vehicle
+from app.models import Branch, Client, PodStatus, PodSubmission, Role, Trip, TripState, User, Vehicle
 from app.security import hash_secret
 from app.storage import get_storage
 
@@ -85,6 +85,7 @@ async def seed(session: AsyncSession) -> None:
             continue
         arrived = trip.delivered_at + timedelta(hours=2)  # sample PODs reached the system 2 h after delivery
         trip.first_pod_at = trip.pod_uploaded_at = arrived
+        trip.state = TripState.delivered
         if trip.pod_status == PodStatus.verified:
             trip.verified_at = arrived + timedelta(hours=1)
         png = render(SCENARIOS[scenario], trip.lr_no, seed=1)

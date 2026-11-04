@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.registry import AllProvidersFailed, run_extraction
 from app.config import get_settings
-from app.models import AuditLog, PodStatus, PodSubmission, Trip
+from app.models import AuditLog, PodStatus, PodSubmission, Trip, TripState
 from app.pod.decision import Decision, Voice, decide
 from app.storage import Storage
 
@@ -109,6 +109,8 @@ async def ingest_pod(
     session.add(sub)
     trip.pod_status = PodStatus(decision.value)
     trip.pod_uploaded_at = datetime.now(UTC)
+    if trip.state in (TripState.planned, TripState.in_transit):
+        trip.state = TripState.delivered  # a POD photo means the goods arrived
     if trip.first_pod_at is None:
         trip.first_pod_at = trip.pod_uploaded_at
     if decision == Decision.retake_requested:

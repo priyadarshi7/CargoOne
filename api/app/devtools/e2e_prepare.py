@@ -58,6 +58,7 @@ async def _seed() -> None:
 
         for email in ('pwchange@cargoone.dev', 'locktest@cargoone.dev'):
             s.add(User(name=email.split('@')[0], email=email, role=Role.ops, password_hash=hash_secret('cargoone-dev'), language='en'))
+        s.add(User(name='Plan Test Driver', phone='9000000088', role=Role.driver, password_hash=hash_secret('4821'), language='en'))
         s.add(User(name='PIN Test Driver', phone='9000000077', role=Role.driver, password_hash=hash_secret('4821'), language='en'))
         await s.commit()
 

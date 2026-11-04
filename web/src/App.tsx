@@ -14,6 +14,7 @@ import DriverHome from './pages/DriverHome'
 import ImportTrips from './pages/ImportTrips'
 import Login from './pages/Login'
 import OfficeTrips from './pages/OfficeTrips'
+import Planning from './pages/Planning'
 import ReviewDetail from './pages/ReviewDetail'
 import ReviewList from './pages/ReviewList'
 import Account from './pages/Account'
@@ -63,6 +64,7 @@ export default function App() {
           <Route path="/office/trips" element={<Guard roles={['ops', 'billing', 'md']}><OfficeShell><OfficeTrips /></OfficeShell></Guard>} />
           <Route path="/office/account" element={<Guard roles={['ops', 'billing', 'md']}><OfficeShell><Account /></OfficeShell></Guard>} />
           <Route path="/office/drivers" element={<Guard roles={['ops', 'billing']}><OfficeShell><Drivers /></OfficeShell></Guard>} />
+          <Route path="/office/planning" element={<Guard roles={['ops', 'billing']}><OfficeShell><Planning /></OfficeShell></Guard>} />
           <Route path="/office/import" element={<Guard roles={['ops', 'billing']}><OfficeShell><ImportTrips /></OfficeShell></Guard>} />
           <Route path="/office/billing" element={<Guard roles={['ops', 'billing']}><OfficeShell><Billing /></OfficeShell></Guard>} />
           <Route path="/office/review" element={<Guard roles={['ops', 'billing']}><OfficeShell><ReviewList /></OfficeShell></Guard>} />

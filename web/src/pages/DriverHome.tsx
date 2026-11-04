@@ -1,4 +1,4 @@
-import { Camera, CircleCheck, CloudUpload, KeyRound, LogOut } from 'lucide-react'
+import { Camera, CircleCheck, CloudUpload, KeyRound, LogOut, Play } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { statusIcon } from '../components/StatusBadge'
@@ -7,18 +7,30 @@ import { useAuth } from '../lib/auth'
 import { useSyncedQueue } from '../lib/capture/sync'
 
 const OPEN: PodStatus[] = ['pending', 'retake_requested']
+const START: Record<'en' | 'hi' | 'mr', string> = { en: 'Start trip', hi: 'यात्रा शुरू करें', mr: 'प्रवास सुरू करा' }
 
 /** Driver surface: one primary action, icons over text, no forms. */
 export default function DriverHome() {
   const { user, logout } = useAuth()
   const pending = useSyncedQueue()
   const [trips, setTrips] = useState<Trip[] | null>(null)
+  const [starting, setStarting] = useState(false)
 
   useEffect(() => {
     api<Trip[]>('/trips/mine').then(setTrips).catch(() => setTrips([]))
   }, [pending]) // refresh statuses after queued photos finish uploading
 
   const next = trips?.find((t) => OPEN.includes(t.pod_status))
+
+  async function start(id: string) {
+    setStarting(true)
+    try {
+      const updated = await api<Trip>(`/trips/${id}/start`, { method: 'POST' })
+      setTrips((all) => all?.map((t) => (t.id === id ? updated : t)) ?? null)
+    } finally {
+      setStarting(false)
+    }
+  }
 
   return (
     <div className="mx-auto flex min-h-full max-w-md flex-col px-5 pb-8 pt-6">
@@ -38,7 +50,15 @@ export default function DriverHome() {
         </div>
       )}
 
-      {next ? (
+      {next?.state === 'planned' ? (
+        <button onClick={() => void start(next.id)} disabled={starting}
+          className="mt-6 grid h-48 w-full place-items-center rounded-3xl bg-ok text-on-solid active:scale-[0.98] disabled:opacity-60">
+          <span className="flex flex-col items-center gap-3 text-xl font-semibold">
+            <Play size={64} aria-hidden /> {START[user?.language ?? 'en']}
+            <span className="text-base font-normal opacity-90">{next.destination}</span>
+          </span>
+        </button>
+      ) : next ? (
         <Link to={`/driver/trip/${next.id}`}
           className="mt-6 grid h-48 w-full place-items-center rounded-3xl bg-accent text-on-solid active:scale-[0.98]">
           <span className="flex flex-col items-center gap-3 text-xl font-semibold">

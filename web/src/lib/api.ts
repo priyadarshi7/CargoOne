@@ -9,10 +9,20 @@ export const tokenStore = {
 
 export class ApiError extends Error {
   status: number
-  constructor(status: number, message: string) {
+  detail: unknown // the raw `detail` from the API (an object for clash errors)
+  constructor(status: number, message: string, detail?: unknown) {
     super(message)
     this.status = status
+    this.detail = detail
   }
+}
+
+/** One readable sentence from whatever shape the API's `detail` has (text, {message}, or a validation list). */
+function messageOf(detail: unknown): string {
+  if (typeof detail === 'string') return detail
+  if (Array.isArray(detail)) return detail.map((d) => (d && typeof d === 'object' && 'msg' in d ? String((d as { msg: unknown }).msg).replace(/^Value error, /, '') : '')).filter(Boolean).join('; ') || 'Request failed'
+  if (detail && typeof detail === 'object' && 'message' in detail) return String((detail as { message: unknown }).message)
+  return 'Request failed'
 }
 
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -27,7 +37,7 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   })
   if (!res.ok) {
     const detail = await res.json().then((j) => j.detail).catch(() => res.statusText)
-    throw new ApiError(res.status, typeof detail === 'string' ? detail : 'Request failed')
+    throw new ApiError(res.status, messageOf(detail), detail)
   }
   return res.json() as Promise<T>
 }
@@ -55,7 +65,12 @@ export interface Trip {
   pod_status: PodStatus
   retake_count: number
   delivered_at: string | null
+  state: TripState
+  planned_start: string | null
+  planned_end: string | null
+  started_at: string | null
 }
+export type TripState = 'planned' | 'in_transit' | 'delivered' | 'cancelled'
 export type PodStatus =
   | 'pending' | 'uploaded' | 'verified' | 'needs_review' | 'retake_requested' | 'rejected' | 'billed'
 

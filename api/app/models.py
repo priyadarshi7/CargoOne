@@ -46,6 +46,13 @@ class PodStatus(str, enum.Enum):
     billed = "billed"
 
 
+class TripState(str, enum.Enum):
+    planned = "planned"
+    in_transit = "in_transit"
+    delivered = "delivered"
+    cancelled = "cancelled"
+
+
 class LinkKind(str, enum.Enum):
     sms_upload = "sms_upload"
     client_view = "client_view"
@@ -137,6 +144,10 @@ class Trip(Base):
     verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     invoice_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("invoices.id"))
     invoiced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    state: Mapped[TripState] = mapped_column(_enum(TripState), default=TripState.in_transit, server_default="in_transit")
+    planned_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    planned_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = now()
 
     submissions: Mapped[list["PodSubmission"]] = relationship(back_populates="trip")

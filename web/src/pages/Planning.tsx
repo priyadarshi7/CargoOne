@@ -1,0 +1,261 @@
+import { Plus, TriangleAlert, X } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { api, ApiError, type TripState } from '../lib/api'
+import { useAuth } from '../lib/auth'
+import { useI18n } from '../lib/i18n'
+
+interface BoardTrip { id: string; trip_code: string; client: string; vehicle_id: string; driver_id: string | null; driver: string | null; origin: string; destination: string; state: TripState; planned_start: string | null; planned_end: string | null; started_at: string | null }
+interface Vehicle { id: string; reg_no: string; is_hired: boolean }
+interface Board { now: string; vehicles: Vehicle[]; trips: BoardTrip[] }
+interface Refs { clients: { id: string; name: string }[]; vehicles: Vehicle[]; drivers: { id: string; name: string }[]; branches: { id: string; name: string }[]; default_origin: string }
+
+const DAY = 86_400_000
+const DAYS = 15 // yesterday + two weeks
+const BAR: Record<TripState, string> = {
+  planned: 'border border-dashed border-accent bg-accent-soft text-accent',
+  in_transit: 'bg-accent text-on-solid',
+  delivered: 'bg-ok-soft text-ok',
+  cancelled: 'bg-wash text-muted',
+}
+const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+const toLocalInput = (iso: string | null) => (iso ? new Date(new Date(iso).getTime() - new Date(iso).getTimezoneOffset() * 60_000).toISOString().slice(0, 16) : '')
+const fromLocalInput = (v: string) => (v ? new Date(v).toISOString() : null)
+
+/** Trip planning board: a 15-day timeline per vehicle. Dashed = planned, solid = on the road, green = delivered. */
+export default function Planning() {
+  const { user } = useAuth()
+  const { t, lang } = useI18n()
+  const canPlan = user?.role === 'ops' || user?.role === 'admin'
+  const [board, setBoard] = useState<Board | null>(null)
+  const [refs, setRefs] = useState<Refs | null>(null)
+  const [error, setError] = useState(false)
+  const [dialog, setDialog] = useState<{ trip: BoardTrip | null } | null>(null)
+
+  const load = useCallback(async () => {
+    try {
+      const [b, r] = await Promise.all([api<Board>('/planning/board'), api<Refs>('/planning/refs')])
+      setBoard(b)
+      setRefs(r)
+    } catch { setError(true) }
+  }, [])
+  useEffect(() => { void load() }, [load])
+
+  const range = useMemo(() => {
+    const from = startOfDay(new Date(board?.now ?? Date.now())) - DAY
+    return { from, to: from + DAYS * DAY }
+  }, [board?.now])
+
+  if (error) return <p className="text-bad">{t('plan.error')}</p>
+  if (!board || !refs) return <p className="text-muted">{t('common.loading')}</p>
+
+  const slot = (tr: BoardTrip) => {
+    const s = tr.started_at ?? tr.planned_start
+    if (!s) return null
+    const a = new Date(s).getTime()
+    const b = tr.planned_end ? new Date(tr.planned_end).getTime() : a + DAY
+    return { a, b: Math.max(b, a + DAY / 6) }
+  }
+  const scheduled = board.trips.filter((x) => slot(x))
+  const unscheduled = board.trips.filter((x) => !slot(x) && (x.state === 'planned' || x.state === 'in_transit'))
+  const pct = (ms: number) => Math.min(100, Math.max(0, ((ms - range.from) / (range.to - range.from)) * 100))
+  const dayLabel = (i: number) => new Date(range.from + i * DAY).toLocaleDateString(lang === 'en' ? 'en-IN' : `${lang}-IN`, { day: 'numeric', weekday: 'short' })
+  const todayIdx = Math.floor((startOfDay(new Date(board.now)) - range.from) / DAY)
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">{t('plan.title')}</h1>
+          <p className="text-sm text-muted">{t('plan.sub')}</p>
+        </div>
+        {canPlan && (
+          <button onClick={() => setDialog({ trip: null })} className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-solid">
+            <Plus size={16} aria-hidden /> {t('plan.new')}
+          </button>
+        )}
+      </div>
+
+      <ul className="flex flex-wrap gap-4 text-xs text-muted" aria-label={t('plan.legend')}>
+        {(['planned', 'in_transit', 'delivered'] as const).map((s) => (
+          <li key={s} className="inline-flex items-center gap-1.5"><span className={`inline-block h-3 w-6 rounded ${BAR[s]}`} />{t(`state.${s}`)}</li>
+        ))}
+      </ul>
+
+      {board.vehicles.length === 0 ? <p className="text-muted">{t('plan.noVehicles')}</p> : (
+        <div className="overflow-x-auto rounded-xl border border-line">
+          <div className="min-w-[860px]">
+            <div className="grid grid-cols-[10.5rem_1fr] border-b border-line bg-wash text-xs text-muted">
+              <div className="px-3 py-2">{t('plan.vehicle')}</div>
+              <div className="grid" style={{ gridTemplateColumns: `repeat(${DAYS}, 1fr)` }}>
+                {Array.from({ length: DAYS }, (_, i) => (
+                  <div key={i} className={`border-l border-line px-1 py-2 text-center ${i === todayIdx ? 'font-semibold text-accent' : ''}`}>{dayLabel(i)}</div>
+                ))}
+              </div>
+            </div>
+            {board.vehicles.map((v) => (
+              <div key={v.id} className="grid grid-cols-[10.5rem_1fr] border-b border-line last:border-0">
+                <div className="px-3 py-3 text-sm font-medium">{v.reg_no}{v.is_hired && <span className="ml-1.5 text-xs font-normal text-muted">{t('plan.hiredTag')}</span>}</div>
+                <div className="relative h-12">
+                  <div className="absolute inset-0 grid" style={{ gridTemplateColumns: `repeat(${DAYS}, 1fr)` }} aria-hidden>
+                    {Array.from({ length: DAYS }, (_, i) => <div key={i} className={`border-l border-line ${i === todayIdx ? 'bg-accent-soft/50' : ''}`} />)}
+                  </div>
+                  {scheduled.filter((x) => x.vehicle_id === v.id).map((x) => {
+                    const s = slot(x)!
+                    const left = pct(s.a), right = pct(s.b)
+                    if (right <= left) return null
+                    return (
+                      <button key={x.id} onClick={() => setDialog({ trip: x })} title={`${x.trip_code} · ${x.origin} → ${x.destination}${x.driver ? ` · ${x.driver}` : ''}`}
+                        aria-label={t('plan.opens', { code: x.trip_code })}
+                        className={`absolute top-1.5 h-9 min-w-[3.25rem] overflow-hidden rounded-md px-2 text-left text-xs font-medium leading-tight ${BAR[x.state]}`}
+                        style={{ left: `${left}%`, width: `${right - left}%` }}>
+                        <span className="block truncate">{x.destination}</span>
+                        <span className="block truncate opacity-80">{x.driver ?? t('plan.noDriver')}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {unscheduled.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="font-semibold">{t('plan.unscheduled')}</h2>
+          <ul className="divide-y divide-line rounded-xl border border-line text-sm">
+            {unscheduled.map((x) => {
+              const veh = board.vehicles.find((v) => v.id === x.vehicle_id)
+              return (
+                <li key={x.id}>
+                  <button onClick={() => setDialog({ trip: x })} className="flex w-full flex-wrap items-center gap-x-6 gap-y-1 px-4 py-3 text-left hover:bg-wash" aria-label={t('plan.opens', { code: x.trip_code })}>
+                    <span className="min-w-28 font-medium">{x.trip_code}</span>
+                    <span className="text-muted">{x.origin} → {x.destination}</span>
+                    <span className="text-muted">{veh?.reg_no}{x.driver ? ` · ${x.driver}` : ''}</span>
+                    <span className={`ml-auto rounded-full px-2.5 py-0.5 text-xs ${BAR[x.state]}`}>{t(`state.${x.state}`)}</span>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+      )}
+
+      {dialog && <TripDialog trip={dialog.trip} refs={refs} canPlan={canPlan} onClose={() => setDialog(null)} onSaved={() => { setDialog(null); void load() }} />}
+    </div>
+  )
+}
+
+function TripDialog({ trip, refs, canPlan, onClose, onSaved }: { trip: BoardTrip | null; refs: Refs; canPlan: boolean; onClose: () => void; onSaved: () => void }) {
+  const { t } = useI18n()
+  const ref = useRef<HTMLDialogElement>(null)
+  useEffect(() => { ref.current?.showModal() }, [])
+  const editing = trip !== null
+  const locked = editing && (trip.state !== 'planned' || !canPlan)
+  const [f, setF] = useState({
+    client_id: refs.clients[0]?.id ?? '', vehicle_id: trip?.vehicle_id ?? refs.vehicles[0]?.id ?? '', driver_id: trip?.driver_id ?? '',
+    origin: refs.default_origin, destination: trip?.destination ?? '', freight_amount: '', lr_no: '', eway_bill_no: '',
+    start: toLocalInput(trip?.planned_start ?? null), end: toLocalInput(trip?.planned_end ?? null),
+  })
+  const [error, setError] = useState<string | null>(null)
+  const [clash, setClash] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [confirmCancel, setConfirmCancel] = useState(false)
+  const set = (k: keyof typeof f, v: string) => { setF({ ...f, [k]: v }); setClash(false) }
+
+  async function save(e: FormEvent, force = false) {
+    e.preventDefault()
+    setBusy(true)
+    setError(null)
+    const times = { planned_start: fromLocalInput(f.start), planned_end: fromLocalInput(f.end) }
+    try {
+      if (editing) {
+        await api(`/planning/trips/${trip.id}`, { method: 'PATCH', body: JSON.stringify({ vehicle_id: f.vehicle_id, driver_id: f.driver_id || null, ...times, force }) })
+      } else {
+        await api('/planning/trips', { method: 'POST', body: JSON.stringify({
+          client_id: f.client_id, vehicle_id: f.vehicle_id, driver_id: f.driver_id || null, origin: f.origin || null, destination: f.destination,
+          freight_amount: f.freight_amount, lr_no: f.lr_no, eway_bill_no: f.eway_bill_no, ...times, force }) })
+      }
+      onSaved()
+    } catch (err) {
+      setClash(err instanceof ApiError && err.status === 409 && typeof err.detail === 'object')
+      setError(err instanceof ApiError ? err.message : t('plan.failed'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function cancel() {
+    setBusy(true)
+    try { await api(`/planning/trips/${trip!.id}/cancel`, { method: 'POST' }); onSaved() }
+    catch (err) { setError(err instanceof ApiError ? err.message : t('plan.failed')); setConfirmCancel(false); setBusy(false) }
+  }
+
+  const field = 'w-full rounded-lg border border-line px-3 py-2 text-sm outline-none focus:border-accent disabled:opacity-60'
+  const label = (text: string, input: React.ReactNode) => <label className="block space-y-1 text-sm"><span className="text-muted">{text}</span>{input}</label>
+  return (
+    <dialog ref={ref} onClose={onClose} aria-label={editing ? trip.trip_code : t('plan.new')} className="m-auto w-[min(34rem,94vw)] rounded-2xl border border-line p-0 shadow-xl backdrop:bg-black/30">
+      <form onSubmit={(e) => void save(e)} className="space-y-4 p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold">{editing ? trip.trip_code : t('plan.new')}</h2>
+            {editing && <p className="text-sm text-muted">{trip.client} · {trip.origin} → {trip.destination}</p>}
+          </div>
+          <button type="button" onClick={() => ref.current?.close()} aria-label={t('common.close')} className="text-muted hover:text-ink"><X size={20} /></button>
+        </div>
+        {editing && locked && <p className="rounded-lg bg-wash px-3 py-2 text-sm text-muted">{t('plan.readOnly')}</p>}
+
+        {!editing && (
+          <>
+            {label(t('plan.client'), <select className={field} value={f.client_id} onChange={(e) => set('client_id', e.target.value)}>{refs.clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>)}
+            <div className="grid gap-4 sm:grid-cols-2">
+              {label(t('plan.origin'), <input className={field} value={f.origin} onChange={(e) => set('origin', e.target.value)} />)}
+              {label(t('plan.destination'), <input className={field} required value={f.destination} onChange={(e) => set('destination', e.target.value)} />)}
+            </div>
+          </>
+        )}
+        <div className="grid gap-4 sm:grid-cols-2">
+          {label(t('plan.vehicle'), <select className={field} disabled={locked} value={f.vehicle_id} onChange={(e) => set('vehicle_id', e.target.value)}>{refs.vehicles.map((v) => <option key={v.id} value={v.id}>{v.reg_no}{v.is_hired ? ` (${t('plan.hiredTag')})` : ''}</option>)}</select>)}
+          {label(t('plan.driver'), <select className={field} disabled={locked} value={f.driver_id} onChange={(e) => set('driver_id', e.target.value)}><option value="">{t('plan.noDriver')}</option>{refs.drivers.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select>)}
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {label(t('plan.start'), <input type="datetime-local" className={field} disabled={locked} value={f.start} onChange={(e) => set('start', e.target.value)} />)}
+          {label(t('plan.end'), <input type="datetime-local" className={field} disabled={locked} value={f.end} onChange={(e) => set('end', e.target.value)} />)}
+        </div>
+        {!editing && (
+          <div className="grid gap-4 sm:grid-cols-3">
+            {label(t('plan.freight'), <input className={field} required inputMode="decimal" value={f.freight_amount} onChange={(e) => set('freight_amount', e.target.value)} />)}
+            {label(t('plan.lr'), <input className={field} required value={f.lr_no} onChange={(e) => set('lr_no', e.target.value)} />)}
+            {label(t('plan.eway'), <input className={field} required inputMode="numeric" maxLength={12} value={f.eway_bill_no} onChange={(e) => set('eway_bill_no', e.target.value.replace(/\D/g, ''))} />)}
+          </div>
+        )}
+
+        {error && (
+          <p role="alert" className="flex items-start gap-2 rounded-lg bg-warn-soft px-3 py-2 text-sm text-warn">
+            <TriangleAlert size={16} className="mt-0.5 shrink-0" aria-hidden /> <span>{error}</span>
+          </p>
+        )}
+
+        {confirmCancel ? (
+          <div className="flex flex-wrap items-center gap-3 rounded-lg bg-bad-soft px-3 py-3 text-sm text-bad">
+            <span className="flex-1">{t('plan.confirmCancel', { code: trip!.trip_code })}</span>
+            <button type="button" onClick={() => setConfirmCancel(false)} className="rounded-lg border border-bad px-3 py-1.5">{t('plan.keep')}</button>
+            <button type="button" disabled={busy} onClick={() => void cancel()} className="rounded-lg bg-bad px-3 py-1.5 text-on-solid">{t('plan.cancelTrip')}</button>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {editing && !locked ? <button type="button" onClick={() => setConfirmCancel(true)} className="text-sm text-bad underline underline-offset-2">{t('plan.cancelTrip')}</button> : <span />}
+            {!locked && (
+              <div className="flex gap-2">
+                {clash && <button type="button" disabled={busy} onClick={(e) => void save(e as unknown as FormEvent, true)} className="rounded-lg border border-warn px-4 py-2 text-sm font-medium text-warn">{t('plan.bookAnyway')}</button>}
+                <button disabled={busy} className="rounded-lg bg-accent px-5 py-2 text-sm font-medium text-on-solid disabled:opacity-60">
+                  {editing ? (busy ? t('plan.saving') : t('plan.save')) : (busy ? t('plan.creating') : t('plan.create'))}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </form>
+    </dialog>
+  )
+}

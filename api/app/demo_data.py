@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.db import SessionLocal
-from app.models import Branch, Client, PodStatus, Trip, User, Vehicle
+from app.models import Branch, Client, PodStatus, Trip, TripState, User, Vehicle
 
 PILOT_DAYS = 28  # trips delivered within this many days ago follow the "after" regime
 BRANCH_WITHIN_24H = {"Chhatrapati Sambhajinagar": 0.88, "Pune": 0.78, "Nagpur": 0.52}  # pilot-regime POD-within-a-day odds
@@ -98,7 +98,7 @@ async def create(session: AsyncSession, n: int = 240, seed: int = 42) -> int:
             lr_no=f"LR-D{10000 + i}", eway_bill_no=f"{rnd.randrange(10**11, 10**12)}", origin="Chhatrapati Sambhajinagar",
             destination=rnd.choice(DESTINATIONS), freight_amount=Decimal(rnd.randrange(18, 52) * 1000),
             delivered_at=delivered, pod_status=status, retake_count=1 if status == PodStatus.retake_requested else 0,
-            first_pod_at=fp, pod_uploaded_at=fp, verified_at=ver, invoiced_at=inv,
+            first_pod_at=fp, state=TripState.delivered if fp else TripState.in_transit, pod_uploaded_at=fp, verified_at=ver, invoiced_at=inv,
         ))
         made += 1
     await session.commit()
