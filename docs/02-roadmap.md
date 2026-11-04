@@ -40,7 +40,8 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [x] On-device compression to <300 KB (WebP/JPEG quality ladder, then shrink, EXIF orientation applied, metadata stripped; refuses below 900 px) — unit-tested logic; **real-phone photo test pending**
 - [ ] Client-side quick checks: blur, brightness, document edges → instant "retake" before upload
 - [~] Offline queue (IndexedDB): persisted, FIFO, idempotent, retries on reconnect + every 30 s, permanent errors isolated — done & tested; exponential backoff + Background Sync API pending
-- [ ] PWA: installable, service worker, offline shell, update prompt, storage-quota handling
+- [x] PWA: installable (manifest, icons incl. maskable, service worker caching only the app shell, auto-update, "Install" banner for drivers, iPhone hint), opens offline and keeps the driver signed in when the network is down
+- [ ] PWA still to do: update prompt UI, storage-quota handling; installing needs HTTPS (a tunnel in dev, a real host in production)
 - [x] Result screens usable by non-readers: green ✓ done · amber ↺ retake (with retakes left) · amber 👁 sent for checking · cloud-off saved offline
 - [~] Voice prompts hi/mr/en via browser TTS + replay button done; **Hindi/Marathi wording needs native-speaker review**, recorded audio pending
 - [x] Retake flow, capped at 2; then auto-routed to human review (server-enforced + DB constraint)

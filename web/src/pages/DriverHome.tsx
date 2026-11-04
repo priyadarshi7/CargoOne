@@ -1,6 +1,7 @@
 import { Camera, CircleCheck, CloudUpload, KeyRound, LogOut, MapPin, Play, Wallet } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import InstallBanner from '../components/InstallBanner'
 import { statusIcon } from '../components/StatusBadge'
 import { api, tokenStore, type PodStatus, type Trip, type User } from '../lib/api'
 import { useAuth } from '../lib/auth'
@@ -63,6 +64,8 @@ export default function DriverHome() {
           </button>
         </div>
       </header>
+
+      <InstallBanner />
 
       {onRoad && !consent && !later && (
         <section aria-label={loc.title} className="mt-4 space-y-3 rounded-2xl border border-line p-4">
