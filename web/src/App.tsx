@@ -5,6 +5,7 @@ import type { Role } from './lib/api'
 import { AuthProvider, homeFor, useAuth } from './lib/auth'
 import Billing from './pages/Billing'
 import Capture from './pages/Capture'
+import Dashboard from './pages/Dashboard'
 import DriverHome from './pages/DriverHome'
 import Login from './pages/Login'
 import OfficeTrips from './pages/OfficeTrips'
@@ -18,6 +19,13 @@ function Guard({ roles, children }: { roles: Role[]; children: ReactNode }) {
   if (!user) return <Navigate to="/login" replace />
   if (!roles.includes(user.role) && user.role !== 'admin') return <Navigate to={homeFor(user.role)} replace />
   return <>{children}</>
+}
+
+/** Role-based landing: ops head and MD see the dashboard; billing executives go straight to their work queue. */
+function OfficeHome() {
+  const { user } = useAuth()
+  if (user?.role === 'billing') return <Navigate to="/office/review" replace />
+  return <OfficeShell><Dashboard /></OfficeShell>
 }
 
 function Root() {
@@ -36,10 +44,8 @@ export default function App() {
           <Route path="/progress" element={<Progress />} />
           <Route path="/driver" element={<Guard roles={['driver']}><DriverHome /></Guard>} />
           <Route path="/driver/trip/:id" element={<Guard roles={['driver']}><Capture /></Guard>} />
-          <Route
-            path="/office"
-            element={<Guard roles={['ops', 'billing', 'md']}><OfficeShell><OfficeTrips /></OfficeShell></Guard>}
-          />
+          <Route path="/office" element={<Guard roles={['ops', 'billing', 'md']}><OfficeHome /></Guard>} />
+          <Route path="/office/trips" element={<Guard roles={['ops', 'billing', 'md']}><OfficeShell><OfficeTrips /></OfficeShell></Guard>} />
           <Route path="/office/billing" element={<Guard roles={['ops', 'billing']}><OfficeShell><Billing /></OfficeShell></Guard>} />
           <Route path="/office/review" element={<Guard roles={['ops', 'billing']}><OfficeShell><ReviewList /></OfficeShell></Guard>} />
           <Route path="/office/review/:tripId" element={<Guard roles={['ops', 'billing']}><OfficeShell><ReviewDetail /></OfficeShell></Guard>} />

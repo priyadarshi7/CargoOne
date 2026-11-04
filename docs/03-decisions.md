@@ -21,6 +21,7 @@ Status: Accepted unless noted. Newest decisions go at the bottom; supersede rath
 | 15 | Mock AI provider reads ground-truth labels embedded in synthetic PNGs | Whole pipeline + decision rules testable offline, deterministic, free. Does NOT measure real accuracy. |
 | 16 | Gemini model name is config (`GEMINI_MODEL`), key sent in header not URL | Model names change; keys must not leak into URLs/logs. |
 | 17 | If all providers fail, caller queues POD for human review | Driver is never blocked by an AI outage. |
+| 18 | `APP_ENV` guard: seed runs only in dev/test; non-dev startup rejects default/short `JWT_SECRET` | Demo credentials and the default signing key live in the repo; they must never work on a deployed server. |
 | 19 | Server stores the uploaded bytes unmodified; validates by decoding (not by client MIME), 300 KB / 25 MP limits | Re-encoding on server would alter evidence; web client already compresses and strips EXIF. |
 | 20 | Driver sees a trip as "not found" (404) if it is not theirs; POD upload idempotent on `client_upload_id` | No existence leak; offline retries are safe. |
 | 21 | Native camera app via `<input capture>` instead of getUserMedia (for now) | Works on every cheap Android/WebView, handles focus/flash natively; in-app camera + framing guide is a later enhancement. |
@@ -34,3 +35,7 @@ Status: Accepted unless noted. Newest decisions go at the bottom; supersede rath
 | 29 | One invoice = one client, one voucher in Tally (party Dr / Freight Income Cr); numbers from a Postgres sequence `CO/<FY>/<n>` | Matches how transporters bill; sequence is race-free for concurrent billers. Gaps are possible and acceptable. |
 | 30 | PDF uses "Rs." not the rupee sign | The built-in PDF font has no rupee glyph; embed a TTF font later for the symbol and Devanagari. |
 | 31 | CSV export neutralises cells starting with = + - @ | Prevents spreadsheet formula injection. |
+| 32 | KPI definitions: 24 h share = first POD upload <= 24 h after delivery (over trips delivered > 24 h ago); POD-to-invoice = verified -> invoiced; lost/disputed = rejected; working capital = the brief formula on annualised window freight | Makes every dashboard number reproducible and testable; `first_pod_at` is stored because retakes overwrite `pod_uploaded_at`. |
+| 33 | Dashboard defaults to the last 30 days (90 selectable) | A 90-day window blends before/after eras and understates current performance. |
+| 34 | Demo data generator is dev-only, deterministic, DEMO- coded, creates no verified-unbilled trips, and the dashboard shows a banner while any are in the window | Dashboards need history to demo, but fabricated numbers must never pass as real. |
+| 35 | Charts: ordinal blue ramp for age buckets (not red/green), single-series lines with a dashed target, hover readout, table view under every chart, status shown with icon + label | Colour never carries meaning alone; follows the dataviz guidance. Dark mode not yet built. |

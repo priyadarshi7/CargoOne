@@ -26,11 +26,14 @@ Default is `mock`, which only understands the synthetic test images. Automated t
 - http://localhost:5173 — sign in with a demo login below (office → trips table, driver → mobile home)
 - http://localhost:8000/docs — API explorer
 
-## Demo logins (local seed, fake data only)
+## Demo logins (LOCAL DEVELOPMENT ONLY — fake data; seed refuses to run unless APP_ENV is dev/test)
 | Role | Login | Secret |
 |---|---|---|
 | Ops head / Billing / MD / Admin | `ops@` · `billing@` · `md@` · `admin@cargoone.dev` | `cargoone-dev` |
 | Driver | phone `9000000001` | PIN `1234` |
+
+Dashboards look empty without history. Add illustrative demo trips (clearly coded `DEMO-…`, banner shown on the dashboard):
+`cd api && uv run python -m app.demo_data` (remove again with `--remove`). Dev/test only.
 
 Tests need migrated Postgres: `cd api && uv run pytest`.
 
