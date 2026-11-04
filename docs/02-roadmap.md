@@ -4,13 +4,13 @@ Legend: [ ] todo · [~] in progress · [x] done. Each item = one branch/PR (`fea
 Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **P2** "wow" — the out-of-scope items, built later so the client is not disappointed.
 
 ## Phase 0 — Foundations (decide before coding)
-- [ ] P0 Finalise stack decisions (see `03-decisions.md`) — one at a time, with trade-offs
-- [ ] P0 Git workflow: protected `main`, branch naming, Conventional Commits, PR template, CI required
-- [ ] P0 Monorepo layout, lint/format (ESLint + Prettier), TypeScript strict, path aliases
-- [ ] P0 Local dev: one-command start (DB container, migrate, seed, web, api)
-- [ ] P0 CI (GitHub Actions): typecheck, lint, unit tests, build on every PR
-- [ ] P0 Env/config management, `.env.example`, secrets rules
-- [ ] P0 Docs: README, CLAUDE.md, ADRs, architecture diagram, runbook skeleton
+- [x] P0 Finalise stack decisions (see `03-decisions.md`) — one at a time, with trade-offs
+- [~] P0 Git workflow: branches, Conventional Commits, PR template, CI done; GitHub branch protection on `main` pending (owner setting)
+- [x] P0 Monorepo layout (`web/`, `api/`), Ruff + oxlint, TypeScript strict
+- [~] P0 Local dev: one-command start (Postgres in Docker done; api/web containers + `make dev` pending) (DB container, migrate, seed, web, api)
+- [x] P0 CI (GitHub Actions): typecheck, lint, unit tests, build on every PR
+- [x] P0 Env/config management, `.env.example`, secrets rules
+- [~] P0 Docs: README (README, CLAUDE.md, ADRs done; architecture diagram + runbook pending), CLAUDE.md, ADRs, architecture diagram, runbook skeleton
 
 ## Phase 1 — Design system & app shell (P0)
 - [ ] Design tokens: colour (neutral + one accent, green/amber/red semantic), type scale, spacing, radius, motion
@@ -22,9 +22,10 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [ ] Dark mode for office shell (optional)
 
 ## Phase 2 — Data, auth, roles (P0)
-- [ ] DB schema + migrations + seed from client sample data (+ larger realistic demo data set)
-- [ ] Auth: office login (email+password), driver login (phone + PIN/OTP, mocked SMS), session handling
-- [ ] Roles & permissions: driver, billing, ops, admin; per-branch scoping
+- [x] DB schema + migration 0001 + seed from client sample data (fake PII)
+- [ ] Larger realistic demo dataset (≈200 trips across branches/clients/ages) for dashboard demos
+- [~] Auth: office login + driver phone/PIN login with JWT done; OTP/PIN reset, token refresh, login rate-limit pending
+- [~] Roles & permissions: role guard (`require_roles`) done + tested; per-branch scoping pending
 - [ ] Hired-driver tokenised SMS link (trip-scoped, expiring, revocable, rate-limited)
 - [ ] Audit log for every sensitive read/write
 - [ ] Trip import: CSV/XLSX daily upload with LR + e-way bill, validation, dedupe, error report
