@@ -47,13 +47,13 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [ ] SMS-link capture page (no login, same capture engine, lighter shell)
 
 ## Phase 4 — AI POD verification (P0)
-- [ ] AI provider abstraction layer (Python): `extract_pod()` interface, registry, config-driven selection, fallback chain, per-provider cost/latency/accuracy logging
-- [ ] Providers: mock, Gemini (default), Claude, OpenAI, local (PaddleOCR + rules / local VLM)
-- [ ] Synthetic POD generator (stamps, signatures, hi/mr handwriting, blur/skew/glare) for dev + regression
+- [~] AI provider abstraction layer (Python): interface, registry, config-driven selection, fallback chain, latency logging done; per-provider cost + accuracy logging pending
+- [~] Providers: mock + Gemini done (Gemini tested against a fake HTTP transport only — **needs a real key + real/synthetic image run**); Claude, OpenAI, local pending
+- [~] Synthetic POD generator: 9 scenarios (clean, no stamp/signature, blur, shortage, damage, wrong LR, low confidence, not-a-POD) done; hi/mr handwriting, skew/glare, bulk generation pending
 - [ ] Collect 100–200 real PODs from client in pilot week 1 → real accuracy report for the MD
-- [ ] Extraction: LR no., consignee stamp, quantity, shortage/damage remarks, date, signature, confidence
+- [~] Extraction schema + prompt for LR no., stamp, quantity, shortage/damage remarks, date, signature, confidence done; tuning on real PODs pending
 - [ ] Prompt + structured output schema + validation; Hindi/Marathi handwriting cases
-- [ ] Deterministic decision engine (verified / needs review / retake) — unit-tested rule table
+- [x] Deterministic decision engine (verified / needs review / retake) — unit-tested rule table (`api/app/pod/decision.py`)
 - [ ] Real-time result to driver while at the gate (<10 s target), graceful degrade if AI is down (queue as "review")
 - [ ] Cost/latency controls: timeouts, retries, caching by image hash, provider fallback
 - [ ] Evaluation harness: labelled POD image set, accuracy/recall report, regression gate
