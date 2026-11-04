@@ -13,12 +13,14 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [~] P0 Docs: README (README, CLAUDE.md, ADRs done; architecture diagram + runbook pending), CLAUDE.md, ADRs, architecture diagram, runbook skeleton
 
 ## Phase 1 — Design system & app shell (P0)
-- [ ] Design tokens: colour (neutral + one accent, green/amber/red semantic), type scale, spacing, radius, motion
-- [ ] Component kit: Button (driver XL variant), Card, Table, Badge, Dialog, Toast, Empty state, Skeleton, Stepper
+- [x] Web login with role-based routing; live **Build progress** page (`/progress`) rendering this roadmap
+- [x] `GET /trips` (office roles, no consignee PII) and `GET /trips/mine` (driver) endpoints
+- [~] Design tokens: colour (neutral + one accent #1e40af, green/amber/red semantic) in `web/src/index.css` done; type scale, motion pending
+- [~] Component kit: status badge + shells done; Button, Dialog, Toast, Empty state, Skeleton, Stepper pending
 - [ ] Icon set + illustrations for driver flow (no text dependence)
 - [ ] i18n framework: English / हिंदी / मराठी, language switch, number/date/₹ formatting (Indian grouping)
 - [ ] Accessibility: contrast AA, 64px+ driver targets, focus states, reduced motion
-- [ ] Two shells: driver (mobile-first, 1 action/screen) and office (sidebar, tables, keyboard nav)
+- [~] Two shells: basic driver home (placeholder POD button + own trips) and office shell (header nav + trips table) done; sidebar, keyboard nav, real capture pending
 - [ ] Dark mode for office shell (optional)
 
 ## Phase 2 — Data, auth, roles (P0)

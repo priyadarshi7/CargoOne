@@ -13,6 +13,11 @@ cd api && uv sync && uv run alembic upgrade head && uv run python -m app.seed &&
 cd web && pnpm install && pnpm dev                                                          # http://localhost:5173
 ```
 
+## What to open
+- http://localhost:5173/progress — live build progress (no login), read from `docs/02-roadmap.md`
+- http://localhost:5173 — sign in with a demo login below (office → trips table, driver → mobile home)
+- http://localhost:8000/docs — API explorer
+
 ## Demo logins (local seed, fake data only)
 | Role | Login | Secret |
 |---|---|---|
