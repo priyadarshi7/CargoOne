@@ -84,3 +84,46 @@ export async function fetchBlob(path: string): Promise<Blob> {
   if (!res.ok) throw new ApiError(res.status, 'Could not load image')
   return res.blob()
 }
+
+export interface QueueTrip {
+  id: string
+  trip_code: string
+  lr_no: string
+  eway_bill_no: string
+  destination: string
+  freight_amount: number
+  delivered_at: string | null
+  verified_at: string | null
+}
+export interface QueueGroup {
+  client_id: string
+  client: string
+  billing_cycle: string
+  period_key: string
+  period_label: string
+  total: number
+  oldest_verified_at: string | null
+  trips: QueueTrip[]
+}
+export interface Invoice {
+  id: string
+  invoice_no: string
+  client: string
+  period_label: string | null
+  total: number
+  trip_count: number
+  created_at: string
+  exported_at: string | null
+}
+
+/** Downloads a protected file (needs the Authorization header, so a plain link would not work). */
+export async function download(path: string, fallbackName: string): Promise<void> {
+  const token = tokenStore.get()
+  const res = await fetch(`${BASE}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+  if (!res.ok) throw new ApiError(res.status, 'Download failed')
+  const name = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') ?? '')?.[1] ?? fallbackName
+  const url = URL.createObjectURL(await res.blob())
+  const a = Object.assign(document.createElement('a'), { href: url, download: name })
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 10_000)
+}

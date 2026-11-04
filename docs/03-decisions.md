@@ -30,3 +30,7 @@ Status: Accepted unless noted. Newest decisions go at the bottom; supersede rath
 | 25 | Gemini provider retries 429/5xx twice (0.7 s, 1.8 s) then fails over; errors carry the HTTP status only | Live testing hit transient 503/429s on the free tier; response bodies can echo document text (PII). |
 | 26 | Tests force `AI_PROVIDER=mock` and an empty key regardless of `.env` | Real keys must never make tests slow, flaky, or send images to a third party. |
 | 27 | Settings read repo-root `.env` and `api/.env` (latter wins) | Developers put the file in either place. |
+| 28 | Creating an invoice makes a draft inside CargoOne only; exporting stamps `exported_at`; nothing is sent to clients | Brief: invoices are never sent automatically. |
+| 29 | One invoice = one client, one voucher in Tally (party Dr / Freight Income Cr); numbers from a Postgres sequence `CO/<FY>/<n>` | Matches how transporters bill; sequence is race-free for concurrent billers. Gaps are possible and acceptable. |
+| 30 | PDF uses "Rs." not the rupee sign | The built-in PDF font has no rupee glyph; embed a TTF font later for the symbol and Devanagari. |
+| 31 | CSV export neutralises cells starting with = + - @ | Prevents spreadsheet formula injection. |
