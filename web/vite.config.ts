@@ -5,7 +5,7 @@ import { defineConfig } from 'vitest/config'
 // The dev server proxies /api to FastAPI, so the browser never deals with CORS locally.
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  test: { environment: 'node', setupFiles: ['fake-indexeddb/auto'] },
+  test: { environment: 'node', setupFiles: ['fake-indexeddb/auto'], include: ['src/**/*.test.ts'] },
   server: {
     port: 5173,
     // allow importing ../docs/*.md?raw (the Progress page renders the roadmap)

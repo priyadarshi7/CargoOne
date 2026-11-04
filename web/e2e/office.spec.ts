@@ -63,3 +63,23 @@ test('the trips list shows sample trips without consignee personal data', async 
   await expect(page.getByText('Demo Consignee')).toHaveCount(0)
   await shot(page, 'trips')
 })
+
+test('office screens switch to Hindi and Marathi and remember the choice', async ({ page }) => {
+  await login(page, 'ops@cargoone.dev')
+  await page.getByLabel('Language').selectOption('hi')
+  await expect(page.getByRole('link', { name: 'ट्रिप' })).toBeVisible()
+  await page.getByRole('link', { name: 'ट्रिप' }).click()
+  await expect(page.getByRole('columnheader', { name: 'ग्राहक' })).toBeVisible()
+  await expect(page.getByText('सत्यापित').first()).toBeVisible()
+  await shot(page, 'office-trips-hindi')
+
+  await page.reload()
+  await expect(page.getByLabel('भाषा')).toHaveValue('hi') // remembered
+  await page.getByLabel('भाषा').selectOption('mr')
+  await page.getByRole('link', { name: 'तपासणी' }).click()
+  await expect(page.getByRole('heading', { name: 'तपासणी यादी' })).toBeVisible()
+  await shot(page, 'office-review-marathi')
+
+  await page.getByLabel('भाषा').selectOption('en') // leave English for other tests in this browser context
+  await expect(page.getByRole('link', { name: 'Trips' })).toBeVisible()
+})

@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { OfficeShell } from './components/Shell'
 import type { Role } from './lib/api'
 import { AuthProvider, homeFor, useAuth } from './lib/auth'
+import { LangProvider } from './lib/i18n'
 import Billing from './pages/Billing'
 import Capture from './pages/Capture'
 import Dashboard from './pages/Dashboard'
@@ -39,6 +40,7 @@ function Root() {
 
 export default function App() {
   return (
+    <LangProvider>
     <AuthProvider>
       <BrowserRouter>
         <Routes>
@@ -59,5 +61,6 @@ export default function App() {
         </Routes>
       </BrowserRouter>
     </AuthProvider>
+    </LangProvider>
   )
 }

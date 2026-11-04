@@ -3,6 +3,7 @@ import { Link, NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { useEffect, useState, type ReactNode } from 'react'
 import { api, type ReviewItem } from '../lib/api'
+import { LANGUAGES, useI18n } from '../lib/i18n'
 
 /** Re-reads the count on every navigation, so the badge never goes stale after an approval. */
 function useReviewCount(enabled: boolean): number {
@@ -17,6 +18,7 @@ function useReviewCount(enabled: boolean): number {
 
 export function OfficeShell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth()
+  const { t, lang, setLang } = useI18n()
   const canReview = user?.role === 'billing' || user?.role === 'ops' || user?.role === 'admin'
   const reviewCount = useReviewCount(canReview)
   const link = ({ isActive }: { isActive: boolean }) =>
@@ -29,21 +31,25 @@ export function OfficeShell({ children }: { children: ReactNode }) {
             <Truck size={20} className="text-accent" aria-hidden /> CargoOne
           </Link>
           <nav className="flex gap-1">
-            {user?.role !== 'billing' && <NavLink to="/office" end className={link}>Dashboard</NavLink>}
-            <NavLink to="/office/trips" className={link}>Trips</NavLink>
+            {user?.role !== 'billing' && <NavLink to="/office" end className={link}>{t('nav.dashboard')}</NavLink>}
+            <NavLink to="/office/trips" className={link}>{t('nav.trips')}</NavLink>
             {canReview && (
               <NavLink to="/office/review" className={link}>
-                Review{reviewCount > 0 && <span className="ml-1.5 rounded-full bg-warn-soft px-1.5 text-xs text-warn">{reviewCount}</span>}
+                {t('nav.review')}{reviewCount > 0 && <span className="ml-1.5 rounded-full bg-warn-soft px-1.5 text-xs text-warn">{reviewCount}</span>}
               </NavLink>
             )}
-            {canReview && <NavLink to="/office/billing" className={link}>Billing</NavLink>}
-            {canReview && <NavLink to="/office/import" className={link}>Import</NavLink>}
-            <NavLink to="/progress" className={link}>Build progress</NavLink>
+            {canReview && <NavLink to="/office/billing" className={link}>{t('nav.billing')}</NavLink>}
+            {canReview && <NavLink to="/office/import" className={link}>{t('nav.import')}</NavLink>}
+            <NavLink to="/progress" className={link}>{t('nav.progress')}</NavLink>
           </nav>
           <div className="ml-auto flex items-center gap-3 text-sm">
+            <select value={lang} onChange={(e) => setLang(e.target.value as typeof lang)} aria-label={t('shell.language')}
+              className="rounded-md border border-line bg-white px-1.5 py-1 text-sm text-muted">
+              {LANGUAGES.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
+            </select>
             <span className="hidden text-muted sm:inline">{user?.name} · {user?.role}</span>
             <button onClick={logout} className="flex items-center gap-1.5 text-muted hover:text-ink" aria-label="Sign out">
-              <LogOut size={16} aria-hidden /> <span className="hidden sm:inline">Sign out</span>
+              <LogOut size={16} aria-hidden /> <span className="hidden sm:inline">{t('shell.signOut')}</span>
             </button>
           </div>
         </div>

@@ -4,6 +4,7 @@ import { ClientLinkDialog } from '../components/ClientLinkDialog'
 import { UploadLinkDialog } from '../components/UploadLinkDialog'
 import { api, type Trip } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { useI18n } from '../lib/i18n'
 
 const inr = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })
 const day = (iso: string | null) =>
@@ -11,6 +12,7 @@ const day = (iso: string | null) =>
 
 export default function OfficeTrips() {
   const { user } = useAuth()
+  const { t: tx } = useI18n()
   const canSendLink = user?.role === 'ops' || user?.role === 'billing' || user?.role === 'admin'
   const [linkFor, setLinkFor] = useState<Trip | null>(null)
   const [shareFor, setShareFor] = useState<Trip | null>(null)
@@ -21,15 +23,15 @@ export default function OfficeTrips() {
     api<Trip[]>('/trips').then(setTrips).catch(() => setError(true))
   }, [])
 
-  if (error) return <p className="text-bad">Could not load trips.</p>
-  if (!trips) return <p className="text-muted">Loading…</p>
+  if (error) return <p className="text-bad">{tx('trips.error')}</p>
+  if (!trips) return <p className="text-muted">{tx('common.loading')}</p>
 
   const count = (s: Trip['pod_status']) => trips.filter((t) => t.pod_status === s).length
   const stats = [
-    ['Trips', trips.length],
-    ['Verified', count('verified')],
-    ['Needs review', count('needs_review')],
-    ['Retake', count('retake_requested')],
+    [tx('trips.total'), trips.length],
+    [tx('trips.verified'), count('verified')],
+    [tx('trips.needsReview'), count('needs_review')],
+    [tx('trips.retake'), count('retake_requested')],
   ] as const
 
   return (
@@ -47,8 +49,8 @@ export default function OfficeTrips() {
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead className="bg-wash text-muted">
             <tr>
-              {['Trip', 'Client', 'Vehicle', 'To', 'Freight', 'Delivered', 'POD', ...(canSendLink ? ['Upload link'] : [])].map((h) => (
-                <th key={h} className="px-4 py-3 font-medium">{h}</th>
+              {(['trips.trip', 'trips.client', 'trips.vehicle', 'trips.to', 'trips.freight', 'trips.delivered', 'trips.pod', ...(canSendLink ? ['trips.uploadLink' as const] : [])] as const).map((h) => (
+                <th key={h} className="px-4 py-3 font-medium">{tx(h)}</th>
               ))}
             </tr>
           </thead>
@@ -57,7 +59,7 @@ export default function OfficeTrips() {
               <tr key={t.id} className="border-t border-line">
                 <td className="px-4 py-3 font-medium">{t.trip_code}<div className="text-xs font-normal text-muted">{t.lr_no}</div></td>
                 <td className="px-4 py-3">{t.client}</td>
-                <td className="px-4 py-3">{t.vehicle}{t.is_hired && <span className="ml-1.5 text-xs text-muted">hired</span>}</td>
+                <td className="px-4 py-3">{t.vehicle}{t.is_hired && <span className="ml-1.5 text-xs text-muted">{tx('trips.hired')}</span>}</td>
                 <td className="px-4 py-3">{t.destination}</td>
                 <td className="px-4 py-3 tabular-nums">{inr.format(t.freight_amount)}</td>
                 <td className="px-4 py-3">{day(t.delivered_at)}</td>
@@ -66,12 +68,12 @@ export default function OfficeTrips() {
                   <td className="px-4 py-3">
                     {(t.pod_status === 'pending' || t.pod_status === 'retake_requested') && (
                       <button onClick={() => setLinkFor(t)} className="rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium hover:border-accent hover:text-accent">
-                        {t.is_hired ? 'Send link' : 'Link'}
+                        {t.is_hired ? tx('trips.sendLink') : tx('trips.link')}
                       </button>
                     )}
                     {(t.pod_status === 'verified' || t.pod_status === 'billed') && (
                       <button onClick={() => setShareFor(t)} className="rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium hover:border-accent hover:text-accent">
-                        Share
+                        {tx('trips.share')}
                       </button>
                     )}
                   </td>
