@@ -11,6 +11,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.db import SessionLocal
 from app.models import Branch, Client, PodStatus, Role, Trip, User, Vehicle
 from app.security import hash_secret
@@ -28,6 +29,8 @@ async def get_or_create(session: AsyncSession, model, key: dict, **values):
 
 
 async def seed(session: AsyncSession) -> None:
+    if not get_settings().is_dev:
+        raise RuntimeError("Refusing to seed demo users: APP_ENV is not dev/test")
     hq = await get_or_create(session, Branch, {"name": "Chhatrapati Sambhajinagar"})
     pune = await get_or_create(session, Branch, {"name": "Pune"})
 

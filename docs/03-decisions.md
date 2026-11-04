@@ -18,3 +18,4 @@ Status: Accepted unless noted. Newest decisions go at the bottom; supersede rath
 | 12 | Synthetic POD generator for dev/eval; fake test PII | No real PODs yet; collect 100–200 real ones in pilot week 1. Real data never in repo. |
 | 13 | Git: protected `main`, short-lived branches, PRs, Conventional Commits, no AI co-author trailers | Owner's standard. |
 | 14 | `md` (Managing Director) role: read-only executive dashboard | Deal signer; ROI proof from live data. |
+| 18 | `APP_ENV` guard: seed runs only in dev/test; non-dev startup rejects default/short `JWT_SECRET` | Demo credentials and the default signing key live in the repo; they must never work on a deployed server. |
