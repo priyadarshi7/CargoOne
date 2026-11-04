@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     ai_provider: str = "mock"  # mock | gemini | anthropic | openai | local
     ai_fallbacks: str = ""  # comma separated provider names
     gemini_api_key: str = ""
+    gemini_model: str = "gemini-2.5-flash"  # configurable: model names change over time
+    ai_timeout_s: float = 20.0
     ai_confidence_threshold: float = 0.85
     max_image_bytes: int = 300 * 1024
     max_retakes: int = 2

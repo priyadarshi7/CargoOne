@@ -18,3 +18,6 @@ Status: Accepted unless noted. Newest decisions go at the bottom; supersede rath
 | 12 | Synthetic POD generator for dev/eval; fake test PII | No real PODs yet; collect 100–200 real ones in pilot week 1. Real data never in repo. |
 | 13 | Git: protected `main`, short-lived branches, PRs, Conventional Commits, no AI co-author trailers | Owner's standard. |
 | 14 | `md` (Managing Director) role: read-only executive dashboard | Deal signer; ROI proof from live data. |
+| 15 | Mock AI provider reads ground-truth labels embedded in synthetic PNGs | Whole pipeline + decision rules testable offline, deterministic, free. Does NOT measure real accuracy. |
+| 16 | Gemini model name is config (`GEMINI_MODEL`), key sent in header not URL | Model names change; keys must not leak into URLs/logs. |
+| 17 | If all providers fail, caller queues POD for human review | Driver is never blocked by an AI outage. |
