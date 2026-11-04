@@ -1,3 +1,4 @@
+import Attention from '../components/Attention'
 import { FileCode2, FileText, Sheet } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError, download, type Invoice, type QueueGroup } from '../lib/api'
@@ -39,6 +40,7 @@ export default function Billing() {
         <h1 className="text-2xl font-semibold">{t('bill.title')}</h1>
         <p className="text-sm text-muted">{t('bill.sub')}</p>
       </div>
+      <Attention />
       <div className="flex gap-6 border-b border-line">
         {tabBtn('ready', t('bill.tabReady'), groups.reduce((n, g) => n + g.trips.length, 0))}
         {tabBtn('invoices', t('bill.tabInvoices'), invoices.length)}

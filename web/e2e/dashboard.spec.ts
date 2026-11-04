@@ -45,3 +45,19 @@ test('the MD downloads the weekly digest as a PDF', async ({ page }) => {
   const path = await file.path()
   expect((await import('node:fs')).readFileSync(path).subarray(0, 4).toString()).toBe('%PDF')
 })
+
+test('the ops dashboard lists what needs attention and can remind drivers (SMS is simulated)', async ({ page }) => {
+  await login(page, 'ops@cargoone.dev')
+  const panel = page.getByRole('region', { name: 'Needs attention' })
+  await expect(panel).toBeVisible()
+  await expect(panel.getByText(/Delivered trips still without a POD/)).toBeVisible()
+  await shot(page, 'dashboard-needs-attention')
+  await panel.getByRole('button', { name: 'Remind drivers' }).click()
+  await expect(panel.getByRole('status')).toContainText('reminders sent')
+  await expect(panel.getByRole('status')).toContainText('not connected') // honest: nothing was really delivered
+  await page.getByRole('button', { name: 'Sign out' }).click()
+
+  await login(page, 'md@cargoone.dev') // the MD sees the list but cannot send
+  await expect(page.getByRole('region', { name: 'Needs attention' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Remind drivers' })).toHaveCount(0)
+})

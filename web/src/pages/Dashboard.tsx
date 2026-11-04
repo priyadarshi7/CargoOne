@@ -1,6 +1,7 @@
 import { CircleCheck, FileDown, TriangleAlert } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import Attention from '../components/Attention'
 import { LineChart, StackedBars } from '../components/charts'
 import { api, download, type Dashboard as Data } from '../lib/api'
 import { useAuth } from '../lib/auth'
@@ -74,6 +75,8 @@ export default function Dashboard() {
           </button>
         </div>
       </div>
+
+      <Attention />
 
       {d.includes_demo_data && (
         <p className="rounded-lg bg-warn-soft px-4 py-2.5 text-sm text-warn" role="note">

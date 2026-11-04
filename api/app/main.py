@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.routers import (
+    attention,
     auth,
     billing,
     client_view,
@@ -44,3 +45,4 @@ app.include_router(expenses.router)
 async def health() -> dict[str, str]:
     return {"status": "ok"}
 app.include_router(setup.router)
+app.include_router(attention.router)

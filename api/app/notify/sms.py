@@ -14,6 +14,17 @@ TEMPLATES = {
 }
 
 
+REMINDERS = {
+    "hi": "CargoOne: {dest} की डिलीवरी की रसीद की फोटो अभी बाकी है। ऐप खोलकर फोटो भेजें।",
+    "mr": "CargoOne: {dest} च्या डिलिव्हरीच्या पावतीचा फोटो अजून बाकी आहे. अ‍ॅप उघडून फोटो पाठवा.",
+    "en": "CargoOne: the receipt photo for your {dest} delivery is still pending. Open the app and send it.",
+}
+
+
+def reminder_text(lang: str, dest: str) -> str:
+    return REMINDERS.get(lang, REMINDERS["hi"]).format(dest=dest)
+
+
 def mask_phone(phone: str) -> str:
     return "*" * max(0, len(phone) - 4) + phone[-4:]
 
