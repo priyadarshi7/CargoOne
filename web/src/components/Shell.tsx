@@ -1,0 +1,45 @@
+import { ListChecks, LogOut, Truck } from 'lucide-react'
+import { Link, NavLink } from 'react-router-dom'
+import { useAuth } from '../lib/auth'
+import type { ReactNode } from 'react'
+
+export function OfficeShell({ children }: { children: ReactNode }) {
+  const { user, logout } = useAuth()
+  const link = ({ isActive }: { isActive: boolean }) =>
+    `rounded-md px-3 py-1.5 text-sm ${isActive ? 'bg-accent-soft font-medium text-accent' : 'text-muted hover:text-ink'}`
+  return (
+    <div className="min-h-full">
+      <header className="border-b border-line">
+        <div className="mx-auto flex max-w-6xl items-center gap-6 px-4 py-3 sm:px-6">
+          <Link to="/office" className="flex items-center gap-2 font-semibold">
+            <Truck size={20} className="text-accent" aria-hidden /> CargoOne
+          </Link>
+          <nav className="flex gap-1">
+            <NavLink to="/office" end className={link}>Trips</NavLink>
+            <NavLink to="/progress" className={link}>Build progress</NavLink>
+          </nav>
+          <div className="ml-auto flex items-center gap-3 text-sm">
+            <span className="hidden text-muted sm:inline">{user?.name} · {user?.role}</span>
+            <button onClick={logout} className="flex items-center gap-1.5 text-muted hover:text-ink" aria-label="Sign out">
+              <LogOut size={16} aria-hidden /> <span className="hidden sm:inline">Sign out</span>
+            </button>
+          </div>
+        </div>
+      </header>
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</main>
+    </div>
+  )
+}
+
+export function PublicShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="min-h-full">
+      <header className="border-b border-line">
+        <div className="mx-auto flex max-w-3xl items-center gap-2 px-4 py-3 font-semibold sm:px-6">
+          <ListChecks size={20} className="text-accent" aria-hidden /> CargoOne · Build progress
+        </div>
+      </header>
+      <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">{children}</main>
+    </div>
+  )
+}
