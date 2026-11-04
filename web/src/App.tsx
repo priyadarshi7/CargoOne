@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { OfficeShell } from './components/Shell'
 import type { Role } from './lib/api'
 import { AuthProvider, homeFor, useAuth } from './lib/auth'
+import Capture from './pages/Capture'
 import DriverHome from './pages/DriverHome'
 import Login from './pages/Login'
 import OfficeTrips from './pages/OfficeTrips'
@@ -31,6 +32,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/progress" element={<Progress />} />
           <Route path="/driver" element={<Guard roles={['driver']}><DriverHome /></Guard>} />
+          <Route path="/driver/trip/:id" element={<Guard roles={['driver']}><Capture /></Guard>} />
           <Route
             path="/office"
             element={<Guard roles={['ops', 'billing', 'md']}><OfficeShell><OfficeTrips /></OfficeShell></Guard>}

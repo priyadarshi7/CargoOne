@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_API_URL ?? '/api'
+export const BASE = import.meta.env.VITE_API_URL ?? '/api'
 const TOKEN_KEY = 'cargoone.token'
 
 export const tokenStore = {
