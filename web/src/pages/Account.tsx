@@ -1,5 +1,6 @@
 import { CircleCheck } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { api, ApiError, tokenStore } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
@@ -40,6 +41,7 @@ export default function Account() {
         <h1 className="text-2xl font-semibold">{t('acct.title')}</h1>
         <p className="text-sm text-muted">{user?.name} · {user?.role}</p>
       </div>
+      <p className="text-sm"><Link to="/progress" className="text-accent underline underline-offset-2">{t('nav.progress')}</Link></p>
       <form onSubmit={submit} className="space-y-5">
         <h2 className="font-semibold">{t('acct.change')}</h2>
         <label className="block space-y-1.5 text-sm"><span className="text-muted">{t('acct.current')}</span>

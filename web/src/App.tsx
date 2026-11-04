@@ -8,7 +8,9 @@ import { ThemeProvider } from './lib/theme'
 import Billing from './pages/Billing'
 import Capture from './pages/Capture'
 import Dashboard from './pages/Dashboard'
+import DriverExpense from './pages/DriverExpense'
 import DriverPin from './pages/DriverPin'
+import Expenses from './pages/Expenses'
 import Drivers from './pages/Drivers'
 import DriverHome from './pages/DriverHome'
 import ImportTrips from './pages/ImportTrips'
@@ -64,12 +66,14 @@ export default function App() {
           <Route path="/v/:token" element={<ClientPod />} />
           <Route path="/t/:token" element={<TrackPublic />} />
           <Route path="/driver" element={<Guard roles={['driver']}><DriverHome /></Guard>} />
+          <Route path="/driver/expense" element={<Guard roles={['driver']}><DriverExpense /></Guard>} />
           <Route path="/driver/pin" element={<Guard roles={['driver']}><DriverPin /></Guard>} />
           <Route path="/driver/trip/:id" element={<Guard roles={['driver']}><Capture /></Guard>} />
           <Route path="/office" element={<Guard roles={['ops', 'billing', 'md']}><OfficeHome /></Guard>} />
           <Route path="/office/trips" element={<Guard roles={['ops', 'billing', 'md']}><OfficeShell><OfficeTrips /></OfficeShell></Guard>} />
           <Route path="/office/account" element={<Guard roles={['ops', 'billing', 'md']}><OfficeShell><Account /></OfficeShell></Guard>} />
           <Route path="/office/drivers" element={<Guard roles={['ops', 'billing']}><OfficeShell><Drivers /></OfficeShell></Guard>} />
+          <Route path="/office/expenses" element={<Guard roles={['ops', 'billing', 'md']}><OfficeShell><Expenses /></OfficeShell></Guard>} />
           <Route path="/office/live" element={<Guard roles={['ops', 'md']}><OfficeShell><LiveMapPage /></OfficeShell></Guard>} />
           <Route path="/office/planning" element={<Guard roles={['ops', 'billing']}><OfficeShell><Planning /></OfficeShell></Guard>} />
           <Route path="/office/import" element={<Guard roles={['ops', 'billing']}><OfficeShell><ImportTrips /></OfficeShell></Guard>} />

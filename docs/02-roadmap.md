@@ -97,7 +97,10 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [x] Trip lifecycle (planned / on the road / delivered / cancelled; a POD photo marks delivered), trip creation by ops with generated trip codes, vehicle + driver assignment for a time window, **clash detection** (vehicle and driver double-booking, explicit "book anyway"), 15-day planning board per vehicle, driver "Start trip" button, cancel, audit trail, English/Hindi/Marathi
 - [ ] Still to do here: orders before trips, load/vehicle matching, backhaul suggestions, drag-and-drop on the board, hired-vehicle vendor management
 **Fuel & driver expenses**
-- [ ] Driver expense capture by photo (fuel, toll, repairs) with the same AI extraction, advances & settlement, trip P&L, fuel mileage anomaly flags, per-trip profitability dashboard
+- [x] Driver expenses: icon-first phone screen (diesel, toll, repair, loading, food, fine, other), amount + optional bill photo (compressed, <300 KB), diesel needs litres + odometer; saved once even if retried; office review queue with receipt viewer, approve / reject with a reason the driver sees
+- [x] Fuel economy: km per litre between fills, per truck; flags for odometer going backwards, implausible mileage or litres, and mileage far below the truck's own usual (checked the moment a fill arrives and reported per truck)
+- [x] Advances and settlement per driver (advances minus approved expenses), trip profit (freight minus approved costs, pending shown apart, warning when many trips have no costs yet), where-the-money-went by category. English/Hindi/Marathi
+- [ ] Still to do here: reading the amount/litres from the bill photo with the AI layer (the driver types it today), offline expense queue (needs a connection today), payroll-style trip settlement/closing, per-client profitability
 **Platform polish**
 - [ ] Rule/automation builder, e-way bill API integration, GST e-invoice, direct Tally connector, multi-tenant for other transporters, analytics/BI export, mobile wrapper (Capacitor) if needed
 

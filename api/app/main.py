@@ -8,6 +8,7 @@ from app.routers import (
     client_view,
     dashboard,
     drivers,
+    expenses,
     imports,
     links,
     planning,
@@ -35,6 +36,7 @@ app.include_router(client_view.router)
 app.include_router(drivers.router)
 app.include_router(planning.router)
 app.include_router(tracking.router)
+app.include_router(expenses.router)
 
 
 @app.get("/health")

@@ -54,6 +54,22 @@ class TripState(str, enum.Enum):
     cancelled = "cancelled"
 
 
+class ExpenseCategory(str, enum.Enum):
+    fuel = "fuel"
+    toll = "toll"
+    repair = "repair"
+    loading = "loading"
+    food = "food"
+    fine = "fine"
+    other = "other"
+
+
+class ExpenseStatus(str, enum.Enum):
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
+
+
 class LinkKind(str, enum.Enum):
     sms_upload = "sms_upload"
     client_view = "client_view"
@@ -180,6 +196,44 @@ class PodSubmission(Base):
     created_at: Mapped[datetime] = now()
 
     trip: Mapped[Trip] = relationship(back_populates="submissions")
+
+
+class Expense(Base):
+    """A cost the driver paid on the road (fuel, toll, repair...). Approved by the office before it counts in trip profit."""
+
+    __tablename__ = "expenses"
+    __table_args__ = (Index("ix_expenses_trip", "trip_id"), Index("ix_expenses_status", "status"), Index("ix_expenses_vehicle_time", "vehicle_id", "incurred_at"))
+    id: Mapped[uuid.UUID] = pk()
+    client_expense_id: Mapped[str] = mapped_column(String(64), unique=True)  # idempotency for retries
+    trip_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("trips.id"))
+    vehicle_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("vehicles.id"))
+    driver_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    category: Mapped[ExpenseCategory] = mapped_column(_enum(ExpenseCategory))
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    litres: Mapped[Decimal | None] = mapped_column(Numeric(8, 2))
+    odometer_km: Mapped[int | None] = mapped_column(Integer)
+    note: Mapped[str | None] = mapped_column(String(200))
+    receipt_key: Mapped[str | None] = mapped_column(String(255))
+    flags: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)  # e.g. low_mileage, odometer_backwards
+    status: Mapped[ExpenseStatus] = mapped_column(_enum(ExpenseStatus), default=ExpenseStatus.pending)
+    reviewed_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    review_note: Mapped[str | None] = mapped_column(String(200))
+    incurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = now()
+
+
+class Advance(Base):
+    """Cash given to a driver before/during a trip; settled against approved expenses."""
+
+    __tablename__ = "advances"
+    id: Mapped[uuid.UUID] = pk()
+    driver_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    trip_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("trips.id"))
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    note: Mapped[str | None] = mapped_column(String(200))
+    given_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    given_at: Mapped[datetime] = now()
 
 
 class LocationPing(Base):

@@ -63,6 +63,11 @@ async def _seed() -> None:
         await s.flush()
         s.add(Trip(trip_code='TRP-E2E-GPS', client_id=client.id, vehicle_id=veh.id, driver_id=gps.id, lr_no='LR-E2EGPS', eway_bill_no='341000000055',
                    origin='Chhatrapati Sambhajinagar', destination='Nanded', freight_amount=Decimal(20000), pod_status=PodStatus.pending))
+        money = User(name='Money Test Driver', phone='9000000066', role=Role.driver, password_hash=hash_secret('4821'), language='en')
+        s.add(money)
+        await s.flush()
+        s.add(Trip(trip_code='TRP-E2E-MONEY', client_id=client.id, vehicle_id=veh.id, driver_id=money.id, lr_no='LR-E2EMONEY', eway_bill_no='341000000066',
+                   origin='Chhatrapati Sambhajinagar', destination='Hingoli', freight_amount=Decimal(30000), pod_status=PodStatus.pending))
         s.add(User(name='Plan Test Driver', phone='9000000088', role=Role.driver, password_hash=hash_secret('4821'), language='en'))
         s.add(User(name='PIN Test Driver', phone='9000000077', role=Role.driver, password_hash=hash_secret('4821'), language='en'))
         await s.commit()

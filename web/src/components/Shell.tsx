@@ -43,11 +43,11 @@ export function OfficeShell({ children }: { children: ReactNode }) {
               </NavLink>
             )}
             {canReview && <NavLink to="/office/billing" className={link}>{t('nav.billing')}</NavLink>}
+            <NavLink to="/office/expenses" className={link}>{t('nav.expenses')}</NavLink>
             {(user?.role === 'ops' || user?.role === 'md' || user?.role === 'admin') && <NavLink to="/office/live" className={link}>{t('nav.live')}</NavLink>}
             {canReview && <NavLink to="/office/planning" className={link}>{t('nav.planning')}</NavLink>}
             {canReview && <NavLink to="/office/drivers" className={link}>{t('nav.drivers')}</NavLink>}
             {canReview && <NavLink to="/office/import" className={link}>{t('nav.import')}</NavLink>}
-            <NavLink to="/progress" className={link}>{t('nav.progress')}</NavLink>
           </nav>
           <div className="ml-auto flex items-center gap-3 text-sm">
             <button onClick={() => setTheme(nextTheme[theme])} aria-label={`Theme: ${theme}`} title={`Theme: ${theme}`} className="grid h-8 w-8 place-items-center rounded-md text-muted hover:text-ink">
@@ -61,7 +61,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
               <UserRound size={18} aria-hidden /> <span className="hidden xl:inline">{user?.name} · {user?.role}</span>
             </Link>
             <button onClick={logout} className="flex items-center gap-1.5 text-muted hover:text-ink" aria-label="Sign out">
-              <LogOut size={16} aria-hidden /> <span className="hidden xl:inline">{t('shell.signOut')}</span>
+              <LogOut size={16} aria-hidden /> <span className="hidden whitespace-nowrap xl:inline">{t('shell.signOut')}</span>
             </button>
           </div>
         </div>
