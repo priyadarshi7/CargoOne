@@ -38,7 +38,7 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [~] Camera capture via the phone's native camera (file input, `capture=environment`) done — most reliable on cheap Android; in-app camera with framing guide + torch pending
 - [x] GPS + timestamp attached on capture; never blocks the driver if GPS is denied/slow (4 s)
 - [x] On-device compression to <300 KB (WebP/JPEG quality ladder, then shrink, EXIF orientation applied, metadata stripped; refuses below 900 px) — unit-tested logic; **real-phone photo test pending**
-- [ ] Client-side quick checks: blur, brightness, document edges → instant "retake" before upload
+- [x] Client-side quick checks on the phone before upload: blur, dark/covered lens, glare/washed-out page, blank frame -> instant spoken + icon "retake" (the driver may still "use this photo"; the server AI makes the real call). Not covered: document-edge detection, mild blur on high-resolution photos
 - [~] Offline queue (IndexedDB): persisted, FIFO, idempotent, retries on reconnect + every 30 s, permanent errors isolated — done & tested; exponential backoff + Background Sync API pending
 - [x] PWA: installable (manifest, icons incl. maskable, service worker caching only the app shell, auto-update, "Install" banner for drivers, iPhone hint), opens offline and keeps the driver signed in when the network is down
 - [ ] PWA still to do: update prompt UI, storage-quota handling; installing needs HTTPS (a tunnel in dev, a real host in production)

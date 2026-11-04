@@ -2,7 +2,7 @@ import type { User } from './api'
 
 type Lang = User['language']
 export type VoiceKey =
-  | 'ok' | 'retake_blurry' | 'retake_stamp' | 'retake_signature' | 'retake_lr' | 'retake_not_pod' | 'review' | 'saved_offline'
+  | 'ok' | 'retake_blurry' | 'retake_dark' | 'retake_glare' | 'retake_stamp' | 'retake_signature' | 'retake_lr' | 'retake_not_pod' | 'review' | 'saved_offline'
 
 /** Spoken prompts. TODO(pilot): replace with recorded audio by a native speaker, and have these
  *  Hindi/Marathi lines reviewed — they were drafted without a native review. */
@@ -10,6 +10,8 @@ const TEXT: Record<Lang, Record<VoiceKey, string>> = {
   hi: {
     ok: 'ठीक है। रसीद मिल गई।',
     retake_blurry: 'फोटो साफ़ नहीं है। कृपया दोबारा खींचिए।',
+    retake_dark: 'फोटो बहुत अँधेरा है। रोशनी में दोबारा खींचिए।',
+    retake_glare: 'फोटो में चमक है। रसीद को थोड़ा तिरछा करके दोबारा खींचिए।',
     retake_stamp: 'मुहर दिखाई नहीं दे रही। मुहर के साथ दोबारा फोटो खींचिए।',
     retake_signature: 'हस्ताक्षर दिखाई नहीं दे रहे। हस्ताक्षर के साथ दोबारा फोटो खींचिए।',
     retake_lr: 'एल आर नंबर मेल नहीं खा रहा। सही रसीद की फोटो खींचिए।',
@@ -20,6 +22,8 @@ const TEXT: Record<Lang, Record<VoiceKey, string>> = {
   mr: {
     ok: 'ठीक आहे. पावती मिळाली.',
     retake_blurry: 'फोटो स्पष्ट नाही. कृपया पुन्हा काढा.',
+    retake_dark: 'फोटो खूप अंधारा आहे. प्रकाशात पुन्हा काढा.',
+    retake_glare: 'फोटोत चकाकी आहे. पावती थोडी तिरपी करून पुन्हा काढा.',
     retake_stamp: 'शिक्का दिसत नाही. शिक्क्यासह पुन्हा फोटो काढा.',
     retake_signature: 'सही दिसत नाही. सहीसह पुन्हा फोटो काढा.',
     retake_lr: 'एल आर क्रमांक जुळत नाही. योग्य पावतीचा फोटो काढा.',
@@ -30,6 +34,8 @@ const TEXT: Record<Lang, Record<VoiceKey, string>> = {
   en: {
     ok: 'All good. Receipt received.',
     retake_blurry: 'The photo is not clear. Please take it again.',
+    retake_dark: 'The photo is too dark. Take it again in better light.',
+    retake_glare: 'There is glare on the photo. Tilt the receipt a little and take it again.',
     retake_stamp: 'The stamp is not visible. Take the photo again with the stamp.',
     retake_signature: 'The signature is not visible. Take the photo again with the signature.',
     retake_lr: 'The LR number does not match. Photograph the correct receipt.',

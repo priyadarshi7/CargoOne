@@ -1,9 +1,10 @@
-import { ArrowLeft, Camera, CircleCheck, CloudOff, Eye, LoaderCircle, RotateCcw, TriangleAlert, Volume2 } from 'lucide-react'
+import { ArrowLeft, Camera, CircleCheck, CloudOff, Eye, Focus, LoaderCircle, RotateCcw, Send, Sun, SunDim, TriangleAlert, Volume2, type LucideIcon } from 'lucide-react'
 import { useRef, useState, type ChangeEvent, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import type { User } from '../lib/api'
 import { compressPhoto } from '../lib/capture/compress'
 import { getPosition } from '../lib/capture/geo'
+import { checkPhoto, type Problem } from '../lib/capture/quality'
 import { acknowledge, enqueue, flush, getItem, type UploadResult } from '../lib/capture/queue'
 import { uploadPod } from '../lib/capture/upload'
 import { speak } from '../lib/voice'
@@ -13,6 +14,7 @@ type Lang = User['language']
 type Phase =
   | { kind: 'ready' }
   | { kind: 'working' }
+  | { kind: 'quality'; file: File; problem: Problem } // the photo looks bad on the phone itself: retake before it is uploaded
   | { kind: 'result'; result: UploadResult }
   | { kind: 'offline' }
   | { kind: 'error'; key: string }
@@ -24,6 +26,14 @@ export interface CaptureFlowProps {
   lang: Lang
   backTo?: string // where the back arrow goes; omitted on the public SMS page
 }
+
+const PROBLEM: Record<Problem, { Icon: LucideIcon; voice: string }> = {
+  blurry: { Icon: Focus, voice: 'retake_blurry' },
+  dark: { Icon: SunDim, voice: 'retake_dark' },
+  glare: { Icon: Sun, voice: 'retake_glare' },
+  empty: { Icon: Eye, voice: 'retake_not_pod' },
+}
+const USE_ANYWAY: Record<Lang, string> = { en: 'Use this photo', hi: 'यही फोटो भेजें', mr: 'हाच फोटो पाठवा' }
 
 /** One screen, one action. Result is a full-screen colour + icon + voice: green = done, amber = retake/review.
  *  Shared by the logged-in driver app and the no-login SMS link page, so both behave identically. */
@@ -40,6 +50,17 @@ export function CaptureFlow({ tripId, linkToken, destination, lang, backTo }: Ca
     const file = e.target.files?.[0]
     e.target.value = '' // allow picking again immediately
     if (!file) return
+    setPhase({ kind: 'working' })
+    const q = await checkPhoto(file) // instant on-phone check; null (cannot decode) just uploads
+    if (q && !q.ok) {
+      const problem = q.problems[0]
+      show({ kind: 'quality', file, problem }, PROBLEM[problem].voice)
+      return
+    }
+    await send(file)
+  }
+
+  async function send(file: File) {
     setPhase({ kind: 'working' })
     try {
       const [blob, pos] = await Promise.all([compressPhoto(file), getPosition()])
@@ -78,6 +99,21 @@ export function CaptureFlow({ tripId, linkToken, destination, lang, backTo }: Ca
     return (
       <Screen tone="bg-surface">
         <LoaderCircle size={96} className="animate-spin text-accent" aria-label="Working" />
+      </Screen>
+    )
+  }
+
+  if (phase.kind === 'quality') {
+    const { Icon, voice } = PROBLEM[phase.problem]
+    return (
+      <Screen tone="bg-warn-soft text-warn" top={back}>
+        <Icon size={160} aria-label={phase.problem} />
+        {picker}
+        {trigger('flex h-24 w-full items-center justify-center rounded-3xl bg-warn text-on-solid', <Camera size={48} aria-hidden />)}
+        <div className="flex items-center gap-4">
+          <button onClick={() => speak(lang, voice)} aria-label="Repeat" className="grid h-16 w-16 place-items-center rounded-full bg-surface/70"><Volume2 size={32} aria-hidden /></button>
+          <button onClick={() => void send(phase.file)} className="inline-flex h-16 items-center gap-2 rounded-full bg-surface/70 px-5 text-base font-medium text-ink"><Send size={20} aria-hidden /> {USE_ANYWAY[lang]}</button>
+        </div>
       </Screen>
     )
   }

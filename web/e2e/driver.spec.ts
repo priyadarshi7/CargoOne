@@ -1,3 +1,4 @@
+import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
 import { failOnBrowserErrors, FIXTURE, login, shot } from './helpers'
 
@@ -51,4 +52,21 @@ test('a driver cannot upload to a trip that is not theirs', async ({ page }) => 
     multipart: { client_upload_id: 'e2e-denied-0001', captured_at: new Date().toISOString(), file: { name: 'p.png', mimeType: 'image/png', buffer: Buffer.from('x') } },
   })
   expect(res.status()).toBe(404)
+})
+
+test('a blurry photo is caught on the phone before upload; the driver can retake or send it anyway', async ({ page }) => {
+  await login(page, '9000000001', '1234')
+  await page.getByRole('link', { name: /POD/ }).click()
+  await expect(page).toHaveURL(/\/driver\/trip\//)
+
+  const uploads: string[] = []
+  page.on('request', (r) => { if (r.method() === 'POST' && /\/pod$/.test(r.url())) uploads.push(r.url()) })
+  await page.locator('input[type=file]').setInputFiles(join(import.meta.dirname, 'fixtures', 'pod-blurry.jpg'))
+  await expect(page.getByLabel('blurry')).toBeVisible({ timeout: 10_000 })
+  await shot(page, 'driver-quality-blurry')
+  expect(uploads).toHaveLength(0) // nothing was sent: the driver is asked to retake first
+
+  await page.getByRole('button', { name: /Use this photo|यही फोटो भेजें|हाच फोटो पाठवा/ }).click() // "use anyway" still reaches the server's own AI check
+  await expect(page.getByLabel(/verified|retake_requested|review_needed|needs_review|retake/).first()).toBeVisible({ timeout: 20_000 })
+  expect(uploads.length).toBeGreaterThan(0)
 })
