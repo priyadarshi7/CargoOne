@@ -18,6 +18,13 @@ class Settings(BaseSettings):
     ai_confidence_threshold: float = 0.85
     max_image_bytes: int = 300 * 1024
     max_retakes: int = 2
+    # KPI targets and the baseline from the client brief (used by the dashboards)
+    baseline_pod_to_invoice_days: float = 18.0
+    target_pod_to_invoice_days: float = 4.0
+    target_pod_within_24h_pct: float = 80.0
+    baseline_lost_pct: float = 1.5
+    target_lost_pct: float = 0.5
+    interest_rate: float = 0.12  # cost of working capital
     company_name: str = "Company A (demo)"  # printed on invoices
     invoice_prefix: str = "CO"
     tally_company: str = ""  # exact Tally company name; blank = import into the currently open company

@@ -129,6 +129,8 @@ async def upload_pod(
     session.add(sub)
     trip.pod_status = PodStatus(decision.value)
     trip.pod_uploaded_at = datetime.now(UTC)
+    if trip.first_pod_at is None:
+        trip.first_pod_at = trip.pod_uploaded_at
     if decision == Decision.retake_requested:
         trip.retake_count += 1
     if decision == Decision.verified:
