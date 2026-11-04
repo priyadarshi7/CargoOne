@@ -1,4 +1,40 @@
-from collections.abc import AsyncIterator
+"""Tests run against their OWN database (<name>_test), created and migrated on demand, so test data can
+never pollute the development database that demos run on."""
+import os
+import subprocess
+import sys
+from urllib.parse import urlsplit, urlunsplit
+
+
+def _use_test_database() -> None:
+    from app.config import Settings
+
+    url = os.environ.get("DATABASE_URL") or Settings().database_url
+    parts = urlsplit(url)
+    name = parts.path.lstrip("/")
+    test_name = name if name.endswith("_test") else f"{name}_test"
+    os.environ["DATABASE_URL"] = urlunsplit(parts._replace(path=f"/{test_name}"))
+    admin = urlunsplit(parts._replace(scheme="postgresql", path="/postgres"))
+    import asyncio
+
+    import asyncpg
+
+    async def ensure() -> None:
+        conn = await asyncpg.connect(admin)
+        try:
+            if not await conn.fetchval("select 1 from pg_database where datname = $1", test_name):
+                await conn.execute(f'create database "{test_name}"')
+        finally:
+            await conn.close()
+
+    asyncio.run(ensure())
+    subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], check=True, capture_output=True)
+
+
+_use_test_database()  # must run before `app` is imported anywhere
+
+from collections.abc import AsyncIterator, Iterator
+from pathlib import Path
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -6,6 +42,7 @@ from httpx import ASGITransport, AsyncClient
 from app.db import SessionLocal
 from app.main import app
 from app.seed import seed
+from app.storage import LocalStorage, get_storage
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -25,3 +62,16 @@ async def login(client: AsyncClient, identifier: str, secret: str) -> dict[str, 
     res = await client.post("/auth/login", json={"identifier": identifier, "secret": secret})
     assert res.status_code == 200, res.text
     return {"Authorization": f"Bearer {res.json()['access_token']}"}
+
+
+@pytest.fixture(autouse=True)
+def tmp_storage(tmp_path: Path) -> Iterator[None]:
+    """Uploads go to a throwaway folder, never the real storage dir."""
+    app.dependency_overrides[get_storage] = lambda: LocalStorage(str(tmp_path))
+    yield
+    app.dependency_overrides.pop(get_storage, None)
+
+
+@pytest.fixture
+async def driver(client: AsyncClient) -> dict[str, str]:
+    return await login(client, "9000000001", "1234")

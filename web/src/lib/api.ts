@@ -57,3 +57,30 @@ export interface Trip {
 }
 export type PodStatus =
   | 'pending' | 'uploaded' | 'verified' | 'needs_review' | 'retake_requested' | 'rejected' | 'billed'
+
+export interface ReviewItem {
+  trip_id: string
+  trip_code: string
+  client: string
+  lr_no: string
+  destination: string
+  freight_amount: number
+  submission_id: string
+  attempt: number
+  reasons: string[]
+  confidence: number | null
+  ai: Record<string, unknown>
+  corrected: Record<string, unknown> | null
+  captured_at: string
+  lat: number | null
+  lng: number | null
+  retakes_left: number
+}
+
+/** Fetches a protected file (the POD image needs the Authorization header, so <img src> cannot be used). */
+export async function fetchBlob(path: string): Promise<Blob> {
+  const token = tokenStore.get()
+  const res = await fetch(`${BASE}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+  if (!res.ok) throw new ApiError(res.status, 'Could not load image')
+  return res.blob()
+}

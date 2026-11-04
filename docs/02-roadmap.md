@@ -60,7 +60,7 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [ ] Never auto-send invoices; image remains source of truth
 
 ## Phase 5 — Office workflows (P0)
-- [ ] Review queue: side-by-side image viewer (zoom/rotate) + extracted fields, edit & approve/reject, reason codes, keyboard shortcuts
+- [x] Review queue: oldest-first list with reason chips; detail view with zoom/rotate image viewer, editable extracted fields (corrections stored beside AI output), approve / retake / reject (two-step), notes, keyboard shortcuts A/R/X, audit trail. Approve refused if LR ≠ trip LR or date missing; retake limited by the cap of 2
 - [ ] Billing queue: verified trips grouped by client & billing cycle, select → create invoice batch
 - [ ] Invoice generation (PDF) with POD images attached (as appendix, merged PDF)
 - [ ] Tally export: Tally Prime XML vouchers + CSV, ledger mapping, re-export safe
@@ -84,7 +84,7 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [ ] DPDP Act 2023: data inventory, consent/notice text, purpose limitation, retention & auto-delete, access/erasure workflow
 - [ ] Private image storage, signed short-lived URLs, no PII in logs, encryption at rest/in transit
 - [ ] Input validation everywhere, rate limiting, upload type/size checks, CSRF/CORS, security headers
-- [ ] Unit tests (decision engine, compression, queue), integration tests (API + DB), E2E (Playwright: capture→review→bill)
+- [~] Unit tests (decision, compression, queue) and API+DB integration tests done — tests use their own `cargoone_test` database; Playwright E2E pending
 - [ ] Offline test matrix (airplane mode, flaky 2G throttling, low-storage)
 - [ ] Performance budget for low-end Android (bundle size, LCP, memory)
 - [ ] Error monitoring + structured logging (free-tier tooling)

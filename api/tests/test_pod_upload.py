@@ -1,8 +1,6 @@
 import uuid
-from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from decimal import Decimal
-from pathlib import Path
 
 import pytest
 from httpx import AsyncClient
@@ -11,17 +9,8 @@ from sqlalchemy import func, select
 from app.ai.registry import AllProvidersFailed
 from app.db import SessionLocal
 from app.devtools.synthetic_pod import SCENARIOS, render
-from app.main import app
 from app.models import AuditLog, Client, PodStatus, PodSubmission, Trip, User, Vehicle
-from app.storage import LocalStorage, get_storage
 from tests.conftest import login
-
-
-@pytest.fixture(autouse=True)
-def tmp_storage(tmp_path: Path) -> AsyncIterator[None]:
-    app.dependency_overrides[get_storage] = lambda: LocalStorage(str(tmp_path))
-    yield
-    app.dependency_overrides.pop(get_storage, None)
 
 
 async def make_trip(*, assigned: bool = True) -> tuple[str, str]:
@@ -45,11 +34,6 @@ async def post(client: AsyncClient, headers: dict, trip_id: str, image: bytes, *
         files={"file": ("pod.png", image, "image/png")},
         data={"client_upload_id": upload_id or uuid.uuid4().hex, "captured_at": datetime.now(UTC).isoformat(), **extra},
     )
-
-
-@pytest.fixture
-async def driver(client: AsyncClient) -> dict:
-    return await login(client, "9000000001", "1234")
 
 
 async def trip_row(trip_id: str) -> Trip:
@@ -141,3 +125,14 @@ async def test_image_access_is_role_checked_and_audited(client: AsyncClient, dri
         n = await s.scalar(select(func.count()).select_from(AuditLog).where(
             AuditLog.action == "pod.view", AuditLog.entity_id == sub_id))
     assert n == 1
+
+
+async def test_missing_image_file_is_404_not_500(client: AsyncClient, driver: dict, monkeypatch) -> None:
+    trip_id, lr = await make_trip()
+    sub_id = (await post(client, driver, trip_id, render(SCENARIOS["clean"], lr))).json()["submission_id"]
+
+    async def gone(self, key):
+        raise FileNotFoundError(key)
+
+    monkeypatch.setattr("app.storage.LocalStorage.get", gone)
+    assert (await client.get(f"/pods/{sub_id}/image", headers=driver)).status_code == 404

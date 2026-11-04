@@ -1,4 +1,5 @@
 import io
+import logging
 import uuid
 from datetime import UTC, datetime
 from typing import Annotated
@@ -17,6 +18,7 @@ from app.pod.decision import Decision, Voice, decide
 from app.security import current_user, require_roles
 from app.storage import Storage, get_storage
 
+log = logging.getLogger("cargoone.pods")
 router = APIRouter(tags=["pods"])
 
 ALLOWED = {"JPEG": ("image/jpeg", "jpg"), "PNG": ("image/png", "png"), "WEBP": ("image/webp", "webp")}
@@ -154,5 +156,9 @@ async def pod_image(
     await session.commit()
     ext = sub.storage_key.rsplit(".", 1)[-1]
     media = {"jpg": "image/jpeg", "png": "image/png", "webp": "image/webp"}[ext]
-    return Response(await storage.get(sub.storage_key), media_type=media,
-                    headers={"Cache-Control": "private, no-store"})
+    try:
+        data = await storage.get(sub.storage_key)
+    except FileNotFoundError:
+        log.error("pod image missing from storage: submission=%s", sub.id)  # ids only, never content/PII
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Image file is missing") from None
+    return Response(data, media_type=media, headers={"Cache-Control": "private, no-store"})

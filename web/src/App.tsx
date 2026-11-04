@@ -7,6 +7,8 @@ import Capture from './pages/Capture'
 import DriverHome from './pages/DriverHome'
 import Login from './pages/Login'
 import OfficeTrips from './pages/OfficeTrips'
+import ReviewDetail from './pages/ReviewDetail'
+import ReviewList from './pages/ReviewList'
 import Progress from './pages/Progress'
 
 function Guard({ roles, children }: { roles: Role[]; children: ReactNode }) {
@@ -37,6 +39,8 @@ export default function App() {
             path="/office"
             element={<Guard roles={['ops', 'billing', 'md']}><OfficeShell><OfficeTrips /></OfficeShell></Guard>}
           />
+          <Route path="/office/review" element={<Guard roles={['ops', 'billing']}><OfficeShell><ReviewList /></OfficeShell></Guard>} />
+          <Route path="/office/review/:tripId" element={<Guard roles={['ops', 'billing']}><OfficeShell><ReviewDetail /></OfficeShell></Guard>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
