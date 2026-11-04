@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.providers.mock import MockProvider
+from app.config import get_settings
 from app.db import SessionLocal
 from app.devtools.synthetic_pod import SCENARIOS, render
 from app.models import Branch, Client, PodStatus, PodSubmission, Role, Trip, User, Vehicle
@@ -32,6 +33,8 @@ async def get_or_create(session: AsyncSession, model, key: dict, **values):
 
 
 async def seed(session: AsyncSession) -> None:
+    if not get_settings().is_dev:
+        raise RuntimeError("Refusing to seed demo users: APP_ENV is not dev/test")
     hq = await get_or_create(session, Branch, {"name": "Chhatrapati Sambhajinagar"})
     pune = await get_or_create(session, Branch, {"name": "Pune"})
 
