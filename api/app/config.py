@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     ai_confidence_threshold: float = 0.85
     max_image_bytes: int = 300 * 1024
     max_retakes: int = 2
+    company_name: str = "Company A (demo)"  # printed on invoices
+    invoice_prefix: str = "CO"
+    tally_company: str = ""  # exact Tally company name; blank = import into the currently open company
+    tally_sales_ledger: str = "Freight Income"  # must already exist in Tally
 
 
 @lru_cache

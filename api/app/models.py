@@ -100,6 +100,7 @@ class Invoice(Base):
     invoice_no: Mapped[str] = mapped_column(String(40), unique=True)
     client_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("clients.id"))
     total: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    period_label: Mapped[str | None] = mapped_column(String(80))
     exported_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = now()
 

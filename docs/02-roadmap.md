@@ -61,9 +61,9 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 
 ## Phase 5 — Office workflows (P0)
 - [x] Review queue: oldest-first list with reason chips; detail view with zoom/rotate image viewer, editable extracted fields (corrections stored beside AI output), approve / retake / reject (two-step), notes, keyboard shortcuts A/R/X, audit trail. Approve refused if LR ≠ trip LR or date missing; retake limited by the cap of 2
-- [ ] Billing queue: verified trips grouped by client & billing cycle, select → create invoice batch
-- [ ] Invoice generation (PDF) with POD images attached (as appendix, merged PDF)
-- [ ] Tally export: Tally Prime XML vouchers + CSV, ledger mapping, re-export safe
+- [x] Billing queue: verified trips grouped by client and billing-cycle period (weekly Mon-Sun / fortnightly 1-15 & 16-end / monthly, in IST), oldest first, select trips, create draft invoice (one client per invoice, numbered `CO/26-27/00001` from a DB sequence, row-locked against double billing, audited)
+- [x] Invoice PDF with each trip's POD photo attached as an appendix page (no consignee personal data printed). **Draft layout only: GST, company address/bank details and logo still to come**
+- [~] Tally export: Sales-voucher XML + CSV done and unit-tested; **not yet imported into a real Tally** — needs Company A's ledger names / a sample voucher; GST lines, per-trip bill allocation pending
 - [ ] Missing-POD dashboard: trips without POD by age bucket/branch/client, POD-to-invoice days, KPIs vs targets (24h, 18→4 days, 1.5→0.5%)
 - [ ] Client portal link: read-only POD view per trip/invoice, expiring, watermark, access log
 - [ ] Notifications (mock SMS/WhatsApp/email adapters): reminders to drivers, alerts to ops on aged missing PODs

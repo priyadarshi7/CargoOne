@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { OfficeShell } from './components/Shell'
 import type { Role } from './lib/api'
 import { AuthProvider, homeFor, useAuth } from './lib/auth'
+import Billing from './pages/Billing'
 import Capture from './pages/Capture'
 import DriverHome from './pages/DriverHome'
 import Login from './pages/Login'
@@ -39,6 +40,7 @@ export default function App() {
             path="/office"
             element={<Guard roles={['ops', 'billing', 'md']}><OfficeShell><OfficeTrips /></OfficeShell></Guard>}
           />
+          <Route path="/office/billing" element={<Guard roles={['ops', 'billing']}><OfficeShell><Billing /></OfficeShell></Guard>} />
           <Route path="/office/review" element={<Guard roles={['ops', 'billing']}><OfficeShell><ReviewList /></OfficeShell></Guard>} />
           <Route path="/office/review/:tripId" element={<Guard roles={['ops', 'billing']}><OfficeShell><ReviewDetail /></OfficeShell></Guard>} />
           <Route path="*" element={<Navigate to="/" replace />} />

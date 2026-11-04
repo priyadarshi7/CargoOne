@@ -33,6 +33,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
                 Review{reviewCount > 0 && <span className="ml-1.5 rounded-full bg-warn-soft px-1.5 text-xs text-warn">{reviewCount}</span>}
               </NavLink>
             )}
+            {canReview && <NavLink to="/office/billing" className={link}>Billing</NavLink>}
             <NavLink to="/progress" className={link}>Build progress</NavLink>
           </nav>
           <div className="ml-auto flex items-center gap-3 text-sm">

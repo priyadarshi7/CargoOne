@@ -13,16 +13,16 @@ from app.models import AuditLog, Client, PodStatus, PodSubmission, Trip, User, V
 from tests.conftest import login
 
 
-async def make_trip(*, assigned: bool = True) -> tuple[str, str]:
+async def make_trip(*, assigned: bool = True, client_name: str = "Company B", freight: int = 1000) -> tuple[str, str]:
     """A fresh trip per test (tests share one database). Returns (trip_id, lr_no)."""
     lr = f"LR-{uuid.uuid4().hex[:6].upper()}"
     async with SessionLocal() as s:
-        client = await s.scalar(select(Client).where(Client.name == "Company B"))
+        client = await s.scalar(select(Client).where(Client.name == client_name))
         veh = await s.scalar(select(Vehicle).where(Vehicle.reg_no == "MH20 EL 4521"))
         drv = await s.scalar(select(User).where(User.phone == "9000000001"))
         t = Trip(trip_code=f"T-{lr}", client_id=client.id, vehicle_id=veh.id, driver_id=drv.id if assigned else None,
                  lr_no=lr, eway_bill_no="341000000000", origin="A", destination="B",
-                 freight_amount=Decimal(1000), pod_status=PodStatus.pending)
+                 freight_amount=Decimal(freight), pod_status=PodStatus.pending)
         s.add(t)
         await s.commit()
         return str(t.id), lr
