@@ -6,6 +6,7 @@ interface AuthState {
   loading: boolean
   login: (identifier: string, secret: string) => Promise<User>
   logout: () => void
+  adopt: (token: string, user: User) => void // use a fresh session (after a PIN/password change)
 }
 
 const Ctx = createContext<AuthState | null>(null)
@@ -32,12 +33,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return res.user
   }, [])
 
+  const adopt = useCallback((token: string, u: User) => {
+    tokenStore.set(token)
+    setUser(u)
+  }, [])
+
   const logout = useCallback(() => {
     tokenStore.clear()
     setUser(null)
   }, [])
 
-  const value = useMemo(() => ({ user, loading, login, logout }), [user, loading, login, logout])
+  const value = useMemo(() => ({ user, loading, login, logout, adopt }), [user, loading, login, logout, adopt])
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 

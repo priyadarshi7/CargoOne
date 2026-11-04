@@ -38,6 +38,7 @@ export interface User {
   name: string
   role: Role
   language: 'en' | 'hi' | 'mr'
+  must_change_secret?: boolean
 }
 export interface Trip {
   id: string

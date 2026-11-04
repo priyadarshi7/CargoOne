@@ -35,6 +35,7 @@ class UserOut(BaseModel):
     name: str
     role: str
     language: str
+    must_change_secret: bool = False
 
 
 class TokenOut(BaseModel):
@@ -43,7 +44,7 @@ class TokenOut(BaseModel):
 
 
 def _out(u: User) -> UserOut:
-    return UserOut(id=str(u.id), name=u.name, role=u.role.value, language=u.language)
+    return UserOut(id=str(u.id), name=u.name, role=u.role.value, language=u.language, must_change_secret=u.must_change_secret)
 
 
 def _mask_ident(ident: str) -> str:
@@ -108,6 +109,7 @@ async def change_secret(body: ChangeSecret, user: Annotated[User, Depends(curren
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, problem)
     user.password_hash = hash_secret(body.new)
     user.token_version += 1
+    user.must_change_secret = False
     session.add(AuditLog(actor_id=user.id, action="secret.change", entity="user", entity_id=str(user.id)))
     await session.commit()
     return TokenOut(access_token=create_token(user), user=_out(user))

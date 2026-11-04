@@ -74,6 +74,7 @@ class User(Base):
     password_hash: Mapped[str | None] = mapped_column(String(255))
     failed_logins: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    must_change_secret: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")  # set by an office PIN reset
     token_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")  # bumped on password change: older tokens die
     role: Mapped[Role] = mapped_column(_enum(Role))
     language: Mapped[str] = mapped_column(String(2), default="hi")

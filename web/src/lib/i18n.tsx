@@ -6,7 +6,7 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 export type Lang = 'en' | 'hi' | 'mr'
 
 const en = {
-  'nav.dashboard': 'Dashboard', 'nav.trips': 'Trips', 'nav.review': 'Review', 'nav.billing': 'Billing', 'nav.import': 'Import', 'nav.progress': 'Build progress',
+  'nav.dashboard': 'Dashboard', 'nav.trips': 'Trips', 'nav.review': 'Review', 'nav.billing': 'Billing', 'nav.import': 'Import', 'nav.drivers': 'Drivers', 'nav.progress': 'Build progress',
   'shell.signOut': 'Sign out', 'shell.language': 'Language',
   'common.loading': 'Loading…', 'common.close': 'Close',
   'status.pending': 'Awaiting POD', 'status.uploaded': 'Checking', 'status.verified': 'Verified', 'status.needs_review': 'Needs review',
@@ -23,7 +23,7 @@ const en = {
 export type Key = keyof typeof en
 
 const hi: Partial<Record<Key, string>> = {
-  'nav.dashboard': 'डैशबोर्ड', 'nav.trips': 'ट्रिप', 'nav.review': 'जाँच', 'nav.billing': 'बिलिंग', 'nav.import': 'आयात', 'nav.progress': 'प्रगति',
+  'nav.dashboard': 'डैशबोर्ड', 'nav.trips': 'ट्रिप', 'nav.review': 'जाँच', 'nav.billing': 'बिलिंग', 'nav.import': 'आयात', 'nav.drivers': 'ड्राइवर', 'nav.progress': 'प्रगति',
   'shell.signOut': 'साइन आउट', 'shell.language': 'भाषा',
   'common.loading': 'लोड हो रहा है…', 'common.close': 'बंद करें',
   'status.pending': 'रसीद बाकी', 'status.uploaded': 'जाँच जारी', 'status.verified': 'सत्यापित', 'status.needs_review': 'जाँच ज़रूरी',
@@ -38,7 +38,7 @@ const hi: Partial<Record<Key, string>> = {
 }
 
 const mr: Partial<Record<Key, string>> = {
-  'nav.dashboard': 'डॅशबोर्ड', 'nav.trips': 'ट्रिप', 'nav.review': 'तपासणी', 'nav.billing': 'बिलिंग', 'nav.import': 'आयात', 'nav.progress': 'प्रगती',
+  'nav.dashboard': 'डॅशबोर्ड', 'nav.trips': 'ट्रिप', 'nav.review': 'तपासणी', 'nav.billing': 'बिलिंग', 'nav.import': 'आयात', 'nav.drivers': 'ड्रायव्हर', 'nav.progress': 'प्रगती',
   'shell.signOut': 'साइन आउट', 'shell.language': 'भाषा',
   'common.loading': 'लोड होत आहे…', 'common.close': 'बंद करा',
   'status.pending': 'पावती बाकी', 'status.uploaded': 'तपासणी सुरू', 'status.verified': 'सत्यापित', 'status.needs_review': 'तपासणी आवश्यक',

@@ -10,7 +10,7 @@ from typing import Annotated
 import jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,6 +21,7 @@ from app.models import Role, User
 _hasher = PasswordHasher()
 _bearer = HTTPBearer(auto_error=False)
 TOKEN_TTL = timedelta(hours=12)
+PIN_FREE_PATHS = {"/auth/me", "/auth/change-secret"}  # all a person with a temporary PIN may do
 
 
 def hash_secret(secret: str) -> str:
@@ -43,6 +44,7 @@ def create_token(user: User) -> str:
 
 
 async def current_user(
+    request: Request,
     creds: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> User:
@@ -58,6 +60,8 @@ async def current_user(
         raise unauthorised
     if claims.get("ver", 0) != user.token_version:
         raise unauthorised  # signed in before the password/PIN was changed
+    if user.must_change_secret and request.url.path not in PIN_FREE_PATHS:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Choose your own PIN first", headers={"X-Must-Change-Secret": "1"})
     return user
 
 
