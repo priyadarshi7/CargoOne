@@ -13,6 +13,14 @@ cd api && uv sync && uv run alembic upgrade head && uv run python -m app.seed &&
 cd web && pnpm install && pnpm dev                                                          # http://localhost:5173
 ```
 
+## AI provider (Gemini)
+Put these in `.env` in the repo root (or `api/.env`; never commit it):
+```
+AI_PROVIDER=gemini
+GEMINI_API_KEY=<your key from Google AI Studio>
+```
+Default is `mock`, which only understands the synthetic test images. Automated tests always force the mock.
+
 ## What to open
 - http://localhost:5173/progress — live build progress (no login), read from `docs/02-roadmap.md`
 - http://localhost:5173 — sign in with a demo login below (office → trips table, driver → mobile home)

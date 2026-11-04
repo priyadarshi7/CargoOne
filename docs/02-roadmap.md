@@ -48,14 +48,14 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 
 ## Phase 4 — AI POD verification (P0)
 - [~] AI provider abstraction layer (Python): interface, registry, config-driven selection, fallback chain, latency logging done; per-provider cost + accuracy logging pending
-- [~] Providers: mock + Gemini done (Gemini tested against a fake HTTP transport only — **needs a real key + real/synthetic image run**); Claude, OpenAI, local pending
+- [~] Providers: mock + Gemini done and **verified live** (6/9 synthetic scenarios checked, 5 match expected routing, 1 differs: blurry photo -> review instead of retake; 3 hit transient 429/503 before retries were added). Claude, OpenAI, local pending
 - [~] Synthetic POD generator: 9 scenarios (clean, no stamp/signature, blur, shortage, damage, wrong LR, low confidence, not-a-POD) done; hi/mr handwriting, skew/glare, bulk generation pending
 - [ ] Collect 100–200 real PODs from client in pilot week 1 → real accuracy report for the MD
 - [~] Extraction schema + prompt for LR no., stamp, quantity, shortage/damage remarks, date, signature, confidence done; tuning on real PODs pending
 - [ ] Prompt + structured output schema + validation; Hindi/Marathi handwriting cases
 - [x] Deterministic decision engine (verified / needs review / retake) — unit-tested rule table (`api/app/pod/decision.py`)
 - [~] Upload endpoint `POST /trips/{id}/pod` runs AI + decision engine and returns the verdict; AI outage parks POD for review; idempotent; image access role-checked + audited. Latency target (<10 s) unmeasured until real Gemini key
-- [ ] Cost/latency controls: timeouts, retries, caching by image hash, provider fallback
+- [~] Cost/latency controls: timeouts, retry on 429/5xx, provider fallback done (live latency 4-7 s per photo on free tier, 6.2 s end-to-end); image-hash caching pending
 - [ ] Evaluation harness: labelled POD image set, accuracy/recall report, regression gate
 - [ ] Never auto-send invoices; image remains source of truth
 

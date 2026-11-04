@@ -31,6 +31,9 @@ def _use_test_database() -> None:
     subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], check=True, capture_output=True)
 
 
+# Tests must never reach a real AI provider (cost, flakiness, and photos leaving the machine),
+# whatever the developer's .env says. Environment variables beat .env files.
+os.environ.update({"AI_PROVIDER": "mock", "AI_FALLBACKS": "", "GEMINI_API_KEY": "", "APP_ENV": "test"})
 _use_test_database()  # must run before `app` is imported anywhere
 
 from collections.abc import AsyncIterator, Iterator

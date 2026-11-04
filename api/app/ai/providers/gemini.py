@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import json
 
@@ -6,6 +7,7 @@ import httpx
 from app.ai.base import PodExtraction, ProviderError
 from app.ai.prompt import POD_PROMPT
 
+TRANSIENT = {429, 500, 502, 503, 504}  # worth a quick retry; anything else fails over immediately
 ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
 
@@ -13,7 +15,9 @@ class GeminiProvider:
     name = "gemini"
 
     def __init__(self, api_key: str, model: str, timeout_s: float = 20.0,
-                 transport: httpx.AsyncBaseTransport | None = None) -> None:
+                 transport: httpx.AsyncBaseTransport | None = None,
+                 backoff_s: tuple[float, ...] = (0.7, 1.8)) -> None:
+        self._backoff = backoff_s
         self._key = api_key
         self._model = model
         self._timeout = timeout_s
@@ -35,14 +39,20 @@ class GeminiProvider:
         }
         try:
             async with httpx.AsyncClient(timeout=self._timeout, transport=self._transport) as http:
-                res = await http.post(
-                    ENDPOINT.format(model=self._model), json=body, headers={"x-goog-api-key": self._key}
-                )
+                for delay in (*self._backoff, None):  # retry transient overload, then give up (-> fallback)
+                    res = await http.post(
+                        ENDPOINT.format(model=self._model), json=body, headers={"x-goog-api-key": self._key}
+                    )
+                    if res.status_code not in TRANSIENT or delay is None:
+                        break
+                    await asyncio.sleep(delay)
             res.raise_for_status()
             text = res.json()["candidates"][0]["content"]["parts"][0]["text"]
             return PodExtraction.model_validate(json.loads(text))
+        except httpx.HTTPStatusError as e:  # status code only - never the body (may echo document text)
+            raise ProviderError(f"gemini http {e.response.status_code}") from e
         except httpx.HTTPError as e:
-            raise ProviderError(f"gemini http error: {type(e).__name__}") from e  # no body: avoid leaking PII
+            raise ProviderError(f"gemini network error: {type(e).__name__}") from e
         except (KeyError, IndexError, ValueError) as e:
             raise ProviderError(f"gemini returned unusable output: {type(e).__name__}") from e
 
