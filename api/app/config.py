@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     web_origin: str = "http://localhost:5173"
     storage_dir: str = "./storage"
     ai_provider: str = "mock"  # mock | gemini | anthropic | openai | local
+    mock_scenario: str = ""  # mock provider only: answer every unlabeled photo as this synthetic scenario (E2E/demos)
     ai_fallbacks: str = ""  # comma separated provider names
     gemini_api_key: str = ""
     gemini_model: str = "gemini-2.5-flash"  # configurable: model names change over time

@@ -1,15 +1,17 @@
 import { ListChecks, LogOut, Truck } from 'lucide-react'
-import { Link, NavLink } from 'react-router-dom'
+import { Link, NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { useEffect, useState, type ReactNode } from 'react'
 import { api, type ReviewItem } from '../lib/api'
 
+/** Re-reads the count on every navigation, so the badge never goes stale after an approval. */
 function useReviewCount(enabled: boolean): number {
   const [n, setN] = useState(0)
+  const { pathname } = useLocation()
   useEffect(() => {
     if (!enabled) return
     api<ReviewItem[]>('/review').then((r) => setN(r.length)).catch(() => undefined)
-  }, [enabled])
+  }, [enabled, pathname])
   return n
 }
 

@@ -100,7 +100,12 @@ export default function Capture() {
   if (phase.kind === 'offline') {
     return (
       <Screen tone="bg-accent-soft text-accent" top={back}>
-        <CloudOff size={160} aria-label="Saved, waiting for network" />
+        <div className="relative" role="img" aria-label="Saved, waiting for network">
+          <CloudOff size={160} aria-hidden />
+          <span className="absolute -bottom-2 -right-2 grid h-16 w-16 place-items-center rounded-full bg-ok text-white">
+            <CircleCheck size={40} aria-hidden />
+          </span>
+        </div>
         <button onClick={() => speak(lang, 'saved_offline')} aria-label="Repeat" className="grid h-16 w-16 place-items-center rounded-full bg-white/70">
           <Volume2 size={32} aria-hidden />
         </button>

@@ -83,6 +83,10 @@ async def seed(session: AsyncSession) -> None:
         trip = await session.scalar(select(Trip).where(Trip.trip_code == code))
         if await session.scalar(select(PodSubmission.id).where(PodSubmission.trip_id == trip.id)):
             continue
+        arrived = trip.delivered_at + timedelta(hours=2)  # sample PODs reached the system 2 h after delivery
+        trip.first_pod_at = trip.pod_uploaded_at = arrived
+        if trip.pod_status == PodStatus.verified:
+            trip.verified_at = arrived + timedelta(hours=1)
         png = render(SCENARIOS[scenario], trip.lr_no, seed=1)
         extraction = await MockProvider().extract(png, "image/png", trip.lr_no)
         sub_id = uuid.uuid4()

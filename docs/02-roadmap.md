@@ -84,8 +84,8 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [ ] DPDP Act 2023: data inventory, consent/notice text, purpose limitation, retention & auto-delete, access/erasure workflow
 - [ ] Private image storage, signed short-lived URLs, no PII in logs, encryption at rest/in transit
 - [ ] Input validation everywhere, rate limiting, upload type/size checks, CSRF/CORS, security headers
-- [~] Unit tests (decision, compression, queue) and API+DB integration tests done — tests use their own `cargoone_test` database; Playwright E2E pending
-- [ ] Offline test matrix (airplane mode, flaky 2G throttling, low-storage)
+- [x] Unit tests (decision, compression, queue), API+DB integration tests (own `cargoone_test` DB) and **Playwright E2E (14 tests, desktop + Pixel 7 driver)**: login/roles, driver capture online + offline-then-sync, review → bill → PDF/Tally download, dashboards; runs in CI
+- [~] Offline test matrix: offline capture → saved → auto-upload on reconnect covered in E2E; flaky-2G throttling and low-storage cases pending
 - [ ] Performance budget for low-end Android (bundle size, LCP, memory)
 - [ ] Error monitoring + structured logging (free-tier tooling)
 

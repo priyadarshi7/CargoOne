@@ -15,7 +15,8 @@ Budget ₹7.5L / 6 weeks. Brief: `docs/01-product-brief.md` · To-do: `docs/02-r
 ## Commands
 - DB: `docker compose up -d db` (needs Docker Desktop running)
 - API (in `api/`): `uv run alembic upgrade head` · `uv run uvicorn app.main:app --reload` · `uv run pytest` · `uv run ruff check .`
-- Web (in `web/`): `pnpm dev` · `pnpm build` · `pnpm lint` · `pnpm test`
+- Web (in `web/`): `pnpm dev` · `pnpm build` · `pnpm lint` · `pnpm test` (unit) · `pnpm e2e` (Playwright; own stack + own `cargoone_e2e` DB, scripted mock AI; screenshots land in `web/e2e/screenshots/`)
+- Look at screenshots after UI changes (`web/e2e/screenshots/*.png`) — layout bugs are invisible to assertions.
 - New migration: `uv run alembic revision --autogenerate -m "msg"` — always review the generated file.
 
 ## Git workflow (strict)

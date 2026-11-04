@@ -35,6 +35,9 @@ Default is `mock`, which only understands the synthetic test images. Automated t
 Dashboards look empty without history. Add illustrative demo trips (clearly coded `DEMO-…`, banner shown on the dashboard):
 `cd api && uv run python -m app.demo_data` (remove again with `--remove`). Dev/test only.
 
+Browser tests (Playwright, real Chromium incl. a phone-sized driver project): `cd web && pnpm exec playwright install chromium && pnpm e2e`.
+They start their own API (:8001), web (:5174) and a throw-away `cargoone_e2e` database, so your dev data is never touched.
+
 Tests need migrated Postgres: `cd api && uv run pytest`.
 
 ## Docs

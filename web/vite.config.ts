@@ -11,7 +11,7 @@ export default defineConfig({
     // allow importing ../docs/*.md?raw (the Progress page renders the roadmap)
     fs: { allow: ['..'] },
     proxy: {
-      '/api': { target: 'http://localhost:8000', rewrite: (p) => p.replace(/^\/api/, '') },
+      '/api': { target: process.env.VITE_PROXY_TARGET ?? 'http://localhost:8000', rewrite: (p) => p.replace(/^\/api/, '') },
     },
   },
 })

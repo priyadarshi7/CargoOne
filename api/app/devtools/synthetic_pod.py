@@ -51,6 +51,23 @@ def _font(size: int) -> ImageFont.ImageFont:
         return ImageFont.load_default(size)
 
 
+def truth_for(scenario: Scenario, lr_no: str) -> PodExtraction:
+    """What a perfect reader would extract from this scenario's image (also used as a scripted mock answer)."""
+    shown_lr = "LR-00000" if scenario.wrong_lr else lr_no
+    return PodExtraction(
+        is_document=not scenario.not_document,
+        readable=scenario.blur < 3,
+        lr_no=None if scenario.not_document else shown_lr,
+        consignee_stamp_present=scenario.stamp and not scenario.not_document,
+        signature_present=scenario.signature and not scenario.not_document,
+        delivery_date=None if scenario.not_document else "2026-11-03",
+        quantity_received=None if scenario.not_document else "240 bags",
+        remarks=scenario.remark,
+        shortage_or_damage=scenario.remark is not None,
+        confidence=scenario.confidence,
+    )
+
+
 def render(scenario: Scenario, lr_no: str, seed: int = 0) -> bytes:
     rnd = random.Random(seed)
     img = Image.new("RGB", (W, H), (250, 248, 240))
@@ -80,18 +97,7 @@ def render(scenario: Scenario, lr_no: str, seed: int = 0) -> bytes:
     if scenario.blur:
         img = img.filter(ImageFilter.GaussianBlur(scenario.blur))
 
-    truth = PodExtraction(
-        is_document=not scenario.not_document,
-        readable=scenario.blur < 3,
-        lr_no=None if scenario.not_document else shown_lr,
-        consignee_stamp_present=scenario.stamp and not scenario.not_document,
-        signature_present=scenario.signature and not scenario.not_document,
-        delivery_date=None if scenario.not_document else "2026-11-03",
-        quantity_received=None if scenario.not_document else "240 bags",
-        remarks=scenario.remark,
-        shortage_or_damage=scenario.remark is not None,
-        confidence=scenario.confidence,
-    )
+    truth = truth_for(scenario, lr_no)
     from PIL.PngImagePlugin import PngInfo
     meta = PngInfo()
     meta.add_text(LABEL_KEY, json.dumps(truth.model_dump()))
