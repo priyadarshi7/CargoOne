@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ImageViewer } from '../components/ImageViewer'
 import { ReasonChips } from '../components/ReasonChips'
 import { api, ApiError, type ReviewItem } from '../lib/api'
+import { useI18n } from '../lib/i18n'
 
 type Form = { lr_no: string; delivery_date: string; quantity_received: string; remarks: string; shortage_or_damage: boolean }
 type Action = 'approve' | 'request_retake' | 'reject'
@@ -21,6 +22,7 @@ const initial = (it: ReviewItem): Form => {
 
 export default function ReviewDetail() {
   const { tripId = '' } = useParams()
+  const { t } = useI18n()
   const nav = useNavigate()
   const [item, setItem] = useState<ReviewItem | null>(null)
   const [form, setForm] = useState<Form | null>(null)
@@ -31,7 +33,7 @@ export default function ReviewDetail() {
 
   useEffect(() => {
     api<ReviewItem>(`/review/${tripId}`).then((it) => { setItem(it); setForm(initial(it)) })
-      .catch(() => setError('Could not load this POD.'))
+      .catch(() => setError(t('rd.loadFail')))
   }, [tripId])
 
   const submit = useCallback(async (action: Action) => {
@@ -50,12 +52,12 @@ export default function ReviewDetail() {
       const rest = (await api<ReviewItem[]>('/review')).filter((i) => i.trip_id !== item.trip_id)
       nav(rest.length ? `/office/review/${rest[0].trip_id}` : '/office/review', { replace: true })
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Could not save. Try again.')
+      setError(e instanceof ApiError ? e.message : t('rd.saveFail'))
       setConfirmReject(false)
     } finally {
       setBusy(false)
     }
-  }, [item, form, note, busy, confirmReject, nav])
+  }, [item, form, note, busy, confirmReject, nav, t])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -71,7 +73,7 @@ export default function ReviewDetail() {
     return () => window.removeEventListener('keydown', onKey)
   }, [submit])
 
-  if (!item || !form) return <p className={error ? 'text-bad' : 'text-muted'}>{error ?? 'Loading…'}</p>
+  if (!item || !form) return <p className={error ? 'text-bad' : 'text-muted'}>{error ?? t('common.loading')}</p>
 
   const field = 'w-full rounded-lg border border-line px-3 py-2 text-sm outline-none focus:border-accent'
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm({ ...form, [k]: v })
@@ -81,7 +83,7 @@ export default function ReviewDetail() {
   return (
     <div className="space-y-6">
       <Link to="/office/review" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink">
-        <ArrowLeft size={16} aria-hidden /> Review queue
+        <ArrowLeft size={16} aria-hidden /> {t('review.title')}
       </Link>
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
@@ -93,30 +95,30 @@ export default function ReviewDetail() {
             <p className="text-sm text-muted">{item.client} · {item.destination} · LR {item.lr_no}</p>
             <div className="mt-3"><ReasonChips reasons={item.reasons} /></div>
             <p className="mt-3 text-xs text-muted">
-              Attempt {item.attempt}
-              {item.confidence !== null && ` · AI confidence ${Math.round(item.confidence * 100)}%`}
+              {t('rd.attempt', { n: item.attempt })}
+              {item.confidence !== null && ` · ${t('rd.confidence', { n: Math.round(item.confidence * 100) })}`}
               {item.lat !== null && item.lng !== null && ` · GPS ${item.lat.toFixed(3)}, ${item.lng?.toFixed(3)}`}
             </p>
           </div>
 
           <div className="space-y-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted">Check against the photo</p>
-            <label className="block space-y-1 text-sm"><span className="text-muted">LR number</span>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted">{t('rd.check')}</p>
+            <label className="block space-y-1 text-sm"><span className="text-muted">{t('rd.lr')}</span>
               <input className={`${field} ${lrChanged ? 'border-warn' : ''}`} value={form.lr_no} onChange={(e) => set('lr_no', e.target.value)} />
-              {lrEmpty && <span className="text-xs text-warn">LR number could not be read - type it from the photo (trip LR is {item.lr_no}).</span>}
-              {lrChanged && <span className="text-xs text-warn">Differs from trip LR {item.lr_no} - approval will be refused.</span>}
+              {lrEmpty && <span className="text-xs text-warn">{t('rd.lrUnread', { lr: item.lr_no })}</span>}
+              {lrChanged && <span className="text-xs text-warn">{t('rd.lrDiff', { lr: item.lr_no })}</span>}
             </label>
-            <label className="block space-y-1 text-sm"><span className="text-muted">Delivery date</span>
+            <label className="block space-y-1 text-sm"><span className="text-muted">{t('rd.date')}</span>
               <input type="date" className={field} value={form.delivery_date} onChange={(e) => set('delivery_date', e.target.value)} /></label>
-            <label className="block space-y-1 text-sm"><span className="text-muted">Quantity received</span>
+            <label className="block space-y-1 text-sm"><span className="text-muted">{t('rd.qty')}</span>
               <input className={field} value={form.quantity_received} onChange={(e) => set('quantity_received', e.target.value)} /></label>
-            <label className="block space-y-1 text-sm"><span className="text-muted">Remarks on the paper</span>
+            <label className="block space-y-1 text-sm"><span className="text-muted">{t('rd.remarks')}</span>
               <input className={field} value={form.remarks} onChange={(e) => set('remarks', e.target.value)} /></label>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={form.shortage_or_damage} onChange={(e) => set('shortage_or_damage', e.target.checked)} />
-              Shortage or damage recorded
+              {t('rd.shortage')}
             </label>
-            <label className="block space-y-1 text-sm"><span className="text-muted">Note (optional)</span>
+            <label className="block space-y-1 text-sm"><span className="text-muted">{t('rd.note')}</span>
               <input className={field} value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} /></label>
           </div>
 
@@ -125,19 +127,19 @@ export default function ReviewDetail() {
           <div className="grid gap-2 sm:grid-cols-3">
             <button disabled={busy} onClick={() => void submit('approve')}
               className="flex items-center justify-center gap-2 rounded-lg bg-ok px-4 py-3 font-medium text-on-solid disabled:opacity-60">
-              <Check size={18} aria-hidden /> Approve <kbd className="text-xs opacity-70">A</kbd>
+              <Check size={18} aria-hidden /> {t('rd.approve')} <kbd className="text-xs opacity-70">A</kbd>
             </button>
             <button disabled={busy || item.retakes_left === 0} onClick={() => void submit('request_retake')}
-              title={item.retakes_left === 0 ? 'Retake limit reached' : undefined}
+              title={item.retakes_left === 0 ? t('rd.retakeLimit') : undefined}
               className="flex items-center justify-center gap-2 rounded-lg bg-warn px-4 py-3 font-medium text-on-solid disabled:opacity-40">
-              <RotateCcw size={18} aria-hidden /> Retake <kbd className="text-xs opacity-70">R</kbd>
+              <RotateCcw size={18} aria-hidden /> {t('rd.retake')} <kbd className="text-xs opacity-70">R</kbd>
             </button>
             <button disabled={busy} onClick={() => void submit('reject')}
               className={`flex items-center justify-center gap-2 rounded-lg px-4 py-3 font-medium disabled:opacity-60 ${confirmReject ? 'bg-bad text-on-solid' : 'border border-bad text-bad'}`}>
-              <X size={18} aria-hidden /> {confirmReject ? 'Confirm reject' : 'Reject'} <kbd className="text-xs opacity-70">X</kbd>
+              <X size={18} aria-hidden /> {confirmReject ? t('rd.confirmReject') : t('rd.reject')} <kbd className="text-xs opacity-70">X</kbd>
             </button>
           </div>
-          <p className="text-xs text-muted">Approving does not send an invoice. Retakes left for the driver: {item.retakes_left}.</p>
+          <p className="text-xs text-muted">{t('rd.footer', { n: item.retakes_left })}</p>
         </div>
       </div>
     </div>

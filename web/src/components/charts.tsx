@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useI18n } from '../lib/i18n'
 
 /** Ordinal sequential ramp (one hue, light -> dark), validated step range from the dataviz palette:
  *  the lightest step is no lighter than step 250 so every segment stays visible on white. */
@@ -9,6 +10,7 @@ interface Bucket { label: string; count: number }
 /** Horizontal stacked bars, one row per branch. 2 px surface gap between segments; counts printed inside
  *  segments that are wide enough; legend always present; exact numbers also available as a table. */
 export function StackedBars({ rows }: { rows: { name: string; buckets: Bucket[] }[] }) {
+  const { t } = useI18n()
   const labels = rows[0]?.buckets.map((b) => b.label) ?? []
   const max = Math.max(1, ...rows.map((r) => r.buckets.reduce((n, b) => n + b.count, 0)))
   return (
@@ -41,9 +43,9 @@ export function StackedBars({ rows }: { rows: { name: string; buckets: Bucket[] 
         })}
       </div>
       <details className="mt-4 text-xs text-muted">
-        <summary className="cursor-pointer">View as table</summary>
+        <summary className="cursor-pointer">{t('chart.table')}</summary>
         <table className="mt-2 w-full text-left">
-          <thead><tr><th className="py-1 font-medium">Branch</th>{labels.map((l) => <th key={l} className="py-1 font-medium">{l}</th>)}</tr></thead>
+          <thead><tr><th className="py-1 font-medium">{t('dash.branch')}</th>{labels.map((l) => <th key={l} className="py-1 font-medium">{l}</th>)}</tr></thead>
           <tbody>{rows.map((r) => <tr key={r.name} className="border-t border-line"><td className="py-1">{r.name}</td>{r.buckets.map((b) => <td key={b.label} className="py-1 tabular-nums">{b.count}</td>)}</tr>)}</tbody>
         </table>
       </details>
@@ -58,6 +60,7 @@ interface Point { label: string; value: number | null }
 export function LineChart({ points, target, max, unit, targetLabel, fmt = (v: number) => String(v) }: {
   points: Point[]; target: number; max: number; unit: string; targetLabel: string; fmt?: (v: number) => string
 }) {
+  const { t } = useI18n()
   const [hover, setHover] = useState<number | null>(null)
   const W = 480, H = 170, L = 34, R = 12, T = 12, B = 26
   const x = (i: number) => L + (points.length === 1 ? 0 : (i / (points.length - 1)) * (W - L - R))
@@ -99,10 +102,10 @@ export function LineChart({ points, target, max, unit, targetLabel, fmt = (v: nu
         {hover !== null && <line x1={x(hover)} x2={x(hover)} y1={T} y2={H - B} stroke="var(--color-muted)" strokeWidth="1" />}
       </svg>
       <p className="h-5 text-xs text-muted" aria-live="polite">
-        {hp ? <>Week of <b className="text-ink">{hp.label}</b>: {hp.value === null ? 'no data' : <b className="text-ink">{fmt(hp.value)}</b>}</> : ' '}
+        {hp ? <>{t('chart.weekOf')} <b className="text-ink">{hp.label}</b>: {hp.value === null ? t('chart.noData') : <b className="text-ink">{fmt(hp.value)}</b>}</> : ' '}
       </p>
       <details className="text-xs text-muted">
-        <summary className="cursor-pointer">View as table</summary>
+        <summary className="cursor-pointer">{t('chart.table')}</summary>
         <table className="mt-2 w-full text-left"><tbody>
           {points.map((p) => <tr key={p.label} className="border-t border-line"><td className="py-1">{p.label}</td><td className="py-1 tabular-nums">{p.value === null ? '—' : fmt(p.value)}</td></tr>)}
         </tbody></table>

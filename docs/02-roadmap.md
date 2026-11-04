@@ -18,7 +18,7 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [~] Design tokens: colour (neutral + one accent #1e40af, green/amber/red semantic) in `web/src/index.css` done; type scale, motion pending
 - [~] Component kit: status badge + shells done; Button, Dialog, Toast, Empty state, Skeleton, Stepper pending
 - [ ] Icon set + illustrations for driver flow (no text dependence)
-- [~] i18n framework (`lib/i18n.tsx`, English fallback, choice remembered, switch in the header). Translated so far: navigation, login, trips table, status badges, review queue. **Still English:** dashboard, billing, import, review detail, dialogs, dates. Wording is a first draft and needs native-speaker review
+- [x] i18n: English / हिन्दी / मराठी on every office screen (dashboard, trips, review, billing, import, drivers, account, link dialogs), dates and crore/lakh in the chosen language; unit test guards the dictionaries. **Wording is a first draft: needs native-speaker review.** Only the public build-progress page stays English
 - [ ] Accessibility: contrast AA, 64px+ driver targets, focus states, reduced motion
 - [~] Two shells: basic driver home (placeholder POD button + own trips) and office shell (header nav + trips table) done; sidebar, keyboard nav, real capture pending
 - [x] Dark mode everywhere (office, driver, public pages): follows the device by default, toggle in the office header (device / light / dark), applied before first paint; own dark colour steps incl. chart ramp

@@ -83,3 +83,30 @@ test('office screens switch to Hindi and Marathi and remember the choice', async
   await page.getByLabel('भाषा').selectOption('en') // leave English for other tests in this browser context
   await expect(page.getByRole('link', { name: 'Trips' })).toBeVisible()
 })
+
+test('billing, import, dashboard and review detail also switch language', async ({ page }) => {
+  await login(page, 'billing@cargoone.dev')
+  await page.getByLabel('Language').selectOption('hi')
+  await page.getByRole('link', { name: 'बिलिंग' }).click()
+  await expect(page.getByRole('heading', { name: 'बिलिंग' })).toBeVisible()
+  await expect(page.getByRole('button', { name: /बिल के लिए तैयार/ })).toBeVisible()
+  await shot(page, 'billing-hindi')
+  await page.getByRole('link', { name: 'आयात' }).click()
+  await expect(page.getByRole('heading', { name: 'ट्रिप आयात करें' })).toBeVisible()
+  await page.getByRole('link', { name: 'ड्राइवर' }).click()
+  await expect(page.getByRole('heading', { name: 'ड्राइवर' })).toBeVisible()
+  await page.getByLabel('भाषा').selectOption('mr')
+  await page.getByRole('link', { name: 'तपासणी' }).click()
+  await expect(page.getByRole('heading', { name: 'तपासणी यादी' })).toBeVisible()
+  await shot(page, 'review-queue-marathi')
+  await page.getByLabel('भाषा').selectOption('en')
+})
+
+test('the ops dashboard switches language', async ({ page }) => {
+  await login(page, 'ops@cargoone.dev')
+  await page.getByLabel('Language').selectOption('mr')
+  await expect(page.getByRole('heading', { name: 'कामकाज' })).toBeVisible()
+  await expect(page.getByText('24 तासांत सिस्टममध्ये आलेल्या पावत्या')).toBeVisible()
+  await shot(page, 'dashboard-marathi')
+  await page.getByLabel('भाषा').selectOption('en')
+})

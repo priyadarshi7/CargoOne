@@ -13,3 +13,22 @@ describe('translate', () => {
     }
   })
 })
+
+import { en } from './i18n/en'
+import { hi } from './i18n/hi'
+import { mr } from './i18n/mr'
+
+const holes = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(',')
+
+describe.each([['hi', hi], ['mr', mr]] as const)('%s dictionary', (_name, dict) => {
+  it('only has keys that exist in English, with the same placeholders', () => {
+    for (const [k, v] of Object.entries(dict)) {
+      expect(k in en, `unknown key ${k}`).toBe(true)
+      expect(holes(v as string), `placeholders differ in ${k}`).toBe(holes(en[k as keyof typeof en]))
+    }
+  })
+  it('translates every English key', () => {
+    const missing = Object.keys(en).filter((k) => !(k in dict))
+    expect(missing).toEqual([])
+  })
+})
