@@ -48,6 +48,11 @@ async def _seed() -> None:
             s.add(Trip(trip_code=code, client_id=client.id, vehicle_id=veh.id, driver_id=driver.id, branch_id=driver.branch_id,
                        lr_no=lr, eway_bill_no="341000000099", origin="Chhatrapati Sambhajinagar", destination=dest,
                        freight_amount=Decimal(21000), pod_status=PodStatus.pending))
+        # a hired vehicle's trip: nobody has an account, so the office sends an upload link
+        hired = await s.scalar(select(Vehicle).where(Vehicle.reg_no == "MH17 BY 3092"))
+        s.add(Trip(trip_code="TRP-E2E-HIRED", client_id=client.id, vehicle_id=hired.id, driver_id=None, branch_id=driver.branch_id,
+                   lr_no="LR-E2E003", eway_bill_no="341000000098", origin="Chhatrapati Sambhajinagar", destination="Latur",
+                   freight_amount=Decimal(19000), pod_status=PodStatus.pending))
         await s.commit()
 
 

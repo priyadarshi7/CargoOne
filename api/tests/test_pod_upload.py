@@ -106,7 +106,7 @@ async def test_ai_outage_parks_pod_for_review_instead_of_blocking(
     async def down(*_a, **_k):
         raise AllProvidersFailed(["gemini: down"])
 
-    monkeypatch.setattr("app.routers.pods.run_extraction", down)
+    monkeypatch.setattr("app.pod.ingest.run_extraction", down)
     trip_id, lr = await make_trip()
     res = await post(client, driver, trip_id, render(SCENARIOS["clean"], lr))
     assert res.status_code == 200

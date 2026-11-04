@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react'
 import { StatusBadge } from '../components/StatusBadge'
+import { UploadLinkDialog } from '../components/UploadLinkDialog'
 import { api, type Trip } from '../lib/api'
+import { useAuth } from '../lib/auth'
 
 const inr = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })
 const day = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '—'
 
 export default function OfficeTrips() {
+  const { user } = useAuth()
+  const canSendLink = user?.role === 'ops' || user?.role === 'billing' || user?.role === 'admin'
+  const [linkFor, setLinkFor] = useState<Trip | null>(null)
   const [trips, setTrips] = useState<Trip[] | null>(null)
   const [error, setError] = useState(false)
 
@@ -40,7 +45,7 @@ export default function OfficeTrips() {
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead className="bg-wash text-muted">
             <tr>
-              {['Trip', 'Client', 'Vehicle', 'To', 'Freight', 'Delivered', 'POD'].map((h) => (
+              {['Trip', 'Client', 'Vehicle', 'To', 'Freight', 'Delivered', 'POD', ...(canSendLink ? ['Upload link'] : [])].map((h) => (
                 <th key={h} className="px-4 py-3 font-medium">{h}</th>
               ))}
             </tr>
@@ -55,11 +60,21 @@ export default function OfficeTrips() {
                 <td className="px-4 py-3 tabular-nums">{inr.format(t.freight_amount)}</td>
                 <td className="px-4 py-3">{day(t.delivered_at)}</td>
                 <td className="px-4 py-3"><StatusBadge status={t.pod_status} /></td>
+                {canSendLink && (
+                  <td className="px-4 py-3">
+                    {(t.pod_status === 'pending' || t.pod_status === 'retake_requested') && (
+                      <button onClick={() => setLinkFor(t)} className="rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium hover:border-accent hover:text-accent">
+                        {t.is_hired ? 'Send link' : 'Link'}
+                      </button>
+                    )}
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      {linkFor && <UploadLinkDialog trip={linkFor} onClose={() => setLinkFor(null)} />}
     </div>
   )
 }

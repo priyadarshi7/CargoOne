@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     baseline_lost_pct: float = 1.5
     target_lost_pct: float = 0.5
     interest_rate: float = 0.12  # cost of working capital
+    app_base_url: str = "http://localhost:5173"  # public web address used in SMS links
+    upload_link_ttl_hours: int = 72
     company_name: str = "Company A (demo)"  # printed on invoices
     invoice_prefix: str = "CO"
     tally_company: str = ""  # exact Tally company name; blank = import into the currently open company

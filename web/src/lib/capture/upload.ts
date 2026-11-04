@@ -12,13 +12,16 @@ export async function uploadPod(item: QueuedPod): Promise<UploadResult> {
     form.set('lat', String(item.lat))
     form.set('lng', String(item.lng))
   }
-  const token = tokenStore.get()
-  const res = await fetch(`${BASE}/trips/${item.tripId}/pod`, {
+  // SMS-link photos carry their own bearer secret in the URL; logged-in photos use the session token.
+  const token = item.linkToken ? null : tokenStore.get()
+  const url = item.linkToken ? `${BASE}/u/${encodeURIComponent(item.linkToken)}/pod` : `${BASE}/trips/${item.tripId}/pod`
+  const res = await fetch(url, {
     method: 'POST',
     body: form,
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   }) // a network failure rejects here and keeps the photo queued
   if (res.ok) return (await res.json()) as UploadResult
+  // 410 (expired/revoked link) is permanent for this photo; the office must send a new link
   const transient = res.status >= 500 || res.status === 401 || res.status === 408 || res.status === 429
   if (transient) throw new Error(`temporary ${res.status}`)
   const detail = await res.json().then((j) => String(j.detail)).catch(() => res.statusText)

@@ -17,6 +17,7 @@ export interface UploadResult {
 export interface QueuedPod {
   id: string
   tripId: string
+  linkToken?: string // set for the no-login SMS link flow: upload goes to /u/{token}/pod without credentials
   blob: Blob
   capturedAt: string
   lat: number | null
@@ -53,7 +54,7 @@ const newId = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) =
 let lastStamp = 0
 const nextStamp = () => (lastStamp = Math.max(Date.now(), lastStamp + 1))
 
-export async function enqueue(p: Pick<QueuedPod, 'tripId' | 'blob' | 'capturedAt' | 'lat' | 'lng'>): Promise<QueuedPod> {
+export async function enqueue(p: Pick<QueuedPod, 'tripId' | 'linkToken' | 'blob' | 'capturedAt' | 'lat' | 'lng'>): Promise<QueuedPod> {
   const item: QueuedPod = { ...p, id: newId(), createdAt: nextStamp(), attempts: 0, status: 'queued' }
   await (await db()).put('pods', item)
   return item

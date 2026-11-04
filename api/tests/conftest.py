@@ -78,3 +78,12 @@ def tmp_storage(tmp_path: Path) -> Iterator[None]:
 @pytest.fixture
 async def driver(client: AsyncClient) -> dict[str, str]:
     return await login(client, "9000000001", "1234")
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limits() -> Iterator[None]:
+    from app.routers.links import bad_token_limiter, upload_limiter
+
+    bad_token_limiter.reset()
+    upload_limiter.reset()
+    yield

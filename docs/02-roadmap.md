@@ -28,7 +28,7 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [ ] Larger realistic demo dataset (≈200 trips across branches/clients/ages) for dashboard demos
 - [~] Auth: office login + driver phone/PIN login with JWT done; OTP/PIN reset, token refresh, login rate-limit pending
 - [~] Roles & permissions: role guard (`require_roles`) done + tested; per-branch scoping pending
-- [ ] Hired-driver tokenised SMS link (trip-scoped, expiring, revocable, rate-limited)
+- [x] Hired-driver tokenised link: trip-scoped, 72 h expiry, revocable, hashed at rest, rate-limited, audited; office creates it from the Trips table and (mock) SMS-es it in Hindi/Marathi/English. **Real SMS provider (DLT templates) pending**
 - [ ] Audit log for every sensitive read/write
 - [ ] Trip import: CSV/XLSX daily upload with LR + e-way bill, validation, dedupe, error report
 - [ ] E-way bill field validation (12 digits) + mock lookup adapter
@@ -44,7 +44,7 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [x] Result screens usable by non-readers: green ✓ done · amber ↺ retake (with retakes left) · amber 👁 sent for checking · cloud-off saved offline
 - [~] Voice prompts hi/mr/en via browser TTS + replay button done; **Hindi/Marathi wording needs native-speaker review**, recorded audio pending
 - [x] Retake flow, capped at 2; then auto-routed to human review (server-enforced + DB constraint)
-- [ ] SMS-link capture page (no login, same capture engine, lighter shell)
+- [x] SMS-link capture page `/u/:token`: no login, same capture engine as the driver app (shared `CaptureFlow`), offline queue, voice, clear expired/invalid/already-done screens
 
 ## Phase 4 — AI POD verification (P0)
 - [~] AI provider abstraction layer (Python): interface, registry, config-driven selection, fallback chain, latency logging done; per-provider cost + accuracy logging pending
