@@ -91,7 +91,8 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 
 ## Phase 7 — "Out-of-scope" wow features (P2, after core is solid)
 **Live GPS tracking**
-- [ ] Trip tracking via driver PWA location pings (battery-aware), live map for ops, geofenced delivery arrival (auto-prompt POD at consignee gate), ETA, route deviation & stoppage alerts, share-tracking link for clients
+- [x] Live tracking: driver agrees once (recorded, withdrawable); while a trip is on the road the phone sends GPS fixes (60 s / 100 m, batched, retried safely, screen kept awake); live map for ops and the MD with moving / stopped / no-signal states and stoppage + silent alerts; path per trip; client **tracking link** (position rounded to ~100 m, never the driver, stops once delivered); 30-day retention purge. English/Hindi/Marathi
+- [ ] Still to do here: background tracking (a browser PWA only tracks while the app is open and the screen is on - a native wrapper is needed for true background), ETA and geofenced arrival (needs destination coordinates / geocoding), route-deviation alerts, scheduled purge job in deployment
 **Trip planning**
 - [x] Trip lifecycle (planned / on the road / delivered / cancelled; a POD photo marks delivered), trip creation by ops with generated trip codes, vehicle + driver assignment for a time window, **clash detection** (vehicle and driver double-booking, explicit "book anyway"), 15-day planning board per vehicle, driver "Start trip" button, cancel, audit trail, English/Hindi/Marathi
 - [ ] Still to do here: orders before trips, load/vehicle matching, backhaul suggestions, drag-and-drop on the board, hired-vehicle vendor management

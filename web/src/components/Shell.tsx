@@ -43,6 +43,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
               </NavLink>
             )}
             {canReview && <NavLink to="/office/billing" className={link}>{t('nav.billing')}</NavLink>}
+            {(user?.role === 'ops' || user?.role === 'md' || user?.role === 'admin') && <NavLink to="/office/live" className={link}>{t('nav.live')}</NavLink>}
             {canReview && <NavLink to="/office/planning" className={link}>{t('nav.planning')}</NavLink>}
             {canReview && <NavLink to="/office/drivers" className={link}>{t('nav.drivers')}</NavLink>}
             {canReview && <NavLink to="/office/import" className={link}>{t('nav.import')}</NavLink>}

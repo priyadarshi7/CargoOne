@@ -16,6 +16,7 @@ from sqlalchemy import (
     Integer,
     Numeric,
     String,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
@@ -56,6 +57,7 @@ class TripState(str, enum.Enum):
 class LinkKind(str, enum.Enum):
     sms_upload = "sms_upload"
     client_view = "client_view"
+    client_track = "client_track"
 
 
 def pk() -> Mapped[uuid.UUID]:
@@ -82,6 +84,7 @@ class User(Base):
     failed_logins: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     must_change_secret: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")  # set by an office PIN reset
+    tracking_consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # DPDP: driver agreed to share location during trips
     token_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")  # bumped on password change: older tokens die
     role: Mapped[Role] = mapped_column(_enum(Role))
     language: Mapped[str] = mapped_column(String(2), default="hi")
@@ -177,6 +180,22 @@ class PodSubmission(Base):
     created_at: Mapped[datetime] = now()
 
     trip: Mapped[Trip] = relationship(back_populates="submissions")
+
+
+class LocationPing(Base):
+    """One GPS fix from a driver's phone during a trip. Personal data: kept for a limited time, office/MD only."""
+
+    __tablename__ = "location_pings"
+    __table_args__ = (UniqueConstraint("trip_id", "recorded_at", name="uq_ping_trip_time"), Index("ix_pings_trip_time", "trip_id", "recorded_at"))
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    trip_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"))
+    driver_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    lat: Mapped[float] = mapped_column(Float)
+    lng: Mapped[float] = mapped_column(Float)
+    accuracy_m: Mapped[float | None] = mapped_column(Float)
+    speed_kmh: Mapped[float | None] = mapped_column(Float)
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = now()
 
 
 class AccessLink(Base):

@@ -39,6 +39,7 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     const detail = await res.json().then((j) => j.detail).catch(() => res.statusText)
     throw new ApiError(res.status, messageOf(detail), detail)
   }
+  if (res.status === 204) return undefined as T // success with no body (delete, consent, ...)
   return res.json() as Promise<T>
 }
 
@@ -49,6 +50,7 @@ export interface User {
   role: Role
   language: 'en' | 'hi' | 'mr'
   must_change_secret?: boolean
+  tracking_consent?: boolean
 }
 export interface Trip {
   id: string

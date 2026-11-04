@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { lazy, Suspense, type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { OfficeShell } from './components/Shell'
 import type { Role } from './lib/api'
@@ -21,6 +21,10 @@ import Account from './pages/Account'
 import ClientPod from './pages/ClientPod'
 import SmsCapture from './pages/SmsCapture'
 import Progress from './pages/Progress'
+
+// The map library is heavy: load it only when a map page is opened
+const LiveMapPage = lazy(() => import('./pages/LiveMapPage'))
+const TrackPublic = lazy(() => import('./pages/TrackPublic'))
 
 function Guard({ roles, children }: { roles: Role[]; children: ReactNode }) {
   const { user, loading } = useAuth()
@@ -51,12 +55,14 @@ export default function App() {
     <LangProvider>
     <AuthProvider>
       <BrowserRouter>
+        <Suspense fallback={null}>
         <Routes>
           <Route path="/" element={<Root />} />
           <Route path="/login" element={<Login />} />
           <Route path="/progress" element={<Progress />} />
           <Route path="/u/:token" element={<SmsCapture />} />
           <Route path="/v/:token" element={<ClientPod />} />
+          <Route path="/t/:token" element={<TrackPublic />} />
           <Route path="/driver" element={<Guard roles={['driver']}><DriverHome /></Guard>} />
           <Route path="/driver/pin" element={<Guard roles={['driver']}><DriverPin /></Guard>} />
           <Route path="/driver/trip/:id" element={<Guard roles={['driver']}><Capture /></Guard>} />
@@ -64,6 +70,7 @@ export default function App() {
           <Route path="/office/trips" element={<Guard roles={['ops', 'billing', 'md']}><OfficeShell><OfficeTrips /></OfficeShell></Guard>} />
           <Route path="/office/account" element={<Guard roles={['ops', 'billing', 'md']}><OfficeShell><Account /></OfficeShell></Guard>} />
           <Route path="/office/drivers" element={<Guard roles={['ops', 'billing']}><OfficeShell><Drivers /></OfficeShell></Guard>} />
+          <Route path="/office/live" element={<Guard roles={['ops', 'md']}><OfficeShell><LiveMapPage /></OfficeShell></Guard>} />
           <Route path="/office/planning" element={<Guard roles={['ops', 'billing']}><OfficeShell><Planning /></OfficeShell></Guard>} />
           <Route path="/office/import" element={<Guard roles={['ops', 'billing']}><OfficeShell><ImportTrips /></OfficeShell></Guard>} />
           <Route path="/office/billing" element={<Guard roles={['ops', 'billing']}><OfficeShell><Billing /></OfficeShell></Guard>} />
@@ -71,6 +78,7 @@ export default function App() {
           <Route path="/office/review/:tripId" element={<Guard roles={['ops', 'billing']}><OfficeShell><ReviewDetail /></OfficeShell></Guard>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </Suspense>
       </BrowserRouter>
     </AuthProvider>
     </LangProvider>

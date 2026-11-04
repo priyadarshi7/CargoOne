@@ -83,3 +83,23 @@ dialog {
   background: var(--color-surface);
   color: var(--color-ink);
 }
+
+/* Map pins and dark-mode tiles */
+.map-pin {
+  display: block;
+  width: 18px;
+  height: 18px;
+  margin: 2px;
+  border-radius: 9999px;
+  border: 3px solid var(--color-surface);
+  box-shadow: 0 0 0 1.5px rgb(0 0 0 / 0.35), 0 1px 4px rgb(0 0 0 / 0.3);
+}
+.map-pin-ok { background: var(--color-ok); }
+.map-pin-warn { background: var(--color-warn); }
+.map-pin-bad { background: var(--color-bad); }
+.map-pin-muted { background: var(--color-muted); }
+.map-pin-selected { transform: scale(1.35); }
+:root[data-theme="dark"] .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9); }
+:root[data-theme="dark"] .leaflet-container { background: #0b1120; }
+:root[data-theme="dark"] .leaflet-control-attribution { background: rgb(11 17 32 / 0.8); color: var(--color-muted); }
+:root[data-theme="dark"] .leaflet-control-attribution a { color: var(--color-accent); }

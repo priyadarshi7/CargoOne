@@ -13,6 +13,7 @@ from app.routers import (
     planning,
     pods,
     review,
+    tracking,
     trips,
 )
 
@@ -33,6 +34,7 @@ app.include_router(imports.router)
 app.include_router(client_view.router)
 app.include_router(drivers.router)
 app.include_router(planning.router)
+app.include_router(tracking.router)
 
 
 @app.get("/health")

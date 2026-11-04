@@ -36,6 +36,7 @@ class UserOut(BaseModel):
     role: str
     language: str
     must_change_secret: bool = False
+    tracking_consent: bool = False
 
 
 class TokenOut(BaseModel):
@@ -44,7 +45,8 @@ class TokenOut(BaseModel):
 
 
 def _out(u: User) -> UserOut:
-    return UserOut(id=str(u.id), name=u.name, role=u.role.value, language=u.language, must_change_secret=u.must_change_secret)
+    return UserOut(id=str(u.id), name=u.name, role=u.role.value, language=u.language, must_change_secret=u.must_change_secret,
+                   tracking_consent=u.tracking_consent_at is not None)
 
 
 def _mask_ident(ident: str) -> str:
