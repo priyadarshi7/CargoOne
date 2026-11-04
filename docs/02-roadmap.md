@@ -56,6 +56,8 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [x] Deterministic decision engine (verified / needs review / retake) — unit-tested rule table (`api/app/pod/decision.py`)
 - [~] Upload endpoint `POST /trips/{id}/pod` runs AI + decision engine and returns the verdict; AI outage parks POD for review; idempotent; image access role-checked + audited. Latency target (<10 s) unmeasured until real Gemini key
 - [~] Cost/latency controls: timeouts, retry on 429/5xx, provider fallback done (live latency 4-7 s per photo on free tier, 6.2 s end-to-end); image-hash caching pending
+- [ ] Real-time result to driver while at the gate (<10 s target), graceful degrade if AI is down (queue as "review")
+- [ ] Cost/latency controls: timeouts, retries, caching by image hash, provider fallback
 - [ ] Evaluation harness: labelled POD image set, accuracy/recall report, regression gate
 - [ ] Never auto-send invoices; image remains source of truth
 
