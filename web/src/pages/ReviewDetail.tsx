@@ -8,6 +8,8 @@ import { api, ApiError, type ReviewItem } from '../lib/api'
 type Form = { lr_no: string; delivery_date: string; quantity_received: string; remarks: string; shortage_or_damage: boolean }
 type Action = 'approve' | 'request_retake' | 'reject'
 
+/** Must match the server (api/app/routers/review.py `_norm`): ignore case, spaces and punctuation. */
+const norm = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, '')
 const str = (v: unknown) => (typeof v === 'string' ? v : '')
 const initial = (it: ReviewItem): Form => {
   const v = { ...it.ai, ...(it.corrected ?? {}) }
@@ -73,7 +75,8 @@ export default function ReviewDetail() {
 
   const field = 'w-full rounded-lg border border-line px-3 py-2 text-sm outline-none focus:border-accent'
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm({ ...form, [k]: v })
-  const lrChanged = form.lr_no !== item.lr_no
+  const lrEmpty = norm(form.lr_no) === ''
+  const lrChanged = !lrEmpty && norm(form.lr_no) !== norm(item.lr_no) // same rule as the server
 
   return (
     <div className="space-y-6">
@@ -100,6 +103,7 @@ export default function ReviewDetail() {
             <p className="text-xs font-medium uppercase tracking-wide text-muted">Check against the photo</p>
             <label className="block space-y-1 text-sm"><span className="text-muted">LR number</span>
               <input className={`${field} ${lrChanged ? 'border-warn' : ''}`} value={form.lr_no} onChange={(e) => set('lr_no', e.target.value)} />
+              {lrEmpty && <span className="text-xs text-warn">LR number could not be read - type it from the photo (trip LR is {item.lr_no}).</span>}
               {lrChanged && <span className="text-xs text-warn">Differs from trip LR {item.lr_no} - approval will be refused.</span>}
             </label>
             <label className="block space-y-1 text-sm"><span className="text-muted">Delivery date</span>
