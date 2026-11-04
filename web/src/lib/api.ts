@@ -38,6 +38,7 @@ export interface User {
   name: string
   role: Role
   language: 'en' | 'hi' | 'mr'
+  must_change_secret?: boolean
 }
 export interface Trip {
   id: string
@@ -126,4 +127,40 @@ export async function download(path: string, fallbackName: string): Promise<void
   const a = Object.assign(document.createElement('a'), { href: url, download: name })
   a.click()
   setTimeout(() => URL.revokeObjectURL(url), 10_000)
+}
+
+export interface Dashboard {
+  window_days: number
+  includes_demo_data: boolean
+  kpis: { within_24h_pct: number | null; pod_to_invoice_days: number | null; lost_pct: number | null; trips_in_window: number; eligible_trips: number }
+  targets: { within_24h_pct: number; pod_to_invoice_days: number; baseline_pod_to_invoice_days: number; lost_pct: number; baseline_lost_pct: number }
+  working_capital: { annual_freight: number; days_saved: number | null; released: number | null; interest_saved_per_year: number | null; interest_rate: number }
+  missing: {
+    total: number; amount: number; at_risk_amount: number
+    buckets: { label: string; count: number }[]
+    by_branch: { branch: string; buckets: { label: string; count: number }[] }[]
+  }
+  pipeline: { awaiting_review: number; ready_to_bill: number; ready_to_bill_amount: number }
+  branches: { branch: string; trips: number; within_24h_pct: number | null; pod_to_invoice_days: number | null; lost_pct: number | null; missing: number; missing_amount: number }[]
+  trend: { week: string; label: string; within_24h_pct: number | null; pod_to_invoice_days: number | null }[]
+  oldest_missing: { trip_code: string; client: string; branch: string; vehicle: string; driver: string | null; age_days: number; freight: number; status: string }[]
+}
+
+export interface ImportIssue { row: number; trip_code: string | null; message: string }
+export interface ImportReport {
+  dry_run: boolean; total: number; created: number; updated: number; unchanged: number; skipped: number
+  errors: ImportIssue[]; warnings: ImportIssue[]; new_clients: string[]; new_branches: string[]; new_vehicles: number
+}
+
+/** Multipart upload with the session token (api() forces a JSON content type, which breaks file uploads). */
+export async function postFile<T>(path: string, file: File): Promise<T> {
+  const token = tokenStore.get()
+  const form = new FormData()
+  form.set('file', file)
+  const res = await fetch(`${BASE}${path}`, { method: 'POST', body: form, headers: token ? { Authorization: `Bearer ${token}` } : {} })
+  if (!res.ok) {
+    const detail = await res.json().then((j) => j.detail).catch(() => res.statusText)
+    throw new ApiError(res.status, typeof detail === 'string' ? detail : 'Upload failed')
+  }
+  return res.json() as Promise<T>
 }

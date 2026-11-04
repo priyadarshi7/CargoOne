@@ -1,5 +1,6 @@
 import { CircleCheck, Clock, Eye, FileCheck2, RotateCcw, XCircle, type LucideIcon } from 'lucide-react'
 import type { PodStatus } from '../lib/api'
+import { useI18n } from '../lib/i18n'
 
 const MAP: Record<PodStatus, { label: string; icon: LucideIcon; cls: string }> = {
   pending: { label: 'Awaiting POD', icon: Clock, cls: 'bg-wash text-muted' },
@@ -12,10 +13,11 @@ const MAP: Record<PodStatus, { label: string; icon: LucideIcon; cls: string }> =
 }
 
 export function StatusBadge({ status }: { status: PodStatus }) {
+  const { t } = useI18n()
   const { label, icon: Icon, cls } = MAP[status]
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${cls}`}>
-      <Icon size={14} aria-hidden /> {label}
+      <Icon size={14} aria-hidden /> {t(`status.${status}`) || label}
     </span>
   )
 }

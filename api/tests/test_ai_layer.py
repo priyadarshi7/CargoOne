@@ -137,3 +137,18 @@ async def test_gemini_does_not_retry_client_errors() -> None:
     with pytest.raises(ProviderError, match="http 400"):
         await _gemini(handler).extract(b"i", "image/png", LR)
     assert len(calls) == 1
+
+
+async def test_mock_scripted_scenario_answers_unlabeled_photos(monkeypatch: pytest.MonkeyPatch) -> None:
+    # A browser re-encodes photos and strips our label; the scripted mode still gives a deterministic answer.
+    import io
+
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.new("RGB", (50, 50), "white").save(buf, "JPEG")  # no label at all
+    plain = buf.getvalue()
+    assert (await MockProvider().extract(plain, "image/jpeg", LR)).is_document is False  # default: unknown photo
+
+    monkeypatch.setattr("app.ai.providers.mock.get_settings", lambda: Settings(mock_scenario="shortage"))
+    ex = await MockProvider().extract(plain, "image/jpeg", LR)
+    assert ex.lr_no == LR and ex.shortage_or_damage is True

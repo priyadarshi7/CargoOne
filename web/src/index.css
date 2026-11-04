@@ -15,6 +15,37 @@
   --color-warn-soft: #fff7ed;
   --color-bad: #b91c1c;
   --color-bad-soft: #fef2f2;
+  --color-surface: #ffffff;
+  --color-on-solid: #ffffff; /* text on solid accent/ok/warn/bad buttons */
+}
+
+/* Chart colours that differ by theme (ordinal blue ramp, one-series line). Light steps are the validated palette. */
+:root {
+  --ramp-0: #86b6ef; --ramp-1: #3987e5; --ramp-2: #1c5cab; --ramp-3: #0d366b;
+  --ramp-ink-0: #0b0b0b; --ramp-ink-1: #ffffff; --ramp-ink-2: #ffffff; --ramp-ink-3: #ffffff;
+  --series: #2a78d6;
+}
+
+/* Dark theme: its own steps, not an inversion. Solid buttons switch to dark text so contrast holds. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-ink: #e6eaf2;
+  --color-muted: #94a3b8;
+  --color-line: #263250;
+  --color-wash: #131c33;
+  --color-surface: #0b1120;
+  --color-accent: #7ba3ff;
+  --color-accent-soft: #16244d;
+  --color-ok: #4ade80;
+  --color-ok-soft: #0f2a1d;
+  --color-warn: #f5a742;
+  --color-warn-soft: #33210d;
+  --color-bad: #f87171;
+  --color-bad-soft: #351517;
+  --color-on-solid: #0b1120;
+  --ramp-0: #b4d3f8; --ramp-1: #6aa6ee; --ramp-2: #3b7fd4; --ramp-3: #2a5cae;
+  --ramp-ink-0: #0b0b0b; --ramp-ink-1: #0b0b0b; --ramp-ink-2: #ffffff; --ramp-ink-3: #ffffff;
+  --series: #6aa6ee;
 }
 
 html,
@@ -25,7 +56,7 @@ body,
 
 body {
   margin: 0;
-  background: #fff;
+  background: var(--color-surface);
   color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
@@ -41,4 +72,14 @@ body {
     animation: none !important;
     transition: none !important;
   }
+}
+
+input, select, textarea {
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+dialog {
+  background: var(--color-surface);
+  color: var(--color-ink);
 }

@@ -72,6 +72,10 @@ class User(Base):
     phone: Mapped[str | None] = mapped_column(String(20), unique=True)
     email: Mapped[str | None] = mapped_column(String(160), unique=True)
     password_hash: Mapped[str | None] = mapped_column(String(255))
+    failed_logins: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    must_change_secret: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")  # set by an office PIN reset
+    token_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")  # bumped on password change: older tokens die
     role: Mapped[Role] = mapped_column(_enum(Role))
     language: Mapped[str] = mapped_column(String(2), default="hi")
     branch_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("branches.id"))
@@ -128,7 +132,8 @@ class Trip(Base):
     delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     pod_status: Mapped[PodStatus] = mapped_column(_enum(PodStatus), default=PodStatus.pending)
     retake_count: Mapped[int] = mapped_column(Integer, default=0)
-    pod_uploaded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    pod_uploaded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # latest upload
+    first_pod_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # first ever upload (24 h KPI)
     verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     invoice_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("invoices.id"))
     invoiced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

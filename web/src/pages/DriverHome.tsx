@@ -1,4 +1,4 @@
-import { Camera, CircleCheck, CloudUpload, LogOut } from 'lucide-react'
+import { Camera, CircleCheck, CloudUpload, KeyRound, LogOut } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { statusIcon } from '../components/StatusBadge'
@@ -24,9 +24,12 @@ export default function DriverHome() {
     <div className="mx-auto flex min-h-full max-w-md flex-col px-5 pb-8 pt-6">
       <header className="flex items-center justify-between">
         <p className="text-lg font-medium">{user?.name}</p>
-        <button onClick={logout} aria-label="Sign out" className="grid h-12 w-12 place-items-center rounded-full text-muted">
-          <LogOut aria-hidden />
-        </button>
+        <div className="flex">
+          <Link to="/driver/pin" aria-label="PIN" className="grid h-12 w-12 place-items-center rounded-full text-muted"><KeyRound aria-hidden /></Link>
+          <button onClick={logout} aria-label="Sign out" className="grid h-12 w-12 place-items-center rounded-full text-muted">
+            <LogOut aria-hidden />
+          </button>
+        </div>
       </header>
 
       {pending > 0 && (
@@ -37,7 +40,7 @@ export default function DriverHome() {
 
       {next ? (
         <Link to={`/driver/trip/${next.id}`}
-          className="mt-6 grid h-48 w-full place-items-center rounded-3xl bg-accent text-white active:scale-[0.98]">
+          className="mt-6 grid h-48 w-full place-items-center rounded-3xl bg-accent text-on-solid active:scale-[0.98]">
           <span className="flex flex-col items-center gap-3 text-xl font-semibold">
             <Camera size={64} aria-hidden /> POD
             <span className="text-base font-normal opacity-90">{next.destination}</span>

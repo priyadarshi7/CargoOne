@@ -102,10 +102,10 @@ function Group({ group, onCreated, onStale }: { group: QueueGroup; onCreated: ()
         </tbody>
       </table>
       <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-5 py-3">
-        <div className="text-sm"><span className="text-muted">{chosen.length} of {group.trips.length} trips · </span><span className="font-semibold tabular-nums">{inr.format(sum)}</span></div>
+        <div className="text-sm"><span className="text-muted">{chosen.length} of {group.trips.length} {group.trips.length === 1 ? 'trip' : 'trips'} · </span><span className="font-semibold tabular-nums">{inr.format(sum)}</span></div>
         {error && <span role="alert" className="text-sm text-bad">{error}</span>}
         <button disabled={busy || chosen.length === 0} onClick={() => void create()}
-          className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+          className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-solid disabled:opacity-50">
           {busy ? 'Creating…' : 'Create invoice'}
         </button>
       </footer>

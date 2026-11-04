@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.routers import auth, billing, pods, review, trips
+from app.routers import auth, billing, client_view, dashboard, drivers, imports, links, pods, review, trips
 
 settings = get_settings()
 app = FastAPI(title="CargoOne API", version="0.1.0")
@@ -15,6 +15,11 @@ app.include_router(trips.router)
 app.include_router(pods.router)
 app.include_router(review.router)
 app.include_router(billing.router)
+app.include_router(dashboard.router)
+app.include_router(links.router)
+app.include_router(imports.router)
+app.include_router(client_view.router)
+app.include_router(drivers.router)
 
 
 @app.get("/health")

@@ -18,20 +18,20 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [~] Design tokens: colour (neutral + one accent #1e40af, green/amber/red semantic) in `web/src/index.css` done; type scale, motion pending
 - [~] Component kit: status badge + shells done; Button, Dialog, Toast, Empty state, Skeleton, Stepper pending
 - [ ] Icon set + illustrations for driver flow (no text dependence)
-- [ ] i18n framework: English / हिंदी / मराठी, language switch, number/date/₹ formatting (Indian grouping)
+- [~] i18n framework (`lib/i18n.tsx`, English fallback, choice remembered, switch in the header). Translated so far: navigation, login, trips table, status badges, review queue. **Still English:** dashboard, billing, import, review detail, dialogs, dates. Wording is a first draft and needs native-speaker review
 - [ ] Accessibility: contrast AA, 64px+ driver targets, focus states, reduced motion
 - [~] Two shells: basic driver home (placeholder POD button + own trips) and office shell (header nav + trips table) done; sidebar, keyboard nav, real capture pending
-- [ ] Dark mode for office shell (optional)
+- [x] Dark mode everywhere (office, driver, public pages): follows the device by default, toggle in the office header (device / light / dark), applied before first paint; own dark colour steps incl. chart ramp
 
 ## Phase 2 — Data, auth, roles (P0)
 - [x] DB schema + migration 0001 + seed from client sample data (fake PII)
 - [ ] Larger realistic demo dataset (≈200 trips across branches/clients/ages) for dashboard demos
 - [~] Auth: office login + driver phone/PIN login with JWT done; OTP/PIN reset, token refresh, login rate-limit pending
 - [~] Roles & permissions: role guard (`require_roles`) done + tested; per-branch scoping pending
-- [ ] Hired-driver tokenised SMS link (trip-scoped, expiring, revocable, rate-limited)
+- [x] Hired-driver tokenised link: trip-scoped, 72 h expiry, revocable, hashed at rest, rate-limited, audited; office creates it from the Trips table and (mock) SMS-es it in Hindi/Marathi/English. **Real SMS provider (DLT templates) pending**
 - [ ] Audit log for every sensitive read/write
-- [ ] Trip import: CSV/XLSX daily upload with LR + e-way bill, validation, dedupe, error report
-- [ ] E-way bill field validation (12 digits) + mock lookup adapter
+- [x] Trip import: CSV/XLSX upload with check-then-import (dry run report), row-numbered errors, idempotent re-import, trips with POD activity never altered, unknown vehicles/branches auto-created, unknown clients only on request; accepts the client's own sample sheet format (incl. "(hired)" vehicles). **Still manual upload: no scheduled/auto feed from Company A's system yet**
+- [~] E-way bill field validation: 12 digits enforced on import; real e-way bill API lookup still pending
 
 ## Phase 3 — Driver capture (P0, the hard part)
 - [x] Driver home: assigned trips, one giant "POD" button (opens the next open trip), big status icons, pending-upload counter
@@ -44,7 +44,7 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [x] Result screens usable by non-readers: green ✓ done · amber ↺ retake (with retakes left) · amber 👁 sent for checking · cloud-off saved offline
 - [~] Voice prompts hi/mr/en via browser TTS + replay button done; **Hindi/Marathi wording needs native-speaker review**, recorded audio pending
 - [x] Retake flow, capped at 2; then auto-routed to human review (server-enforced + DB constraint)
-- [ ] SMS-link capture page (no login, same capture engine, lighter shell)
+- [x] SMS-link capture page `/u/:token`: no login, same capture engine as the driver app (shared `CaptureFlow`), offline queue, voice, clear expired/invalid/already-done screens
 
 ## Phase 4 — AI POD verification (P0)
 - [~] AI provider abstraction layer (Python): interface, registry, config-driven selection, fallback chain, latency logging done; per-provider cost + accuracy logging pending
@@ -56,8 +56,6 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [x] Deterministic decision engine (verified / needs review / retake) — unit-tested rule table (`api/app/pod/decision.py`)
 - [~] Upload endpoint `POST /trips/{id}/pod` runs AI + decision engine and returns the verdict; AI outage parks POD for review; idempotent; image access role-checked + audited. Latency target (<10 s) unmeasured until real Gemini key
 - [~] Cost/latency controls: timeouts, retry on 429/5xx, provider fallback done (live latency 4-7 s per photo on free tier, 6.2 s end-to-end); image-hash caching pending
-- [ ] Real-time result to driver while at the gate (<10 s target), graceful degrade if AI is down (queue as "review")
-- [ ] Cost/latency controls: timeouts, retries, caching by image hash, provider fallback
 - [ ] Evaluation harness: labelled POD image set, accuracy/recall report, regression gate
 - [ ] Never auto-send invoices; image remains source of truth
 
@@ -66,8 +64,8 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [x] Billing queue: verified trips grouped by client and billing-cycle period (weekly Mon-Sun / fortnightly 1-15 & 16-end / monthly, in IST), oldest first, select trips, create draft invoice (one client per invoice, numbered `CO/26-27/00001` from a DB sequence, row-locked against double billing, audited)
 - [x] Invoice PDF with each trip's POD photo attached as an appendix page (no consignee personal data printed). **Draft layout only: GST, company address/bank details and logo still to come**
 - [~] Tally export: Sales-voucher XML + CSV done and unit-tested; **not yet imported into a real Tally** — needs Company A's ledger names / a sample voucher; GST lines, per-trip bill allocation pending
-- [ ] Missing-POD dashboard: trips without POD by age bucket/branch/client, POD-to-invoice days, KPIs vs targets (24h, 18→4 days, 1.5→0.5%)
-- [ ] Client portal link: read-only POD view per trip/invoice, expiring, watermark, access log
+- [x] Missing-POD dashboard: trips without POD by age bucket and branch, oldest-first chase list, KPIs vs the brief's targets (24 h share, POD-to-invoice days, lost/disputed %), branch comparison, weekly trends, pipeline counts (`/office`, ops head + MD). Metrics are a pure, unit-tested module (`api/app/dashboard/metrics.py`)
+- [x] Client POD view link (per trip): read-only, expiring (30 days), revocable, access log in the office dialog, no amounts/consignee data. Still pending: per-invoice link, watermark, client login portal
 - [ ] Notifications (mock SMS/WhatsApp/email adapters): reminders to drivers, alerts to ops on aged missing PODs
 
 ## Phase 5b — Role journeys, end to end (P0/P1)
@@ -79,15 +77,15 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 | Billing executive | Review queue → fix fields → approve → billing queue by client/cycle → invoice + POD pack → Tally export |
 | Managing Director | Read-only executive dashboard: working capital released (₹), POD-to-invoice days vs 18→4 target, % PODs within 24h vs 80%, lost/disputed rate vs 1.5→0.5%, ₹ at risk, branch league table, weekly digest email/PDF |
 | Client (external) | Expiring link → view POD images for their trips (no login) |
-- [ ] Add `md` (executive, read-only) role; ROI panel computes savings from live data using the brief's formula
+- [x] `md` role with read-only executive dashboard; ROI panel uses the brief's own formula (reproduced exactly in a test: Rs 3.24 crore / Rs 38.9 lakh). MD digest PDF is downloadable from the dashboard (`/dashboard/digest.pdf`); scheduled email delivery still pending (needs an email provider)
 - [ ] Ops head role distinct from billing: assignment, escalation, dispute workflow
 
 ## Phase 6 — Privacy, security, quality (P0/P1, continuous)
 - [ ] DPDP Act 2023: data inventory, consent/notice text, purpose limitation, retention & auto-delete, access/erasure workflow
 - [ ] Private image storage, signed short-lived URLs, no PII in logs, encryption at rest/in transit
 - [ ] Input validation everywhere, rate limiting, upload type/size checks, CSRF/CORS, security headers
-- [~] Unit tests (decision, compression, queue) and API+DB integration tests done — tests use their own `cargoone_test` database; Playwright E2E pending
-- [ ] Offline test matrix (airplane mode, flaky 2G throttling, low-storage)
+- [x] Unit tests (decision, compression, queue), API+DB integration tests (own `cargoone_test` DB) and **Playwright E2E (14 tests, desktop + Pixel 7 driver)**: login/roles, driver capture online + offline-then-sync, review → bill → PDF/Tally download, dashboards; runs in CI
+- [~] Offline test matrix: offline capture → saved → auto-upload on reconnect covered in E2E; flaky-2G throttling and low-storage cases pending
 - [ ] Performance budget for low-end Android (bundle size, LCP, memory)
 - [ ] Error monitoring + structured logging (free-tier tooling)
 
