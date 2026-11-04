@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     database_url: str = "postgresql+asyncpg://cargoone:cargoone@localhost:5432/cargoone"
-    jwt_secret: str = "dev-only-change-me"
+    jwt_secret: str = "dev-only-insecure-secret-change-me-in-env-0123"
     web_origin: str = "http://localhost:5173"
     storage_dir: str = "./storage"
     ai_provider: str = "mock"  # mock | gemini | anthropic | openai | local
