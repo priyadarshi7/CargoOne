@@ -1,10 +1,22 @@
 import { ListChecks, LogOut, Truck } from 'lucide-react'
 import { Link, NavLink } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { api, type ReviewItem } from '../lib/api'
+
+function useReviewCount(enabled: boolean): number {
+  const [n, setN] = useState(0)
+  useEffect(() => {
+    if (!enabled) return
+    api<ReviewItem[]>('/review').then((r) => setN(r.length)).catch(() => undefined)
+  }, [enabled])
+  return n
+}
 
 export function OfficeShell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth()
+  const canReview = user?.role === 'billing' || user?.role === 'ops' || user?.role === 'admin'
+  const reviewCount = useReviewCount(canReview)
   const link = ({ isActive }: { isActive: boolean }) =>
     `rounded-md px-3 py-1.5 text-sm ${isActive ? 'bg-accent-soft font-medium text-accent' : 'text-muted hover:text-ink'}`
   return (
@@ -16,6 +28,11 @@ export function OfficeShell({ children }: { children: ReactNode }) {
           </Link>
           <nav className="flex gap-1">
             <NavLink to="/office" end className={link}>Trips</NavLink>
+            {canReview && (
+              <NavLink to="/office/review" className={link}>
+                Review{reviewCount > 0 && <span className="ml-1.5 rounded-full bg-warn-soft px-1.5 text-xs text-warn">{reviewCount}</span>}
+              </NavLink>
+            )}
             <NavLink to="/progress" className={link}>Build progress</NavLink>
           </nav>
           <div className="ml-auto flex items-center gap-3 text-sm">

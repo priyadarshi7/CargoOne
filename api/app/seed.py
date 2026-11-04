@@ -5,15 +5,19 @@ Dev logins: ops@cargoone.dev / billing@cargoone.dev / md@cargoone.dev / admin@ca
             driver phone 9000000001 (PIN 1234)
 """
 import asyncio
+import uuid
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.ai.providers.mock import MockProvider
 from app.db import SessionLocal
-from app.models import Branch, Client, PodStatus, Role, Trip, User, Vehicle
+from app.devtools.synthetic_pod import SCENARIOS, render
+from app.models import Branch, Client, PodStatus, PodSubmission, Role, Trip, User, Vehicle
 from app.security import hash_secret
+from app.storage import get_storage
 
 DEV_PASSWORD = "cargoone-dev"
 
@@ -67,6 +71,26 @@ async def seed(session: AsyncSession) -> None:
             consignee_name="Demo Consignee Pvt Ltd", consignee_phone="9000000099",  # fake
             pod_status=status, retake_count=retakes, delivered_at=now - timedelta(days=days_ago),
         )
+    await session.flush()
+
+    # A synthetic photo per sample trip so the review queue / viewer have something real to show.
+    samples = {"TRP-66120": ("clean", []), "TRP-66134": ("no_stamp", ["stamp_missing"]),
+               "TRP-66141": ("shortage", ["shortage_or_damage"])}
+    for code, (scenario, reasons) in samples.items():
+        trip = await session.scalar(select(Trip).where(Trip.trip_code == code))
+        if await session.scalar(select(PodSubmission.id).where(PodSubmission.trip_id == trip.id)):
+            continue
+        png = render(SCENARIOS[scenario], trip.lr_no, seed=1)
+        extraction = await MockProvider().extract(png, "image/png", trip.lr_no)
+        sub_id = uuid.uuid4()
+        key = f"pods/{trip.id}/{sub_id}.png"
+        await get_storage().put(key, png)
+        session.add(PodSubmission(
+            id=sub_id, trip_id=trip.id, attempt=1, storage_key=key, size_bytes=len(png),
+            captured_at=trip.delivered_at, lat=19.8762, lng=75.3433, client_upload_id=f"seed-{code}",
+            ai_provider="mock", ai_result={**extraction.model_dump(), "_voice": "review"},
+            ai_confidence=extraction.confidence, decision=trip.pod_status, decision_reasons=reasons,
+        ))
     await session.commit()
 
 

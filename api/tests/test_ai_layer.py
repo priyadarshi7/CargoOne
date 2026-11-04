@@ -64,7 +64,7 @@ def test_unknown_provider_is_a_config_error() -> None:
 
 
 def _gemini(handler) -> GeminiProvider:
-    return GeminiProvider("test-key", "gemini-test", transport=httpx.MockTransport(handler))
+    return GeminiProvider("test-key", "gemini-test", transport=httpx.MockTransport(handler), backoff_s=(0, 0))
 
 
 async def test_gemini_parses_structured_output_and_sends_key_in_header() -> None:
@@ -97,3 +97,43 @@ async def test_gemini_failures_become_provider_errors(response: httpx.Response) 
 async def test_gemini_without_key_fails_cleanly() -> None:
     with pytest.raises(ProviderError, match="not configured"):
         await GeminiProvider("", "m").extract(b"i", "image/png", LR)
+
+
+_OK = {"candidates": [{"content": {"parts": [{"text": json.dumps({
+    "is_document": True, "readable": True, "lr_no": LR, "consignee_stamp_present": True,
+    "signature_present": True, "delivery_date": "2026-11-03", "shortage_or_damage": False, "confidence": 0.9})}]}}]}
+
+
+async def test_gemini_retries_transient_overload_then_succeeds() -> None:
+    calls = []
+
+    def handler(_req: httpx.Request) -> httpx.Response:
+        calls.append(1)
+        return httpx.Response(503) if len(calls) < 3 else httpx.Response(200, json=_OK)
+
+    assert (await _gemini(handler).extract(b"i", "image/png", LR)).lr_no == LR
+    assert len(calls) == 3
+
+
+async def test_gemini_gives_up_after_retries_and_reports_status_code_only() -> None:
+    calls = []
+
+    def handler(_req: httpx.Request) -> httpx.Response:
+        calls.append(1)
+        return httpx.Response(503, text="secret document text")
+
+    with pytest.raises(ProviderError, match="gemini http 503") as e:
+        await _gemini(handler).extract(b"i", "image/png", LR)
+    assert len(calls) == 3 and "secret" not in str(e.value)
+
+
+async def test_gemini_does_not_retry_client_errors() -> None:
+    calls = []
+
+    def handler(_req: httpx.Request) -> httpx.Response:
+        calls.append(1)
+        return httpx.Response(400)
+
+    with pytest.raises(ProviderError, match="http 400"):
+        await _gemini(handler).extract(b"i", "image/png", LR)
+    assert len(calls) == 1

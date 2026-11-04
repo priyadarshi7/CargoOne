@@ -25,3 +25,8 @@ Status: Accepted unless noted. Newest decisions go at the bottom; supersede rath
 | 20 | Driver sees a trip as "not found" (404) if it is not theirs; POD upload idempotent on `client_upload_id` | No existence leak; offline retries are safe. |
 | 21 | Native camera app via `<input capture>` instead of getUserMedia (for now) | Works on every cheap Android/WebView, handles focus/flash natively; in-app camera + framing guide is a later enhancement. |
 | 22 | Offline queue id == server idempotency key; FIFO with strictly increasing stamps | Retries never double-submit or double-count a retake. |
+| 23 | Tests run against a separate `<db>_test` database, created + migrated automatically | Test runs were leaving junk trips in the dev DB used for demos. |
+| 24 | Reviewer corrections stored in `corrected_fields` beside untouched `ai_result`; approve requires LR to match the trip and a delivery date | Image/AI output stays auditable; a wrong-document POD cannot be approved by typo. |
+| 25 | Gemini provider retries 429/5xx twice (0.7 s, 1.8 s) then fails over; errors carry the HTTP status only | Live testing hit transient 503/429s on the free tier; response bodies can echo document text (PII). |
+| 26 | Tests force `AI_PROVIDER=mock` and an empty key regardless of `.env` | Real keys must never make tests slow, flaky, or send images to a third party. |
+| 27 | Settings read repo-root `.env` and `api/.env` (latter wins) | Developers put the file in either place. |

@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=("../.env", ".env"), extra="ignore")  # repo-root .env, then api/.env overrides
 
     database_url: str = "postgresql+asyncpg://cargoone:cargoone@localhost:5432/cargoone"
     jwt_secret: str = "dev-only-insecure-secret-change-me-in-env-0123"
