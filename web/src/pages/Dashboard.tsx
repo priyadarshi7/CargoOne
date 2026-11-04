@@ -1,8 +1,8 @@
-import { CircleCheck, TriangleAlert } from 'lucide-react'
+import { CircleCheck, FileDown, TriangleAlert } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { LineChart, StackedBars } from '../components/charts'
-import { api, type Dashboard as Data } from '../lib/api'
+import { api, download, type Dashboard as Data } from '../lib/api'
 import { useAuth } from '../lib/auth'
 
 const inr = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })
@@ -60,8 +60,14 @@ export default function Dashboard() {
           <h1 className="text-2xl font-semibold">{user?.role === 'md' ? 'Business overview' : 'Operations'}</h1>
           <p className="text-sm text-muted">Trips delivered in the last {d.window_days} days · {k.trips_in_window} trips</p>
         </div>
-        <div className="flex gap-1" role="group" aria-label="Time window">
-          {[30, 90].map((v) => <button key={v} className={seg(v)} onClick={() => setDays(v)} aria-pressed={days === v}>Last {v} days</button>)}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex gap-1" role="group" aria-label="Time window">
+            {[30, 90].map((v) => <button key={v} className={seg(v)} onClick={() => setDays(v)} aria-pressed={days === v}>Last {v} days</button>)}
+          </div>
+          <button onClick={() => void download(`/dashboard/digest.pdf?days=${days}`, 'cargoone-digest.pdf')}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-sm hover:border-accent hover:text-accent">
+            <FileDown size={16} aria-hidden /> Download digest
+          </button>
         </div>
       </div>
 

@@ -37,3 +37,11 @@ test('the public progress page renders the roadmap', async ({ page }) => {
   await expect(page.getByRole('progressbar')).toBeVisible()
   await shot(page, 'progress')
 })
+
+test('the MD downloads the weekly digest as a PDF', async ({ page }) => {
+  await login(page, 'md@cargoone.dev')
+  const [file] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download digest' }).click()])
+  expect(file.suggestedFilename()).toMatch(/^cargoone-digest-\d{4}-\d{2}-\d{2}\.pdf$/)
+  const path = await file.path()
+  expect((await import('node:fs')).readFileSync(path).subarray(0, 4).toString()).toBe('%PDF')
+})

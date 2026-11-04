@@ -77,7 +77,7 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 | Billing executive | Review queue → fix fields → approve → billing queue by client/cycle → invoice + POD pack → Tally export |
 | Managing Director | Read-only executive dashboard: working capital released (₹), POD-to-invoice days vs 18→4 target, % PODs within 24h vs 80%, lost/disputed rate vs 1.5→0.5%, ₹ at risk, branch league table, weekly digest email/PDF |
 | Client (external) | Expiring link → view POD images for their trips (no login) |
-- [x] `md` role with read-only executive dashboard; ROI panel uses the brief's own formula (reproduced exactly in a test: Rs 3.24 crore / Rs 38.9 lakh). Weekly MD digest email/PDF still pending
+- [x] `md` role with read-only executive dashboard; ROI panel uses the brief's own formula (reproduced exactly in a test: Rs 3.24 crore / Rs 38.9 lakh). MD digest PDF is downloadable from the dashboard (`/dashboard/digest.pdf`); scheduled email delivery still pending (needs an email provider)
 - [ ] Ops head role distinct from billing: assignment, escalation, dispute workflow
 
 ## Phase 6 — Privacy, security, quality (P0/P1, continuous)
