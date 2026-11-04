@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { StatusBadge } from '../components/StatusBadge'
+import { ClientLinkDialog } from '../components/ClientLinkDialog'
 import { UploadLinkDialog } from '../components/UploadLinkDialog'
 import { api, type Trip } from '../lib/api'
 import { useAuth } from '../lib/auth'
@@ -12,6 +13,7 @@ export default function OfficeTrips() {
   const { user } = useAuth()
   const canSendLink = user?.role === 'ops' || user?.role === 'billing' || user?.role === 'admin'
   const [linkFor, setLinkFor] = useState<Trip | null>(null)
+  const [shareFor, setShareFor] = useState<Trip | null>(null)
   const [trips, setTrips] = useState<Trip[] | null>(null)
   const [error, setError] = useState(false)
 
@@ -67,6 +69,11 @@ export default function OfficeTrips() {
                         {t.is_hired ? 'Send link' : 'Link'}
                       </button>
                     )}
+                    {(t.pod_status === 'verified' || t.pod_status === 'billed') && (
+                      <button onClick={() => setShareFor(t)} className="rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium hover:border-accent hover:text-accent">
+                        Share
+                      </button>
+                    )}
                   </td>
                 )}
               </tr>
@@ -75,6 +82,7 @@ export default function OfficeTrips() {
         </table>
       </div>
       {linkFor && <UploadLinkDialog trip={linkFor} onClose={() => setLinkFor(null)} />}
+      {shareFor && <ClientLinkDialog trip={shareFor} onClose={() => setShareFor(null)} />}
     </div>
   )
 }

@@ -12,6 +12,7 @@ import Login from './pages/Login'
 import OfficeTrips from './pages/OfficeTrips'
 import ReviewDetail from './pages/ReviewDetail'
 import ReviewList from './pages/ReviewList'
+import ClientPod from './pages/ClientPod'
 import SmsCapture from './pages/SmsCapture'
 import Progress from './pages/Progress'
 
@@ -45,6 +46,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/progress" element={<Progress />} />
           <Route path="/u/:token" element={<SmsCapture />} />
+          <Route path="/v/:token" element={<ClientPod />} />
           <Route path="/driver" element={<Guard roles={['driver']}><DriverHome /></Guard>} />
           <Route path="/driver/trip/:id" element={<Guard roles={['driver']}><Capture /></Guard>} />
           <Route path="/office" element={<Guard roles={['ops', 'billing', 'md']}><OfficeHome /></Guard>} />

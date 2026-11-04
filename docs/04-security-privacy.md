@@ -18,6 +18,7 @@ This is an engineering record, not legal advice - the DPDP Act 2023 obligations 
 - **Passwords/PINs**: Argon2 hashes. Login errors do not reveal whether an account exists.
 - **Images**: private storage only, served through role-checked endpoints with `Cache-Control: private, no-store`; stored bytes are never modified; validated by decoding, 300 KB / 25 MP limits; path-traversal guard.
 - **No PII in lists, dashboards, logs, error messages or AI-provider errors** (status codes only).
+- **Client view links** (`/v/<token>`): same token model, read-only, verified PODs only, shows LR/vehicle/route/date + the signed receipt photo (no freight, no consignee name/phone), 30-day expiry, opens are audit-logged (no IP stored).
 - **Tokenised SMS upload links**: 256-bit random, only the SHA-256 is stored, scoped to one trip + one purpose, expire (72 h), revoked when a new link is issued or by the office, rate-limited (guessing throttle on unknown tokens only, per-link photo cap), public page shows destination + vehicle only.
 - **Audit log** for uploads, image views, review decisions, invoices/exports, link creation/revocation.
 - **Safety rails**: demo seed and demo data refuse to run outside dev/test; non-dev refuses to start with the default/short JWT secret; tests use their own database and never call a real AI.
