@@ -24,7 +24,7 @@ export default function Login() {
       const u = await login(identifier, secret)
       nav(homeFor(u.role), { replace: true })
     } catch (err) {
-      setError(err instanceof ApiError && err.status === 401 ? t('login.wrong') : t('login.offline'))
+      setError(err instanceof ApiError ? (err.status === 401 ? t('login.wrong') : err.status === 429 ? err.message : t('login.offline')) : t('login.offline'))
     } finally {
       setBusy(false)
     }

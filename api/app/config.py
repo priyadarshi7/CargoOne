@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     app_base_url: str = "http://localhost:5173"  # public web address used in SMS links
     upload_link_ttl_hours: int = 72
     client_link_ttl_days: int = 30
+    login_max_failures: int = 5
+    login_lock_minutes: int = 15
     default_origin: str = "Chhatrapati Sambhajinagar"  # used when an import row has no origin
     company_name: str = "Company A (demo)"  # printed on invoices
     invoice_prefix: str = "CO"

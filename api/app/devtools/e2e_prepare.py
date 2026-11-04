@@ -36,7 +36,7 @@ async def _recreate(name: str, admin: str) -> None:
 
 async def _seed() -> None:
     from app.db import SessionLocal
-    from app.models import Client, PodStatus, Trip, User, Vehicle
+    from app.models import Client, PodStatus, Role, Trip, User, Vehicle
     from app.seed import seed
 
     async with SessionLocal() as s:
@@ -53,6 +53,11 @@ async def _seed() -> None:
         s.add(Trip(trip_code="TRP-E2E-HIRED", client_id=client.id, vehicle_id=hired.id, driver_id=None, branch_id=driver.branch_id,
                    lr_no="LR-E2E003", eway_bill_no="341000000098", origin="Chhatrapati Sambhajinagar", destination="Latur",
                    freight_amount=Decimal(19000), pod_status=PodStatus.pending))
+        # throw-away accounts for the password-change and lockout browser tests (the shared dev users must stay usable)
+        from app.security import hash_secret
+
+        for email in ('pwchange@cargoone.dev', 'locktest@cargoone.dev'):
+            s.add(User(name=email.split('@')[0], email=email, role=Role.ops, password_hash=hash_secret('cargoone-dev'), language='en'))
         await s.commit()
 
 

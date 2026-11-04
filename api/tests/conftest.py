@@ -82,8 +82,13 @@ async def driver(client: AsyncClient) -> dict[str, str]:
 
 @pytest.fixture(autouse=True)
 def _reset_rate_limits() -> Iterator[None]:
+    from app.routers.auth import ident_failures, ip_failures
+    from app.routers.client_view import bad_token_limiter as client_limiter
     from app.routers.links import bad_token_limiter, upload_limiter
 
     bad_token_limiter.reset()
     upload_limiter.reset()
+    client_limiter.reset()
+    ip_failures.reset()
+    ident_failures.reset()
     yield

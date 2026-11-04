@@ -47,7 +47,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
               className="rounded-md border border-line bg-white px-1.5 py-1 text-sm text-muted">
               {LANGUAGES.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
             </select>
-            <span className="hidden text-muted sm:inline">{user?.name} · {user?.role}</span>
+            <Link to="/office/account" className="hidden text-muted hover:text-ink sm:inline" title="Account" aria-label="Account">{user?.name} · {user?.role}</Link>
             <button onClick={logout} className="flex items-center gap-1.5 text-muted hover:text-ink" aria-label="Sign out">
               <LogOut size={16} aria-hidden /> <span className="hidden sm:inline">{t('shell.signOut')}</span>
             </button>

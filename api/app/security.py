@@ -38,7 +38,7 @@ def verify_secret(secret: str, hashed: str | None) -> bool:
 
 def create_token(user: User) -> str:
     now = datetime.now(UTC)
-    payload = {"sub": str(user.id), "role": user.role.value, "iat": now, "exp": now + TOKEN_TTL}
+    payload = {"sub": str(user.id), "role": user.role.value, "ver": user.token_version, "iat": now, "exp": now + TOKEN_TTL}
     return jwt.encode(payload, get_settings().jwt_secret, algorithm="HS256")
 
 
@@ -56,6 +56,8 @@ async def current_user(
         raise unauthorised from None
     if user is None:
         raise unauthorised
+    if claims.get("ver", 0) != user.token_version:
+        raise unauthorised  # signed in before the password/PIN was changed
     return user
 
 

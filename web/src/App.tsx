@@ -13,6 +13,7 @@ import Login from './pages/Login'
 import OfficeTrips from './pages/OfficeTrips'
 import ReviewDetail from './pages/ReviewDetail'
 import ReviewList from './pages/ReviewList'
+import Account from './pages/Account'
 import ClientPod from './pages/ClientPod'
 import SmsCapture from './pages/SmsCapture'
 import Progress from './pages/Progress'
@@ -53,6 +54,7 @@ export default function App() {
           <Route path="/driver/trip/:id" element={<Guard roles={['driver']}><Capture /></Guard>} />
           <Route path="/office" element={<Guard roles={['ops', 'billing', 'md']}><OfficeHome /></Guard>} />
           <Route path="/office/trips" element={<Guard roles={['ops', 'billing', 'md']}><OfficeShell><OfficeTrips /></OfficeShell></Guard>} />
+          <Route path="/office/account" element={<Guard roles={['ops', 'billing', 'md']}><OfficeShell><Account /></OfficeShell></Guard>} />
           <Route path="/office/import" element={<Guard roles={['ops', 'billing']}><OfficeShell><ImportTrips /></OfficeShell></Guard>} />
           <Route path="/office/billing" element={<Guard roles={['ops', 'billing']}><OfficeShell><Billing /></OfficeShell></Guard>} />
           <Route path="/office/review" element={<Guard roles={['ops', 'billing']}><OfficeShell><ReviewList /></OfficeShell></Guard>} />
