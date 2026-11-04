@@ -1,13 +1,14 @@
 """SQLAlchemy 2.0 models. Consignee name/phone are personal data (DPDP Act 2023)."""
 import enum
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import (
     BigInteger,
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     Enum,
     Float,
@@ -105,6 +106,20 @@ class User(Base):
     role: Mapped[Role] = mapped_column(_enum(Role))
     language: Mapped[str] = mapped_column(String(2), default="hi")
     branch_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("branches.id"))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")  # false = left the company: cannot sign in, not offered for planning
+    vendor_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("vendors.id"))  # set for a hired driver
+    created_at: Mapped[datetime] = now()
+
+
+class Vendor(Base):
+    """A transporter we hire trucks (and their drivers) from."""
+    __tablename__ = "vendors"
+    id: Mapped[uuid.UUID] = pk()
+    name: Mapped[str] = mapped_column(String(160), unique=True)
+    contact_name: Mapped[str | None] = mapped_column(String(120))
+    phone: Mapped[str | None] = mapped_column(String(20))
+    notes: Mapped[str | None] = mapped_column(String(300))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     created_at: Mapped[datetime] = now()
 
 
@@ -115,6 +130,9 @@ class Client(Base):
     segment: Mapped[str | None] = mapped_column(String(60))
     billing_cycle: Mapped[str] = mapped_column(String(16), default="weekly")
     tally_ledger: Mapped[str | None] = mapped_column(String(160))
+    contact_name: Mapped[str | None] = mapped_column(String(120))
+    contact_phone: Mapped[str | None] = mapped_column(String(20))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
 
 
 class Vehicle(Base):
@@ -122,6 +140,13 @@ class Vehicle(Base):
     id: Mapped[uuid.UUID] = pk()
     reg_no: Mapped[str] = mapped_column(String(20), unique=True)
     is_hired: Mapped[bool] = mapped_column(Boolean, default=False)
+    vendor_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("vendors.id"))  # who we hired it from
+    vehicle_type: Mapped[str | None] = mapped_column(String(40))
+    capacity_tonnes: Mapped[Decimal | None] = mapped_column(Numeric(5, 1))
+    insurance_expiry: Mapped[date | None] = mapped_column(Date)
+    fitness_expiry: Mapped[date | None] = mapped_column(Date)
+    permit_expiry: Mapped[date | None] = mapped_column(Date)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
 
 
 class Invoice(Base):

@@ -72,7 +72,7 @@ async def login(body: LoginIn, request: Request, session: Annotated[AsyncSession
     if user and user.locked_until and user.locked_until > now:
         raise _too_many(math.ceil((user.locked_until - now).total_seconds() / 60))
 
-    ok = verify_secret(body.secret, user.password_hash if user else _DUMMY_HASH) and user is not None
+    ok = verify_secret(body.secret, user.password_hash if user else _DUMMY_HASH) and user is not None and user.is_active
     if not ok:
         ip_failures.record(ip)
         ident_failures.record(ident)

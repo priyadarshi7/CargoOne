@@ -4,15 +4,15 @@ import { login, shot } from './helpers'
 test('office resets a forgotten driver PIN; the driver must choose a new one, then signs in with it', async ({ page }) => {
   // --- office
   await login(page, 'ops@cargoone.dev')
-  await page.getByRole('link', { name: 'Drivers' }).click()
+  await page.getByRole('link', { name: 'Setup' }).click()
   const row = page.locator('tr', { hasText: 'PIN Test Driver' })
   await row.getByRole('button', { name: 'Reset PIN' }).click()
   await shot(page, 'drivers-reset-confirm')
-  await page.getByRole('dialog', { name: 'Reset PIN' }).getByRole('button', { name: 'Reset PIN' }).click()
-  const pin = (await page.getByLabel('Temporary PIN digits').textContent())!.trim()
+  await page.getByRole('dialog').getByRole('button', { name: 'Reset PIN' }).click()
+  const pin = (await page.getByLabel('One-time secret').textContent())!.trim()
   expect(pin).toMatch(/^\d{6}$/)
   await shot(page, 'drivers-temporary-pin')
-  await page.getByRole('button', { name: 'Close' }).click()
+  await page.getByRole('button', { name: 'Close' }).last().click()
   await expect(row).toContainText('temporary PIN')
   await page.getByRole('button', { name: 'Sign out' }).click()
 

@@ -37,7 +37,7 @@ test('the main office screens are legible in dark mode', async ({ page }) => {
   await page.getByRole('link', { name: 'Import' }).click()
   await page.waitForLoadState('networkidle')
   await shot(page, 'dark-import')
-  await page.getByRole('link', { name: 'Drivers' }).click()
+  await page.getByRole('link', { name: 'Setup' }).click()
   await page.waitForLoadState('networkidle')
   await shot(page, 'dark-drivers')
 })

@@ -46,7 +46,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
             <NavLink to="/office/expenses" className={link}>{t('nav.expenses')}</NavLink>
             {(user?.role === 'ops' || user?.role === 'md' || user?.role === 'admin') && <NavLink to="/office/live" className={link}>{t('nav.live')}</NavLink>}
             {canReview && <NavLink to="/office/planning" className={link}>{t('nav.planning')}</NavLink>}
-            {canReview && <NavLink to="/office/drivers" className={link}>{t('nav.drivers')}</NavLink>}
+            {canReview && <NavLink to="/office/setup" className={link}>{t('nav.setup')}</NavLink>}
             {canReview && <NavLink to="/office/import" className={link}>{t('nav.import')}</NavLink>}
           </nav>
           <div className="ml-auto flex items-center gap-3 text-sm">

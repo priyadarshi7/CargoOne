@@ -6,20 +6,22 @@ office, so it can never stay). The PIN is returned once and never stored in clea
 import secrets
 import uuid
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth_policy import check_secret
 from app.db import get_session
-from app.models import AuditLog, Branch, Role, User
+from app.models import AuditLog, Branch, Role, Trip, TripState, User, Vendor
+from app.phones import clean_phone
 from app.security import hash_secret, require_roles
 
 router = APIRouter(prefix="/drivers", tags=["drivers"])
 Office = Annotated[User, Depends(require_roles(Role.ops, Role.billing))]
+Manager = Annotated[User, Depends(require_roles(Role.ops))]  # adding/removing people is the ops head's job (admin always allowed)
 Session = Annotated[AsyncSession, Depends(get_session)]
 
 
@@ -27,9 +29,34 @@ class DriverOut(BaseModel):
     id: str
     name: str
     phone: str | None
+    language: str
     branch: str | None
+    vendor_id: str | None
+    vendor: str | None
+    is_active: bool
     locked: bool
     must_change_pin: bool
+
+
+class DriverIn(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    phone: str
+    language: Literal["en", "hi", "mr"] = "hi"
+    vendor_id: uuid.UUID | None = None  # set for a hired driver
+
+
+class DriverPatch(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=120)
+    phone: str | None = None
+    language: Literal["en", "hi", "mr"] | None = None
+    vendor_id: uuid.UUID | None = None
+    clear_vendor: bool = False
+    is_active: bool | None = None
+
+
+class CreatedOut(BaseModel):
+    driver: DriverOut
+    pin: str
 
 
 class ResetOut(BaseModel):
@@ -43,14 +70,90 @@ def temporary_pin() -> str:
             return pin
 
 
+def _out(u: User, vendor: str | None, branch: str | None = None) -> DriverOut:
+    now = datetime.now(UTC)
+    return DriverOut(id=str(u.id), name=u.name, phone=u.phone, language=u.language, branch=branch, vendor_id=str(u.vendor_id) if u.vendor_id else None,
+                     vendor=vendor, is_active=u.is_active, locked=bool(u.locked_until and u.locked_until > now), must_change_pin=u.must_change_secret)
+
+
+async def _row(session: AsyncSession, u: User) -> DriverOut:
+    vendor = await session.scalar(select(Vendor.name).where(Vendor.id == u.vendor_id)) if u.vendor_id else None
+    return _out(u, vendor)
+
+
 @router.get("", response_model=list[DriverOut])
 async def list_drivers(_: Office, session: Session) -> list[DriverOut]:
     rows = (await session.execute(
-        select(User, Branch.name).outerjoin(Branch, Branch.id == User.branch_id).where(User.role == Role.driver).order_by(User.name)
+        select(User, Branch.name, Vendor.name).outerjoin(Branch, Branch.id == User.branch_id).outerjoin(Vendor, Vendor.id == User.vendor_id)
+        .where(User.role == Role.driver).order_by(User.is_active.desc(), User.name)
     )).all()
-    now = datetime.now(UTC)
-    return [DriverOut(id=str(u.id), name=u.name, phone=u.phone, branch=b, locked=bool(u.locked_until and u.locked_until > now),
-                      must_change_pin=u.must_change_secret) for u, b in rows]
+    return [_out(u, v, b) for u, b, v in rows]
+
+
+async def _vendor_ok(session: AsyncSession, vendor_id: uuid.UUID | None) -> None:
+    if vendor_id is not None and await session.get(Vendor, vendor_id) is None:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Unknown vendor")
+
+
+async def _phone_free(session: AsyncSession, phone: str, *, except_id: uuid.UUID | None = None) -> None:
+    other = await session.scalar(select(User.id).where(User.phone == phone))
+    if other is not None and other != except_id:
+        raise HTTPException(status.HTTP_409_CONFLICT, "That phone number already belongs to another user")
+
+
+@router.post("", response_model=CreatedOut, status_code=status.HTTP_201_CREATED)
+async def create_driver(body: DriverIn, actor: Manager, session: Session) -> CreatedOut:
+    """Register a driver by mobile number. They sign in with that number and a one-time PIN the office reads out, then choose their own."""
+    phone = clean_phone(body.phone)
+    await _phone_free(session, phone)
+    await _vendor_ok(session, body.vendor_id)
+    pin = temporary_pin()
+    driver = User(name=body.name.strip(), phone=phone, role=Role.driver, language=body.language, vendor_id=body.vendor_id,
+                  password_hash=hash_secret(pin), must_change_secret=True)
+    session.add(driver)
+    await session.flush()
+    session.add(AuditLog(actor_id=actor.id, action="driver.create", entity="user", entity_id=str(driver.id), meta={"hired": body.vendor_id is not None}))
+    await session.commit()
+    return CreatedOut(driver=await _row(session, driver), pin=pin)
+
+
+@router.patch("/{driver_id}", response_model=DriverOut)
+async def update_driver(driver_id: uuid.UUID, body: DriverPatch, actor: Manager, session: Session) -> DriverOut:
+    driver = await session.get(User, driver_id)
+    if driver is None or driver.role != Role.driver:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Driver not found")
+    changed: list[str] = []
+    if body.name is not None:
+        driver.name = body.name.strip()
+        changed.append("name")
+    if body.phone is not None:
+        phone = clean_phone(body.phone)
+        if phone != driver.phone:
+            await _phone_free(session, phone, except_id=driver.id)
+            driver.phone = phone
+            driver.token_version += 1  # the identity they sign in with changed: old sessions end
+            changed.append("phone")
+    if body.language is not None:
+        driver.language = body.language
+        changed.append("language")
+    if body.clear_vendor:
+        driver.vendor_id = None
+        changed.append("vendor")
+    elif body.vendor_id is not None:
+        await _vendor_ok(session, body.vendor_id)
+        driver.vendor_id = body.vendor_id
+        changed.append("vendor")
+    if body.is_active is not None and body.is_active != driver.is_active:
+        if not body.is_active:
+            busy = await session.scalar(select(Trip.trip_code).where(Trip.driver_id == driver.id, Trip.state.in_([TripState.planned, TripState.in_transit])).limit(1))
+            if busy:
+                raise HTTPException(status.HTTP_409_CONFLICT, f"Still on trip {busy}. Reassign or finish it first.")
+            driver.token_version += 1  # signs them out now
+        driver.is_active = body.is_active
+        changed.append("activated" if body.is_active else "deactivated")
+    session.add(AuditLog(actor_id=actor.id, action="driver.update", entity="user", entity_id=str(driver.id), meta={"changed": changed}))
+    await session.commit()
+    return await _row(session, driver)
 
 
 @router.post("/{driver_id}/reset-pin", response_model=ResetOut)

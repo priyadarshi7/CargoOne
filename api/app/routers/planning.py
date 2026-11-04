@@ -129,9 +129,9 @@ async def _check_people(session: AsyncSession, vehicle_id: uuid.UUID, driver_id:
 @router.get("/refs", response_model=Refs)
 async def refs(_: Viewer, session: Session) -> Refs:
     return Refs(
-        clients=[{"id": str(c.id), "name": c.name} for c in (await session.scalars(select(Client).order_by(Client.name))).all()],
-        vehicles=[{"id": str(v.id), "reg_no": v.reg_no, "is_hired": v.is_hired} for v in (await session.scalars(select(Vehicle).order_by(Vehicle.reg_no))).all()],
-        drivers=[{"id": str(u.id), "name": u.name} for u in (await session.scalars(select(User).where(User.role == Role.driver).order_by(User.name))).all()],
+        clients=[{"id": str(c.id), "name": c.name} for c in (await session.scalars(select(Client).where(Client.is_active).order_by(Client.name))).all()],
+        vehicles=[{"id": str(v.id), "reg_no": v.reg_no, "is_hired": v.is_hired} for v in (await session.scalars(select(Vehicle).where(Vehicle.is_active).order_by(Vehicle.reg_no))).all()],
+        drivers=[{"id": str(u.id), "name": u.name} for u in (await session.scalars(select(User).where(User.role == Role.driver, User.is_active).order_by(User.name))).all()],
         branches=[{"id": str(b.id), "name": b.name} for b in (await session.scalars(select(Branch).order_by(Branch.name))).all()],
         default_origin=get_settings().default_origin,
     )
@@ -146,7 +146,7 @@ async def board(_: Viewer, session: Session) -> dict:
         .where(or_(Trip.state.in_(ACTIVE), (Trip.state == TripState.delivered) & (Trip.planned_start >= since)))
         .order_by(Trip.planned_start.nulls_last(), Trip.trip_code).limit(1000)
     )).all()
-    vehicles = (await session.scalars(select(Vehicle).order_by(Vehicle.reg_no))).all()
+    vehicles = (await session.scalars(select(Vehicle).where(Vehicle.is_active).order_by(Vehicle.reg_no))).all()
     return {
         "now": datetime.now(UTC).isoformat(),
         "vehicles": [{"id": str(v.id), "reg_no": v.reg_no, "is_hired": v.is_hired} for v in vehicles],

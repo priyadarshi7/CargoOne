@@ -14,6 +14,7 @@ from app.routers import (
     planning,
     pods,
     review,
+    setup,
     tracking,
     trips,
 )
@@ -42,3 +43,4 @@ app.include_router(expenses.router)
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
+app.include_router(setup.router)

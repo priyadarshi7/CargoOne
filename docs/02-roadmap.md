@@ -89,6 +89,15 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [ ] Performance budget for low-end Android (bundle size, LCP, memory)
 - [ ] Error monitoring + structured logging (free-tier tooling)
 
+## Setup area (people, trucks, clients, hired vendors)
+- [x] **Setup** screen (ops head edits, billing reads): Drivers, Trucks, Clients, Hired vendors; Office staff tab for the admin only. Add / edit / deactivate; nothing is deleted, so old trips, invoices and the audit trail stay intact.
+- [x] Register a driver by mobile number (10-digit, +91 / spaces accepted); a random one-time 6-digit PIN is shown once for the office to read out; the driver must choose their own at first sign-in. Duplicate numbers refused.
+- [x] Deactivating a driver/truck is blocked while it is on a planned or running trip; a deactivated driver is signed out at once and is not offered in planning.
+- [x] Hired trucks and drivers belong to a **vendor** (a transporter we hire from); vendor shows trucks/drivers counts; own truck vs hired is just the vendor link.
+- [x] Truck details: type, capacity, insurance / fitness / permit expiry with a "valid / due in 30 days / expired" flag; registration numbers normalised (MH20AB1234 = MH-20 AB 1234).
+- [x] Clients: billing cycle, Tally ledger name, contact; admin creates office staff with a temporary password that must be replaced at first sign-in.
+- [ ] Still to do here: vendor rates and amounts payable to vendors, expiry reminders (digest/notification), branches screen, bulk import of drivers/trucks from a sheet, first-day setup wizard, role-specific home screens, delivering first PINs by SMS (SMS is still mocked).
+
 ## Phase 7 — "Out-of-scope" wow features (P2, after core is solid)
 **Live GPS tracking**
 - [x] Live tracking: driver agrees once (recorded, withdrawable); while a trip is on the road the phone sends GPS fixes (60 s / 100 m, batched, retried safely, screen kept awake); live map for ops and the MD with moving / stopped / no-signal states and stoppage + silent alerts; path per trip; client **tracking link** (position rounded to ~100 m, never the driver, stops once delivered); 30-day retention purge. English/Hindi/Marathi

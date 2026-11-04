@@ -11,7 +11,7 @@ import Dashboard from './pages/Dashboard'
 import DriverExpense from './pages/DriverExpense'
 import DriverPin from './pages/DriverPin'
 import Expenses from './pages/Expenses'
-import Drivers from './pages/Drivers'
+import Setup from './pages/Setup'
 import DriverHome from './pages/DriverHome'
 import ImportTrips from './pages/ImportTrips'
 import Login from './pages/Login'
@@ -34,6 +34,7 @@ function Guard({ roles, children }: { roles: Role[]; children: ReactNode }) {
   if (loading) return null
   if (!user) return <Navigate to="/login" replace />
   if (user.must_change_secret && user.role === 'driver' && pathname !== '/driver/pin') return <Navigate to="/driver/pin" replace />
+  if (user.must_change_secret && user.role !== 'driver' && pathname !== '/office/account') return <Navigate to="/office/account" replace /> // new office accounts start with a temporary password
   if (!roles.includes(user.role) && user.role !== 'admin') return <Navigate to={homeFor(user.role)} replace />
   return <>{children}</>
 }
@@ -72,7 +73,8 @@ export default function App() {
           <Route path="/office" element={<Guard roles={['ops', 'billing', 'md']}><OfficeHome /></Guard>} />
           <Route path="/office/trips" element={<Guard roles={['ops', 'billing', 'md']}><OfficeShell><OfficeTrips /></OfficeShell></Guard>} />
           <Route path="/office/account" element={<Guard roles={['ops', 'billing', 'md']}><OfficeShell><Account /></OfficeShell></Guard>} />
-          <Route path="/office/drivers" element={<Guard roles={['ops', 'billing']}><OfficeShell><Drivers /></OfficeShell></Guard>} />
+          <Route path="/office/setup" element={<Guard roles={['ops', 'billing']}><OfficeShell><Setup /></OfficeShell></Guard>} />
+          <Route path="/office/drivers" element={<Navigate to="/office/setup?tab=drivers" replace />} />
           <Route path="/office/expenses" element={<Guard roles={['ops', 'billing', 'md']}><OfficeShell><Expenses /></OfficeShell></Guard>} />
           <Route path="/office/live" element={<Guard roles={['ops', 'md']}><OfficeShell><LiveMapPage /></OfficeShell></Guard>} />
           <Route path="/office/planning" element={<Guard roles={['ops', 'billing']}><OfficeShell><Planning /></OfficeShell></Guard>} />

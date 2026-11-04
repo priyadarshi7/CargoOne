@@ -56,8 +56,8 @@ async def current_user(
         user = await session.get(User, uuid.UUID(claims["sub"]))
     except (jwt.PyJWTError, ValueError, KeyError):
         raise unauthorised from None
-    if user is None:
-        raise unauthorised
+    if user is None or not user.is_active:
+        raise unauthorised  # unknown, or deactivated since the token was issued
     if claims.get("ver", 0) != user.token_version:
         raise unauthorised  # signed in before the password/PIN was changed
     if user.must_change_secret and request.url.path not in PIN_FREE_PATHS:
