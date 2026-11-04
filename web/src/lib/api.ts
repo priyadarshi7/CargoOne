@@ -144,3 +144,22 @@ export interface Dashboard {
   trend: { week: string; label: string; within_24h_pct: number | null; pod_to_invoice_days: number | null }[]
   oldest_missing: { trip_code: string; client: string; branch: string; vehicle: string; driver: string | null; age_days: number; freight: number; status: string }[]
 }
+
+export interface ImportIssue { row: number; trip_code: string | null; message: string }
+export interface ImportReport {
+  dry_run: boolean; total: number; created: number; updated: number; unchanged: number; skipped: number
+  errors: ImportIssue[]; warnings: ImportIssue[]; new_clients: string[]; new_branches: string[]; new_vehicles: number
+}
+
+/** Multipart upload with the session token (api() forces a JSON content type, which breaks file uploads). */
+export async function postFile<T>(path: string, file: File): Promise<T> {
+  const token = tokenStore.get()
+  const form = new FormData()
+  form.set('file', file)
+  const res = await fetch(`${BASE}${path}`, { method: 'POST', body: form, headers: token ? { Authorization: `Bearer ${token}` } : {} })
+  if (!res.ok) {
+    const detail = await res.json().then((j) => j.detail).catch(() => res.statusText)
+    throw new ApiError(res.status, typeof detail === 'string' ? detail : 'Upload failed')
+  }
+  return res.json() as Promise<T>
+}

@@ -30,8 +30,8 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [~] Roles & permissions: role guard (`require_roles`) done + tested; per-branch scoping pending
 - [x] Hired-driver tokenised link: trip-scoped, 72 h expiry, revocable, hashed at rest, rate-limited, audited; office creates it from the Trips table and (mock) SMS-es it in Hindi/Marathi/English. **Real SMS provider (DLT templates) pending**
 - [ ] Audit log for every sensitive read/write
-- [ ] Trip import: CSV/XLSX daily upload with LR + e-way bill, validation, dedupe, error report
-- [ ] E-way bill field validation (12 digits) + mock lookup adapter
+- [x] Trip import: CSV/XLSX upload with check-then-import (dry run report), row-numbered errors, idempotent re-import, trips with POD activity never altered, unknown vehicles/branches auto-created, unknown clients only on request; accepts the client's own sample sheet format (incl. "(hired)" vehicles). **Still manual upload: no scheduled/auto feed from Company A's system yet**
+- [~] E-way bill field validation: 12 digits enforced on import; real e-way bill API lookup still pending
 
 ## Phase 3 — Driver capture (P0, the hard part)
 - [x] Driver home: assigned trips, one giant "POD" button (opens the next open trip), big status icons, pending-upload counter

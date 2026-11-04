@@ -37,6 +37,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
               </NavLink>
             )}
             {canReview && <NavLink to="/office/billing" className={link}>Billing</NavLink>}
+            {canReview && <NavLink to="/office/import" className={link}>Import</NavLink>}
             <NavLink to="/progress" className={link}>Build progress</NavLink>
           </nav>
           <div className="ml-auto flex items-center gap-3 text-sm">

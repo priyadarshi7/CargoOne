@@ -40,6 +40,9 @@ They start their own API (:8001), web (:5174) and a throw-away `cargoone_e2e` da
 
 Tests need migrated Postgres: `cd api && uv run pytest`.
 
+## Trip import
+Office → **Import**: upload a CSV/Excel (download the template there). It is checked first and only written when you confirm; re-uploading is safe.
+
 ## Docs
 - [Product brief](docs/01-product-brief.md) · [Roadmap / to-do](docs/02-roadmap.md) · [Decisions](docs/03-decisions.md)
 - [Git workflow](docs/05-git-workflow.md) · [CLAUDE.md](CLAUDE.md) (working rules for AI-assisted development)
