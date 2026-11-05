@@ -71,7 +71,8 @@ class SmtpEmail:
             if s.smtp_security == "starttls":
                 server.starttls(context=ctx)
             if s.smtp_user:
-                server.login(s.smtp_user, s.smtp_password)
+                # Google shows app passwords as "abcd efgh ijkl mnop"; the spaces are not part of the password
+                server.login(s.smtp_user, "".join(s.smtp_password.split()))
             server.send_message(msg)
 
     async def send(self, to: str, subject: str, body: str) -> SendResult:
