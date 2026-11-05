@@ -55,6 +55,9 @@ export default function Login() {
         <p className="text-center text-sm text-muted">
           <Link to="/progress" className="underline underline-offset-2">{t('login.progress')}</Link>
         </p>
+        <p className="text-center text-sm">
+          <Link to="/request" className="font-medium text-accent underline underline-offset-2">{t('login.request')}</Link>
+        </p>
       </form>
     </div>
   )

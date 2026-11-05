@@ -19,6 +19,7 @@ from app.models import AuditLog, Branch, Client, PodStatus, Role, Trip, TripStat
 from app.notify.service import safely, trip_assigned, trip_update, when_text
 from app.phones import clean_phone
 from app.planning import overlaps, window
+from app.routers.requests import book, tell_requester
 from app.routers.setup import DOCS
 from app.security import require_roles
 
@@ -52,6 +53,7 @@ class NewTrip(BaseModel):
     packages: int | None = Field(default=None, gt=0, le=1_000_000)
     consignee_name: str | None = Field(default=None, max_length=160)
     consignee_phone: str | None = None
+    request_id: uuid.UUID | None = None  # the accepted transport request this trip fulfils
     force: bool = False
 
     @model_validator(mode="after")
@@ -200,11 +202,17 @@ async def create_trip(body: NewTrip, user: Planner, session: Session) -> dict:
     )
     session.add(trip)
     session.add(AuditLog(actor_id=user.id, action="trip.create", entity="trip", entity_id=code, meta={"forced": body.force}))
+    booked = None
+    if body.request_id:
+        await session.flush()
+        booked = await book(session, body.request_id, trip)  # 422 here undoes the whole trip: nothing is half-booked
     await session.commit()
     result = {"id": str(trip.id), "trip_code": code, "lr_no": lr_no}  # built first: a rollback in the notifier would expire `trip`
     if trip.driver_id:
         driver = await session.get(User, trip.driver_id)
         await safely(session, trip_assigned(session, trip, driver, vehicle))
+    if booked:
+        await safely(session, tell_requester(session, booked[0], "booked", **booked[1]))
     return result
 
 

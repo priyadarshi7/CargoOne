@@ -1,15 +1,15 @@
-import { ArrowRight, BellRing, CircleCheck, FileClock, FileWarning, IdCard, ReceiptText, ScanSearch, Truck, type LucideIcon } from 'lucide-react'
+import { ArrowRight, BellRing, CircleCheck, FileClock, FileWarning, IdCard, Inbox, ReceiptText, ScanSearch, Truck, type LucideIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, ApiError } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
 
-type Key = 'missing_pod' | 'review_waiting' | 'unbilled' | 'expenses_pending' | 'papers' | 'licences'
+type Key = 'missing_pod' | 'review_waiting' | 'unbilled' | 'expenses_pending' | 'papers' | 'licences' | 'requests_new'
 interface Item { key: Key; count: number; oldest_days: number | null; to: string; severity: 'high' | 'medium' | 'low' }
 interface Reminded { sent: number; skipped_recent: number; no_phone: number; no_driver: number; simulated: boolean }
 
-const ICON: Record<Key, LucideIcon> = { missing_pod: FileWarning, review_waiting: ScanSearch, unbilled: FileClock, expenses_pending: ReceiptText, papers: Truck, licences: IdCard }
+const ICON: Record<Key, LucideIcon> = { missing_pod: FileWarning, review_waiting: ScanSearch, unbilled: FileClock, expenses_pending: ReceiptText, papers: Truck, licences: IdCard, requests_new: Inbox }
 const TONE = { high: 'bg-bad-soft text-bad', medium: 'bg-warn-soft text-warn', low: 'bg-wash text-muted' } as const
 
 /** The short list of things waiting on a person, shown at the top of the ops dashboard and the billing screen. */

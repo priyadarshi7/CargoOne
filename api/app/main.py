@@ -17,6 +17,7 @@ from app.routers import (
     onboard,
     planning,
     pods,
+    requests,
     review,
     setup,
     tracking,
@@ -52,3 +53,5 @@ app.include_router(attention.router)
 app.include_router(documents.router)
 app.include_router(notifications.router)
 app.include_router(onboard.router)
+app.include_router(requests.public)
+app.include_router(requests.office)

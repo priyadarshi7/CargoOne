@@ -137,6 +137,7 @@ class Client(Base):
     tally_ledger: Mapped[str | None] = mapped_column(String(160))
     contact_name: Mapped[str | None] = mapped_column(String(120))
     contact_phone: Mapped[str | None] = mapped_column(String(20))
+    gstin: Mapped[str | None] = mapped_column(String(15))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
 
 
@@ -374,4 +375,35 @@ class OnboardingLink(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = now()
+
+
+class TransportRequest(Base):
+    """A company asking for transport through the public request page. Ops reviews it, onboards the company as a client, and books a trip."""
+
+    __tablename__ = "transport_requests"
+    __table_args__ = (Index("ix_requests_status_time", "status", "created_at"),)
+    id: Mapped[uuid.UUID] = pk()
+    reference: Mapped[str] = mapped_column(String(16), unique=True)  # what the requester quotes, e.g. REQ-1001
+    company_name: Mapped[str] = mapped_column(String(160))
+    contact_name: Mapped[str] = mapped_column(String(120))  # PII
+    phone: Mapped[str] = mapped_column(String(20))  # PII
+    email: Mapped[str | None] = mapped_column(String(160))  # PII
+    gstin: Mapped[str | None] = mapped_column(String(15))
+    language: Mapped[str] = mapped_column(String(2), default="en")
+    origin: Mapped[str] = mapped_column(String(120))
+    destination: Mapped[str] = mapped_column(String(120))
+    material: Mapped[str] = mapped_column(String(160))
+    weight_tonnes: Mapped[Decimal | None] = mapped_column(Numeric(8, 2))
+    truck_type: Mapped[str | None] = mapped_column(String(60))
+    pickup_date: Mapped[date] = mapped_column(Date)
+    notes: Mapped[str | None] = mapped_column(String(500))
+    status: Mapped[str] = mapped_column(String(12), default="new")  # new | accepted | booked | declined
+    client_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("clients.id"))
+    trip_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("trips.id", ondelete="SET NULL"))
+    quote_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    ops_note: Mapped[str | None] = mapped_column(String(300))  # shown to the requester
+    decided_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    consent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # agreed to be contacted about this request
     created_at: Mapped[datetime] = now()

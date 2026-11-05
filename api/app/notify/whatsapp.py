@@ -23,6 +23,8 @@ PARAMS: dict[str, tuple[str, ...]] = {
     "welcome": ("name", "link"),
     "trip_assigned": ("name", "trip_code", "lr", "route", "vehicle", "start", "link"),
     "trip_update": ("name", "trip_code", "change", "link"),
+    "request_received": ("name", "reference", "link"),
+    "request_update": ("name", "reference", "update", "link"),
 }
 
 TEXT: dict[str, dict[str, str]] = {
@@ -40,6 +42,16 @@ TEXT: dict[str, dict[str, str]] = {
         "en": "Hello {name}, trip {trip_code} {change}. Details: {link}",
         "hi": "नमस्ते {name}, ट्रिप {trip_code} {change}। विवरण: {link}",
         "mr": "नमस्कार {name}, ट्रिप {trip_code} {change}. तपशील: {link}",
+    },
+    "request_received": {
+        "en": "Hello {name}, we have received your transport request {reference}. You can follow it here: {link}",
+        "hi": "नमस्ते {name}, आपका ट्रांसपोर्ट अनुरोध {reference} हमें मिल गया है। यहाँ देख सकते हैं: {link}",
+        "mr": "नमस्कार {name}, तुमची वाहतूक विनंती {reference} आम्हाला मिळाली आहे. येथे पाहू शकता: {link}",
+    },
+    "request_update": {
+        "en": "Hello {name}, update on your transport request {reference}: {update}. Details: {link}",
+        "hi": "नमस्ते {name}, आपके ट्रांसपोर्ट अनुरोध {reference} की जानकारी: {update}। विवरण: {link}",
+        "mr": "नमस्कार {name}, तुमच्या वाहतूक विनंती {reference} बद्दल माहिती: {update}. तपशील: {link}",
     },
 }
 

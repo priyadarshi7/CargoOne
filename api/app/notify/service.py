@@ -52,17 +52,23 @@ async def issue_onboarding_link(session: AsyncSession, user: User) -> str:
 
 
 async def send_whatsapp(session: AsyncSession, user: User, template: str, values: dict[str, str], *, trip: Trip | None = None, secret: str | None = None) -> Message:
-    """Render, send, and record. `secret` is a token inside the message that must not be kept in the log."""
-    lang = user.language if user.language in ("en", "hi", "mr") else "en"
+    """Render, send, and record a message to a user. `secret` is a token inside the message that must not be kept in the log."""
+    return await send_to_phone(session, user.phone, user.language, template, values, user_id=user.id, trip=trip, secret=secret)
+
+
+async def send_to_phone(session: AsyncSession, phone: str | None, language: str, template: str, values: dict[str, str], *, user_id: uuid.UUID | None = None,
+                        trip: Trip | None = None, secret: str | None = None) -> Message:
+    """The same, for a bare number (someone who is not a user, such as a company that asked for transport)."""
+    lang = language if language in ("en", "hi", "mr") else "en"
     text = render(template, lang, values)
     provider = get_whatsapp()
-    msg = Message(user_id=user.id, trip_id=trip.id if trip else None, template=template, provider=provider.name, status="skipped",
-                  to_masked=mask_phone(user.phone) if user.phone else None, body=(text.replace(secret, "•••") if secret else text)[:1200])
-    if not user.phone:
+    msg = Message(user_id=user_id, trip_id=trip.id if trip else None, template=template, provider=provider.name, status="skipped",
+                  to_masked=mask_phone(phone) if phone else None, body=(text.replace(secret, "•••") if secret else text)[:1200])
+    if not phone:
         msg.error = "no phone number"
     else:
         try:
-            res = await provider.send(user.phone, template, lang, values)
+            res = await provider.send(phone, template, lang, values)
             msg.status, msg.provider_id, msg.error = res.status, res.provider_id, res.error
         except Exception as e:
             log.exception("whatsapp sender crashed")

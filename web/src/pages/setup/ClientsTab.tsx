@@ -6,7 +6,7 @@ import { btnGhost, btnPrimary, Field, FormModal, inputCls, StatusPill, Table } f
 
 interface ClientRow {
   id: string; name: string; segment: string | null; billing_cycle: 'weekly' | 'fortnightly' | 'monthly' | 'per_trip'; tally_ledger: string | null
-  contact_name: string | null; contact_phone: string | null; is_active: boolean; trips: number
+  contact_name: string | null; contact_phone: string | null; gstin: string | null; is_active: boolean; trips: number
 }
 
 export default function ClientsTab({ canEdit }: { canEdit: boolean }) {
@@ -48,11 +48,11 @@ function ClientForm({ client, onClose, onSaved }: { client: ClientRow | null; on
   const { t } = useI18n()
   const [f, setF] = useState({
     name: client?.name ?? '', segment: client?.segment ?? '', billing_cycle: client?.billing_cycle ?? 'weekly', tally_ledger: client?.tally_ledger ?? '',
-    contact_name: client?.contact_name ?? '', contact_phone: client?.contact_phone ?? '', is_active: client?.is_active ?? true,
+    contact_name: client?.contact_name ?? '', contact_phone: client?.contact_phone ?? '', gstin: client?.gstin ?? '', is_active: client?.is_active ?? true,
   })
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value })
   async function save() {
-    const body = JSON.stringify({ ...f, segment: f.segment || null, tally_ledger: f.tally_ledger || null, contact_name: f.contact_name || null, contact_phone: f.contact_phone || null, ...(client ? {} : { is_active: undefined }) })
+    const body = JSON.stringify({ ...f, segment: f.segment || null, tally_ledger: f.tally_ledger || null, contact_name: f.contact_name || null, contact_phone: f.contact_phone || null, gstin: f.gstin || null, ...(client ? {} : { is_active: undefined }) })
     await api(client ? `/setup/clients/${client.id}` : '/setup/clients', { method: client ? 'PATCH' : 'POST', body })
     onSaved()
   }
@@ -68,6 +68,7 @@ function ClientForm({ client, onClose, onSaved }: { client: ClientRow | null; on
         </Field>
       </div>
       <Field label={t('setup.client.ledger')}><input className={inputCls} value={f.tally_ledger} onChange={set('tally_ledger')} /></Field>
+      <Field label={t('setup.client.gstin')} hint="27ABCDE1234F1Z5"><input className={inputCls} maxLength={15} value={f.gstin} onChange={(e) => setF({ ...f, gstin: e.target.value.toUpperCase() })} /></Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label={t('setup.client.contact')}><input className={inputCls} value={f.contact_name} onChange={set('contact_name')} /></Field>
         <Field label={t('setup.client.phone')}><input className={inputCls} inputMode="tel" value={f.contact_phone} onChange={set('contact_phone')} /></Field>

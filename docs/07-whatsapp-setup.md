@@ -1,12 +1,12 @@
 # WhatsApp setup (Meta Cloud API)
 
-CargoOne sends three kinds of WhatsApp message to drivers: the app link on registration, a new trip, and a change to a trip. Until the credentials below are set, the app runs in **recording mode**: every message is built, shown in **Setup > Messages** and marked "Not sent (not connected)", and the Setup screen also shows the one-time link so the office can hand it over by their own WhatsApp (an "Open in WhatsApp" button prepares the message). Nothing leaves the machine in this mode.
+CargoOne sends WhatsApp messages to drivers (the app link on registration, a new trip, a change to a trip) and to companies that ask for transport (request received, request update). Until the credentials below are set, the app runs in **recording mode**: every message is built, shown in **Setup > Messages** and marked "Not sent (not connected)", and the Setup screen also shows the one-time link so the office can hand it over by their own WhatsApp (an "Open in WhatsApp" button prepares the message). Nothing leaves the machine in this mode.
 
 ## One-time setup (by the owner, about a day plus Meta's approval time)
 
 1. Create a **Meta Business** account (business.facebook.com) and verify the business. Company A's legal name and a document are needed.
 2. In **developers.facebook.com** create an app of type *Business*, add the **WhatsApp** product, and add a phone number for the business. This must be a number that is **not already used on a personal WhatsApp** (a new SIM or a landline works). Verify it by the code Meta sends.
-3. In **WhatsApp Manager > Message templates** create the three templates below, in each of the three languages, category **Utility**. Copy the text exactly: the order and number of `{{n}}` variables must match what the app sends. Approval usually takes minutes to a day.
+3. In **WhatsApp Manager > Message templates** create the five templates below, in each of the three languages, category **Utility**. Copy the text exactly: the order and number of `{{n}}` variables must match what the app sends. Approval usually takes minutes to a day.
 4. Create a **System User** with a permanent access token that has `whatsapp_business_messaging` permission, and note the **Phone number ID** (WhatsApp > API setup).
 5. Put these in the settings file (`.env`, never in git) and restart the API:
 
@@ -17,7 +17,7 @@ WHATSAPP_PHONE_NUMBER_ID=<phone number id>
 # optional: WHATSAPP_API_VERSION=v21.0   WHATSAPP_TEMPLATE_PREFIX=cargoone
 ```
 
-6. Register a driver with your own phone number and check **Setup > Messages**: the status should say **Sent**. If it says **Failed**, the reason (Meta's error code) is shown next to it; the usual causes are a template that is not approved yet in that language, a wrong phone number ID, or an expired token.
+6. Register a driver with your own phone number (and submit a test transport request) and check **Setup > Messages**: the status should say **Sent**. If it says **Failed**, the reason (Meta's error code) is shown next to it; the usual causes are a template that is not approved yet in that language, a wrong phone number ID, or an expired token.
 
 If `WHATSAPP_PROVIDER=meta` is set but a credential is missing, the app logs a warning and stays in recording mode: it never pretends to send.
 
@@ -94,6 +94,54 @@ Hello {{1}}, trip {{2}} {{3}}. Details: {{4}}
 ```
 
 Sample values for Meta's review: `Ramesh Patil` | `TRP-70012` | `has changed: truck is now MH20 GT 7718` | `https://app.example.com/driver?trip=abc123`
+
+### `cargoone_request_received`
+
+Sent to a company right after it submits the public transport request form. Category: **Utility**. Variables in order: {{1}} = name, {{2}} = reference, {{3}} = link.
+
+**English (`en`)**
+
+```
+Hello {{1}}, we have received your transport request {{2}}. You can follow it here: {{3}}
+```
+
+**Hindi (`hi`)**
+
+```
+नमस्ते {{1}}, आपका ट्रांसपोर्ट अनुरोध {{2}} हमें मिल गया है। यहाँ देख सकते हैं: {{3}}
+```
+
+**Marathi (`mr`)**
+
+```
+नमस्कार {{1}}, तुमची वाहतूक विनंती {{2}} आम्हाला मिळाली आहे. येथे पाहू शकता: {{3}}
+```
+
+Sample values for Meta's review: `Anil Mehta` | `REQ-1001` | `https://app.example.com/request/REQ-1001.abc123`
+
+### `cargoone_request_update`
+
+Sent to a company when its request is accepted, booked as a trip, or declined. Category: **Utility**. Variables in order: {{1}} = name, {{2}} = reference, {{3}} = update, {{4}} = link.
+
+**English (`en`)**
+
+```
+Hello {{1}}, update on your transport request {{2}}: {{3}}. Details: {{4}}
+```
+
+**Hindi (`hi`)**
+
+```
+नमस्ते {{1}}, आपके ट्रांसपोर्ट अनुरोध {{2}} की जानकारी: {{3}}। विवरण: {{4}}
+```
+
+**Marathi (`mr`)**
+
+```
+नमस्कार {{1}}, तुमच्या वाहतूक विनंती {{2}} बद्दल माहिती: {{3}}. तपशील: {{4}}
+```
+
+Sample values for Meta's review: `Anil Mehta` | `REQ-1001` | `booked as trip TRP-70012, pickup 12 Nov, 08:00` | `https://app.example.com/request/REQ-1001.abc123`
 
 ## What this does not do (yet)
 

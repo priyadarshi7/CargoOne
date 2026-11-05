@@ -9,6 +9,7 @@ This is an engineering record, not legal advice - the DPDP Act 2023 obligations 
 | Consignee name + phone | `trips.consignee_name/phone` | Nobody in the UI today (never returned by any API; tests assert this) |
 | POD photos (may show names, signatures, phones, stamps) | private storage, `pod_submissions.storage_key` | billing, ops, admin, md (read), the trip's own driver; every view is audit-logged |
 | Driver GPS at capture time | `pod_submissions.lat/lng` | billing/ops in the review screen |
+| Requester name, phone, email (public form) | `transport_requests` | ops, billing (API only); the requester sees their own request by link |
 | Driving licence number, expiry and photo | `users.licence_*`, `documents` | ops/admin (photo); ops/billing (number, expiry) |
 | Driver / staff name, phone, email | `users` | the user; office roles (API) |
 | Hired driver's mobile (typed when sending a link) | **not stored**; masked (`******3210`) in audit log | - |
@@ -25,6 +26,7 @@ This is an engineering record, not legal advice - the DPDP Act 2023 obligations 
 - **Tokenised SMS upload links**: 256-bit random, only the SHA-256 is stored, scoped to one trip + one purpose, expire (72 h), revoked when a new link is issued or by the office, rate-limited (guessing throttle on unknown tokens only, per-link photo cap), public page shows destination + vehicle only.
 - **Driver and truck papers**: licence and RC/insurance/fitness/permit/PUC photos or PDFs live in private storage behind role checks (truck papers: ops + billing; licences: ops/admin only), type taken from the file bytes not the name, 3 MB cap, replaced files are deleted, no public URL. Licence number and expiry are stored on the driver (personal data, office roles only).
 - **Driver onboarding links and WhatsApp**: one-time, hashed, 72 h, replaced on resend, dead once used; the public pages reveal only the driver's name and language; the message log keeps masked numbers and never the link secret; the WhatsApp token lives only in `.env`. A driver's own trip list includes the consignee name and phone (they must call them); the office lists still never do.
+- **Public transport request form**: the only place the internet writes to the database. Hidden bot field, rate limits (per address and per phone), strict field sizes and formats, explicit consent to be contacted (stored with a timestamp), status links are HMAC-signed and reveal no contact details or other requests, and the office sees contact details only through role-checked endpoints (ops, billing). Still to add before wide use: CAPTCHA, a retention period for declined requests (suggest 180 days), and a privacy notice on the page naming Company A and the purpose.
 - **Audit log** for uploads, image views, review decisions, invoices/exports, link creation/revocation.
 - **Safety rails**: demo seed and demo data refuse to run outside dev/test; non-dev refuses to start with the default/short JWT secret; tests use their own database and never call a real AI.
 - **Secrets**: `.env` git-ignored. (A key was once printed into a development session transcript - rotated by owner; avoid `cat`/`sed` on `.env`.)

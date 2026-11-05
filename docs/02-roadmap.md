@@ -99,6 +99,16 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [x] Planning refuses a truck that is not available or has an expired paper, and a driver whose licence has expired; the ops dashboard's needs-attention panel lists PUC and licences due within 30 days.
 - [ ] Not done: reading the licence/RC photo automatically (AI), a fleet-availability calendar, and e-challan/Vahan lookups.
 
+## Client requests and onboarding
+- [x] **Public request page** (`/request`, no login, English / Hindi / Marathi): company, contact, mobile, optional email and GSTIN, pickup and delivery city, material, weight, truck type, pickup date, notes, and an explicit agreement to be contacted. Linked from the sign-in page.
+- [x] The requester gets a reference (REQ-1001) and a **private status link** (reference plus an HMAC signature, nothing stored) that shows received / accepted / booked as trip TRP-... / declined, with the office's reply and quote. They are also told on WhatsApp (recording mode until Meta is set up).
+- [x] **Requests** screen for the office (ops decides, billing reads) and a "new transport requests" line on the dashboard's needs-attention panel.
+- [x] **Accept** onboards the company as a client in the same step (name, contact, phone, GSTIN carried over; billing cycle chosen) or links the request to an existing client; a duplicate company name is refused with a pointer to the existing client. Optional quote and message to the requester.
+- [x] **Decline** needs a reason that the requester reads. **Book a trip** opens the planning form already filled from the request; creating the trip closes the request as booked and tells the requester the trip code and start time. One request books one trip.
+- [x] Clients now carry a **GSTIN** (validated format) in Setup.
+- [x] Abuse guards on the public form: hidden bot field, 5 requests per hour per address and 3 per day per phone, strict sizes, nothing about other requests or clients ever returned.
+- [ ] Not done: a CAPTCHA (add Cloudflare Turnstile before advertising the address), a retention rule that deletes old declined requests, the requester accepting a quote online, attachments (e.g. a packing list), and a branded/real company address on the page.
+
 ## Driver onboarding and notifications
 - [x] **Registering a driver sends a WhatsApp message** with a one-time link: the driver opens it, chooses their own PIN, and lands signed in on the home screen with the install card. The office-read PIN stays as a backup. The link works once, expires in 72 h, is replaced when sent again, and dies the moment the driver sets a PIN.
 - [x] **Assigning, re-planning or cancelling a trip** tells the driver: an in-app notification (inbox card on the driver home, refreshed every minute and when the app comes back to the front) and a WhatsApp message with trip code, LR number, route, truck, start time and a link that opens that trip. A driver who has not opened the app yet gets a fresh onboarding link in the same message.

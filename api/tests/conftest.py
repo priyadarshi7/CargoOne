@@ -95,4 +95,8 @@ def _reset_rate_limits() -> Iterator[None]:
     client_limiter.reset()
     ip_failures.reset()
     ident_failures.reset()
+    from app.routers import onboard, requests
+
+    for limiter in (requests.submit_limiter, requests.phone_limiter, requests.bad_token_limiter, onboard.bad_token_limiter):
+        limiter.reset()
     yield

@@ -10,7 +10,18 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_session
-from app.models import AuditLog, Expense, ExpenseStatus, PodStatus, Role, Trip, TripState, User, Vehicle
+from app.models import (
+    AuditLog,
+    Expense,
+    ExpenseStatus,
+    PodStatus,
+    Role,
+    TransportRequest,
+    Trip,
+    TripState,
+    User,
+    Vehicle,
+)
 from app.notify.sms import MockSms, Sms, get_sms, mask_phone, reminder_text
 from app.security import require_roles
 
@@ -51,6 +62,8 @@ async def attention(_: Viewer, session: Session) -> dict:
         select(func.count(), func.min(Expense.created_at)).where(Expense.status == ExpenseStatus.pending, Expense.created_at <= now - timedelta(days=EXPENSE_AFTER_DAYS))
     )).one()
 
+    req_n, req_oldest = (await session.execute(select(func.count(), func.min(TransportRequest.created_at)).where(TransportRequest.status == "new"))).one()
+
     soon = today + timedelta(days=PAPERS_WITHIN_DAYS)
     papers = []
     for v in (await session.scalars(select(Vehicle).where(Vehicle.is_active))).all():
@@ -65,6 +78,7 @@ async def attention(_: Viewer, session: Session) -> dict:
         key=lambda p: p["days"])
 
     items = [
+        {"key": "requests_new", "count": req_n, "oldest_days": _age_days(req_oldest, now), "to": "/office/requests", "severity": "high"},
         {"key": "missing_pod", "count": miss_n, "oldest_days": _age_days(miss_oldest, now), "to": "/office", "severity": "high"},
         {"key": "review_waiting", "count": review_n, "oldest_days": _age_days(review_oldest, now), "to": "/office/review", "severity": "high"},
         {"key": "unbilled", "count": bill_n, "oldest_days": _age_days(bill_oldest, now), "to": "/office/billing", "severity": "medium"},

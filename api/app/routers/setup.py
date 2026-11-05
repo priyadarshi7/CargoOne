@@ -20,6 +20,7 @@ from app.auth_policy import check_secret
 from app.db import get_session
 from app.models import AuditLog, Branch, Client, Role, Trip, TripState, User, Vehicle, Vendor
 from app.phones import clean_phone
+from app.routers.requests import gstin_ok
 from app.security import hash_secret, require_roles
 
 router = APIRouter(prefix="/setup", tags=["setup"])
@@ -240,6 +241,7 @@ class ClientIn(BaseModel):
     tally_ledger: str | None = Field(default=None, max_length=160)
     contact_name: str | None = Field(default=None, max_length=120)
     contact_phone: str | None = None
+    gstin: str | None = None
 
 
 class ClientPatch(BaseModel):
@@ -249,12 +251,20 @@ class ClientPatch(BaseModel):
     tally_ledger: str | None = Field(default=None, max_length=160)
     contact_name: str | None = Field(default=None, max_length=120)
     contact_phone: str | None = None
+    gstin: str | None = None
     is_active: bool | None = None
+
+
+def _gstin(value: str | None) -> str | None:
+    try:
+        return gstin_ok(value)
+    except ValueError as e:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(e)) from None
 
 
 def _client_out(c: Client, trips: int) -> dict:
     return {"id": str(c.id), "name": c.name, "segment": c.segment, "billing_cycle": c.billing_cycle, "tally_ledger": c.tally_ledger,
-            "contact_name": c.contact_name, "contact_phone": c.contact_phone, "is_active": c.is_active, "trips": trips}
+            "contact_name": c.contact_name, "contact_phone": c.contact_phone, "gstin": c.gstin, "is_active": c.is_active, "trips": trips}
 
 
 async def _trip_count(session: AsyncSession, client_id: uuid.UUID) -> int:
@@ -270,7 +280,7 @@ async def list_clients(_: Office, session: Session) -> list[dict]:
 @router.post("/clients", status_code=status.HTTP_201_CREATED)
 async def create_client(body: ClientIn, actor: Manager, session: Session) -> dict:
     c = Client(name=body.name.strip(), segment=body.segment or None, billing_cycle=body.billing_cycle, tally_ledger=body.tally_ledger or None,
-               contact_name=body.contact_name or None, contact_phone=clean_phone(body.contact_phone) if body.contact_phone else None)
+               contact_name=body.contact_name or None, contact_phone=clean_phone(body.contact_phone) if body.contact_phone else None, gstin=_gstin(body.gstin))
     session.add(c)
     await _commit(session, "client", flush=True)
     await _audit(session, actor, "client.create", "client", c.id)
@@ -293,6 +303,8 @@ async def update_client(client_id: uuid.UUID, body: ClientPatch, actor: Manager,
             setattr(c, f, getattr(body, f) or None)
     if "contact_phone" in sent:
         c.contact_phone = clean_phone(body.contact_phone) if body.contact_phone else None
+    if "gstin" in sent:
+        c.gstin = _gstin(body.gstin)
     if body.is_active is not None:
         c.is_active = body.is_active
     await _audit(session, actor, "client.update", "client", c.id, fields=sorted(sent))

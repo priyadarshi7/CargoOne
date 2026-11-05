@@ -1,5 +1,6 @@
 import { Plus, TriangleAlert, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { api, ApiError, download, type TripState } from '../lib/api'
 import { DocSlots, TRIP_DOCS } from './setup/Docs'
 import { useAuth } from '../lib/auth'
@@ -7,6 +8,7 @@ import { useI18n } from '../lib/i18n'
 
 interface BoardTrip { id: string; trip_code: string; lr_no: string; client: string; vehicle_id: string; driver_id: string | null; driver: string | null; origin: string; destination: string; state: TripState; planned_start: string | null; planned_end: string | null; started_at: string | null }
 interface Vehicle { id: string; reg_no: string; is_hired: boolean; availability?: string; capacity_tonnes?: number | null }
+interface Prefill { id: string; reference: string; client_id: string; origin: string; destination: string; material: string; weight_tonnes: number | null; pickup_date: string }
 interface Board { now: string; vehicles: Vehicle[]; trips: BoardTrip[] }
 interface Refs { clients: { id: string; name: string }[]; vehicles: Vehicle[]; drivers: { id: string; name: string; assigned_vehicle_id?: string | null }[]; branches: { id: string; name: string }[]; default_origin: string }
 
@@ -30,7 +32,17 @@ export default function Planning() {
   const [board, setBoard] = useState<Board | null>(null)
   const [refs, setRefs] = useState<Refs | null>(null)
   const [error, setError] = useState(false)
-  const [dialog, setDialog] = useState<{ trip: BoardTrip | null } | null>(null)
+  const [dialog, setDialog] = useState<{ trip: BoardTrip | null; prefill?: Prefill } | null>(null)
+  const [params, setParams] = useSearchParams()
+  const requestId = params.get('request')
+  useEffect(() => {
+    if (!requestId || !canPlan) return
+    api<(Prefill & { status: string })[]>('/requests?state=open').then((all) => {
+      const r = all.find((x) => x.id === requestId && x.status === 'accepted')
+      if (r) setDialog({ trip: null, prefill: r })
+      setParams({}, { replace: true })
+    }).catch(() => undefined)
+  }, [requestId, canPlan, setParams])
 
   const load = useCallback(async () => {
     try {
@@ -142,21 +154,21 @@ export default function Planning() {
         </section>
       )}
 
-      {dialog && <TripDialog trip={dialog.trip} refs={refs} canPlan={canPlan} onClose={() => setDialog(null)} onSaved={() => { setDialog(null); void load() }} />}
+      {dialog && <TripDialog trip={dialog.trip} prefill={dialog.prefill} refs={refs} canPlan={canPlan} onClose={() => setDialog(null)} onSaved={() => { setDialog(null); void load() }} />}
     </div>
   )
 }
 
-function TripDialog({ trip, refs, canPlan, onClose, onSaved }: { trip: BoardTrip | null; refs: Refs; canPlan: boolean; onClose: () => void; onSaved: () => void }) {
+function TripDialog({ trip, prefill, refs, canPlan, onClose, onSaved }: { trip: BoardTrip | null; prefill?: Prefill; refs: Refs; canPlan: boolean; onClose: () => void; onSaved: () => void }) {
   const { t } = useI18n()
   const ref = useRef<HTMLDialogElement>(null)
   useEffect(() => { ref.current?.showModal() }, [])
   const editing = trip !== null
   const locked = editing && (trip.state !== 'planned' || !canPlan)
   const [f, setF] = useState({
-    client_id: refs.clients[0]?.id ?? '', vehicle_id: trip?.vehicle_id ?? refs.vehicles[0]?.id ?? '', driver_id: trip?.driver_id ?? '',
-    origin: refs.default_origin, destination: trip?.destination ?? '', freight_amount: '', eway_bill_no: '', material: '', weight_tonnes: '', packages: '', consignee_name: '', consignee_phone: '',
-    start: toLocalInput(trip?.planned_start ?? null), end: toLocalInput(trip?.planned_end ?? null),
+    client_id: prefill?.client_id ?? refs.clients[0]?.id ?? '', vehicle_id: trip?.vehicle_id ?? refs.vehicles[0]?.id ?? '', driver_id: trip?.driver_id ?? '',
+    origin: prefill?.origin ?? refs.default_origin, destination: prefill?.destination ?? trip?.destination ?? '', freight_amount: '', eway_bill_no: '', material: prefill?.material ?? '', weight_tonnes: prefill?.weight_tonnes?.toString() ?? '', packages: '', consignee_name: '', consignee_phone: '',
+    start: prefill ? `${prefill.pickup_date}T08:00` : toLocalInput(trip?.planned_start ?? null), end: toLocalInput(trip?.planned_end ?? null),
   })
   const [error, setError] = useState<string | null>(null)
   const [clash, setClash] = useState(false)
@@ -183,7 +195,7 @@ function TripDialog({ trip, refs, canPlan, onClose, onSaved }: { trip: BoardTrip
         const made = await api<{ id: string; trip_code: string; lr_no: string }>('/planning/trips', { method: 'POST', body: JSON.stringify({
           client_id: f.client_id, vehicle_id: f.vehicle_id, driver_id: f.driver_id || null, origin: f.origin || null, destination: f.destination,
           freight_amount: f.freight_amount, eway_bill_no: f.eway_bill_no, material: f.material || null, weight_tonnes: f.weight_tonnes || null,
-          packages: f.packages || null, consignee_name: f.consignee_name || null, consignee_phone: f.consignee_phone || null, ...times, force }) })
+          packages: f.packages || null, request_id: prefill?.id ?? null, consignee_name: f.consignee_name || null, consignee_phone: f.consignee_phone || null, ...times, force }) })
         setCreated(made)
         return
       }

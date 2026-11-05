@@ -15,6 +15,9 @@ import Setup from './pages/Setup'
 import DriverHome from './pages/DriverHome'
 import ImportTrips from './pages/ImportTrips'
 import Onboard from './pages/Onboard'
+import RequestStatus from './pages/RequestStatus'
+import RequestTransport from './pages/RequestTransport'
+import Requests from './pages/Requests'
 import Login from './pages/Login'
 import OfficeTrips from './pages/OfficeTrips'
 import Planning from './pages/Planning'
@@ -65,6 +68,8 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/progress" element={<Progress />} />
           <Route path="/onboard/:token" element={<Onboard />} />
+          <Route path="/request" element={<RequestTransport />} />
+          <Route path="/request/:token" element={<RequestStatus />} />
           <Route path="/u/:token" element={<SmsCapture />} />
           <Route path="/v/:token" element={<ClientPod />} />
           <Route path="/t/:token" element={<TrackPublic />} />
@@ -79,6 +84,7 @@ export default function App() {
           <Route path="/office/drivers" element={<Navigate to="/office/setup?tab=drivers" replace />} />
           <Route path="/office/expenses" element={<Guard roles={['ops', 'billing', 'md']}><OfficeShell><Expenses /></OfficeShell></Guard>} />
           <Route path="/office/live" element={<Guard roles={['ops', 'md']}><OfficeShell><LiveMapPage /></OfficeShell></Guard>} />
+          <Route path="/office/requests" element={<Guard roles={['ops', 'billing']}><OfficeShell><Requests /></OfficeShell></Guard>} />
           <Route path="/office/planning" element={<Guard roles={['ops', 'billing']}><OfficeShell><Planning /></OfficeShell></Guard>} />
           <Route path="/office/import" element={<Guard roles={['ops', 'billing']}><OfficeShell><ImportTrips /></OfficeShell></Guard>} />
           <Route path="/office/billing" element={<Guard roles={['ops', 'billing']}><OfficeShell><Billing /></OfficeShell></Guard>} />

@@ -30,11 +30,11 @@ export function OfficeShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-full">
       <header className="border-b border-line">
-        <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 sm:px-6">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
           <Link to="/office" className="flex items-center gap-2 font-semibold">
             <Truck size={20} className="text-accent" aria-hidden /> CargoOne
           </Link>
-          <nav className="flex gap-0.5 overflow-x-auto">
+          <nav className="flex min-w-0 flex-1 flex-wrap gap-0.5">
             {user?.role !== 'billing' && <NavLink to="/office" end className={link}>{t('nav.dashboard')}</NavLink>}
             <NavLink to="/office/trips" className={link}>{t('nav.trips')}</NavLink>
             {canReview && (
@@ -45,6 +45,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
             {canReview && <NavLink to="/office/billing" className={link}>{t('nav.billing')}</NavLink>}
             <NavLink to="/office/expenses" className={link}>{t('nav.expenses')}</NavLink>
             {(user?.role === 'ops' || user?.role === 'md' || user?.role === 'admin') && <NavLink to="/office/live" className={link}>{t('nav.live')}</NavLink>}
+            {canReview && <NavLink to="/office/requests" className={link}>{t('nav.requests')}</NavLink>}
             {canReview && <NavLink to="/office/planning" className={link}>{t('nav.planning')}</NavLink>}
             {canReview && <NavLink to="/office/setup" className={link}>{t('nav.setup')}</NavLink>}
             {canReview && <NavLink to="/office/import" className={link}>{t('nav.import')}</NavLink>}
