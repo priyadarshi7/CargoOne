@@ -41,11 +41,14 @@ function clearStale(only = 'all') { // only='api': leave the phone build and web
     $procs = Get-CimInstance Win32_Process
     $alive = $procs.ProcessId
     $procs | Where-Object {
-      ($_.CommandLine -match 'uvicorn app.main:app' -or (${only === 'all' ? '$true' : '$false'} -and $_.CommandLine -match '${WEB_RX}.*vite.*\\b(preview|build)\\b') -or ($_.CommandLine -match 'spawn_main' -and $alive -notcontains $_.ParentProcessId))
+      ($_.CommandLine -match 'uvicorn.*app.main:app' -or (${only === 'all' ? '$true' : '$false'} -and $_.CommandLine -match '${WEB_RX}.*vite.*\\b(preview|build)\\b') -or ($_.CommandLine -match 'spawn_main' -and $alive -notcontains $_.ParentProcessId))
       -and $_.ProcessId -ne ${process.pid} -and $_.ProcessId -ne $PID
     } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue; $_.ProcessId }`
   // -EncodedCommand: the script goes in as base64, so Windows shell quoting cannot mangle it
-  const out = spawnSync('powershell', ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(ps, 'utf16le').toString('base64')], { encoding: 'utf8' }).stdout?.trim()
+  // twice: killing a reloader turns its worker into an orphan, which only the second pass can recognise
+  const pass = () => spawnSync('powershell', ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(ps, 'utf16le').toString('base64')], { encoding: 'utf8' }).stdout?.trim() ?? ''
+  const first = pass()
+  const out = [first, pass()].filter(Boolean).join(' ')
   if (out) say('dev', `cleared stale processes: ${out.split(/\s+/).join(', ')}`)
 }
 
