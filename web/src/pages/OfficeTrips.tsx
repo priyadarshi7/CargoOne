@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { StatusBadge } from '../components/StatusBadge'
 import { ClientLinkDialog } from '../components/ClientLinkDialog'
 import { UploadLinkDialog } from '../components/UploadLinkDialog'
-import { api, type Trip } from '../lib/api'
+import { api, download, type Trip } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
 
@@ -18,6 +18,7 @@ export default function OfficeTrips() {
   const [shareFor, setShareFor] = useState<Trip | null>(null)
   const [trips, setTrips] = useState<Trip[] | null>(null)
   const [error, setError] = useState(false)
+  const [note, setNote] = useState<string | null>(null)
 
   useEffect(() => {
     api<Trip[]>('/trips').then(setTrips).catch(() => setError(true))
@@ -36,6 +37,7 @@ export default function OfficeTrips() {
 
   return (
     <div className="space-y-8">
+      {note && <p role="alert" className="text-sm text-bad">{note}</p>}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {stats.map(([label, n]) => (
           <div key={label} className="rounded-xl border border-line p-4">
@@ -57,7 +59,7 @@ export default function OfficeTrips() {
           <tbody>
             {trips.map((t) => (
               <tr key={t.id} className="border-t border-line">
-                <td className="px-4 py-3 font-medium">{t.trip_code}<div className="text-xs font-normal text-muted">{t.lr_no}</div></td>
+                <td className="px-4 py-3 font-medium">{t.trip_code}<div className="text-xs font-normal text-muted">{t.lr_no}{canSendLink && <button onClick={() => void download(`/trips/${t.id}/lr.pdf`, `${t.trip_code}-LR.pdf`).catch(() => setNote(tx('lr.pdfFail')))} className="ml-2 underline hover:text-accent">{tx('lr.pdf')}</button>}</div></td>
                 <td className="px-4 py-3">{t.client}</td>
                 <td className="px-4 py-3">{t.vehicle}{t.is_hired && <span className="ml-1.5 text-xs text-muted">{tx('trips.hired')}</span>}</td>
                 <td className="px-4 py-3">{t.destination}</td>

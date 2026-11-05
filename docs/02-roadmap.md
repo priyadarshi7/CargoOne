@@ -99,6 +99,15 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [x] Planning refuses a truck that is not available or has an expired paper, and a driver whose licence has expired; the ops dashboard's needs-attention panel lists PUC and licences due within 30 days.
 - [ ] Not done: reading the licence/RC photo automatically (AI), a fleet-availability calendar, and e-challan/Vahan lookups.
 
+## LR numbers and the LR document
+- [x] **LR numbers are generated, never typed**: `LR/<branch code>/<financial year>/<serial>`, e.g. `LR/MH20/26-27/000123`. The serial counts per branch code and restarts each April; two people saving at the same moment cannot get the same number; a refused trip does not use one up. A typed number in the request is ignored.
+- [x] **Branches** (Setup): name and LR code; changing a code never changes numbers already issued.
+- [x] A trip records the goods (description, weight, packages) and the consignee; a load heavier than the truck's capacity is refused.
+- [x] **LR document**: a one-page PDF generated from the trip (parties, route, vehicle, driver, goods, e-way bill, signature boxes), downloadable by ops/billing and by the trip's own driver; freight is deliberately not printed. After creating a trip the screen offers the PDF straight away.
+- [x] **Signed LR scan** can be uploaded against the trip (photo or PDF) next to the generated one.
+- [x] Trip import: a blank LR cell gets a generated number (new trips only); a dry run uses none.
+- [ ] Not done: Devanagari text on the PDF (needs an embedded font), the client's own LR format if they insist on one, e-way bill generation through the GST portal.
+
 ## Setup area (people, trucks, clients, hired vendors)
 - [x] **Setup** screen (ops head edits, billing reads): Drivers, Trucks, Clients, Hired vendors; Office staff tab for the admin only. Add / edit / deactivate; nothing is deleted, so old trips, invoices and the audit trail stay intact.
 - [x] Register a driver by mobile number (10-digit, +91 / spaces accepted); a random one-time 6-digit PIN is shown once for the office to read out; the driver must choose their own at first sign-in. Duplicate numbers refused.

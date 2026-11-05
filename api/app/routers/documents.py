@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_session
-from app.models import AuditLog, Document, Role, User, Vehicle
+from app.models import AuditLog, Document, Role, Trip, User, Vehicle
 from app.security import require_roles
 from app.storage import Storage, get_storage
 
@@ -22,7 +22,8 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 Manager = Annotated[User, Depends(require_roles(Role.ops))]
 Office = Annotated[User, Depends(require_roles(Role.ops, Role.billing))]
 
-KINDS = {"vehicle": ("rc", "insurance", "fitness", "permit", "puc"), "driver": ("licence", "licence_back")}
+KINDS = {"vehicle": ("rc", "insurance", "fitness", "permit", "puc"), "driver": ("licence", "licence_back"), "trip": ("lr_scan",)}
+OwnerType = Literal["vehicle", "driver", "trip"]
 MAX_BYTES = 3 * 1024 * 1024
 MIME = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "application/pdf": ".pdf"}
 
@@ -48,16 +49,18 @@ def _out(d: Document) -> dict:
 async def _owner_exists(session: AsyncSession, owner_type: str, owner_id: uuid.UUID) -> bool:
     if owner_type == "vehicle":
         return await session.get(Vehicle, owner_id) is not None
+    if owner_type == "trip":
+        return await session.get(Trip, owner_id) is not None
     u = await session.get(User, owner_id)
     return u is not None and u.role == Role.driver
 
 
 def _may_see(user: User, owner_type: str) -> bool:
-    return owner_type == "vehicle" or user.role in (Role.ops, Role.admin)
+    return owner_type != "driver" or user.role in (Role.ops, Role.admin)
 
 
 @router.get("")
-async def list_documents(owner_type: Literal["vehicle", "driver"], owner_id: uuid.UUID, user: Office, session: Session) -> list[dict]:
+async def list_documents(owner_type: OwnerType, owner_id: uuid.UUID, user: Office, session: Session) -> list[dict]:
     if not _may_see(user, owner_type):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not allowed")
     rows = (await session.scalars(select(Document).where(Document.owner_type == owner_type, Document.owner_id == owner_id).order_by(Document.kind))).all()
@@ -66,7 +69,7 @@ async def list_documents(owner_type: Literal["vehicle", "driver"], owner_id: uui
 
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def upload_document(
-    file: UploadFile, owner_type: Annotated[Literal["vehicle", "driver"], Form()], owner_id: Annotated[uuid.UUID, Form()], kind: Annotated[str, Form()],
+    file: UploadFile, owner_type: Annotated[OwnerType, Form()], owner_id: Annotated[uuid.UUID, Form()], kind: Annotated[str, Form()],
     actor: Manager, session: Session, storage: Annotated[Storage, Depends(get_storage)],
 ) -> dict:
     if kind not in KINDS[owner_type]:

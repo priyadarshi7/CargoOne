@@ -2,12 +2,14 @@ import uuid
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.db import get_session
+from app.lrdoc import LrData, build_lr_pdf
 from app.models import AuditLog, Branch, Client, Role, Trip, TripState, User, Vehicle
 from app.security import require_roles
 
@@ -77,6 +79,30 @@ async def my_trips(
 ) -> list[TripOut]:
     rows = (await session.execute(_query().where(Trip.driver_id == user.id))).all()
     return [_out(r) for r in rows]
+
+
+@router.get("/{trip_id}/lr.pdf")
+async def lr_pdf(
+    trip_id: uuid.UUID, user: Annotated[User, Depends(require_roles(Role.ops, Role.billing, Role.driver))],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> Response:
+    """The lorry receipt for this trip as a printable PDF. A driver can only get their own trip's."""
+    trip = await session.get(Trip, trip_id)
+    if trip is None or (user.role == Role.driver and trip.driver_id != user.id):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Trip not found")
+    client = await session.get(Client, trip.client_id)
+    vehicle = await session.get(Vehicle, trip.vehicle_id)
+    branch = await session.get(Branch, trip.branch_id) if trip.branch_id else None
+    driver = await session.get(User, trip.driver_id) if trip.driver_id else None
+    pdf = build_lr_pdf(LrData(
+        company=get_settings().company_name, lr_no=trip.lr_no, trip_code=trip.trip_code, issued_at=trip.created_at, branch=branch.name if branch else None,
+        origin=trip.origin, destination=trip.destination, consignor=client.name if client else "", consignee=trip.consignee_name, vehicle=vehicle.reg_no if vehicle else "",
+        driver=driver.name if driver else None, driver_phone=driver.phone if driver else None, material=trip.material, packages=trip.packages,
+        weight_tonnes=trip.weight_tonnes, eway_bill_no=trip.eway_bill_no, planned_start=trip.planned_start))
+    session.add(AuditLog(actor_id=user.id, action="lr.download", entity="trip", entity_id=trip.trip_code))
+    await session.commit()
+    name = trip.lr_no.replace("/", "-")
+    return Response(pdf, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{name}.pdf"', "Cache-Control": "private, no-store"})
 
 
 @router.post("/{trip_id}/start", response_model=TripOut)

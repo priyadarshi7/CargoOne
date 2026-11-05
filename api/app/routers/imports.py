@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.db import get_session
 from app.imports.trips import TEMPLATE_CSV, ImportFileError, parse, read_rows, reg_key
+from app.lr import next_lr_no
 from app.models import AuditLog, Branch, Client, PodStatus, Role, Trip, User, Vehicle
 from app.security import require_roles
 
@@ -107,7 +108,7 @@ async def import_trips(
         driver = drivers.get(p.driver_phone) if p.driver_phone else None
 
         values = {
-            "client_id": client.id, "vehicle_id": vehicle.id, "lr_no": p.lr_no, "eway_bill_no": p.eway_bill_no,
+            "client_id": client.id, "vehicle_id": vehicle.id, **({"lr_no": p.lr_no} if p.lr_no else {}), "eway_bill_no": p.eway_bill_no,
             "origin": p.origin or s.default_origin, "destination": p.destination, "freight_amount": p.freight,
         }
         optional = {"branch_id": branch.id if branch else None, "driver_id": driver.id if driver else None,
@@ -116,6 +117,8 @@ async def import_trips(
 
         trip = existing.get(p.trip_code)
         if trip is None:
+            if "lr_no" not in values:
+                values["lr_no"] = await next_lr_no(session, branch)  # the sheet had none: issue one
             session.add(Trip(trip_code=p.trip_code, pod_status=PodStatus.pending, **values))
             created += 1
         elif trip.id in with_pod:

@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     tracking_retention_days: int = 30
     login_max_failures: int = 5
     login_lock_minutes: int = 15
+    default_branch_code: str = "MH20"  # LR prefix used when a trip has no branch
     default_origin: str = "Chhatrapati Sambhajinagar"  # used when an import row has no origin
     company_name: str = "Company A (demo)"  # printed on invoices
     invoice_prefix: str = "CO"

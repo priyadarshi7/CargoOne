@@ -15,7 +15,6 @@ async function fill(page: Page, o: { dest: string; lr: string; vehicle: string; 
   await d.getByLabel('Start').fill(o.start)
   await d.getByLabel('End (optional)').fill(o.end)
   await d.getByLabel('Freight (₹)').fill('24500')
-  await d.getByLabel('LR number').fill(o.lr)
   await d.getByLabel('E-way bill (12 digits)').fill('341000000777')
   return d
 }
@@ -29,6 +28,9 @@ test('ops plans a trip, a clash is flagged, then the driver starts it from the p
   await page.getByRole('button', { name: 'New trip' }).click()
   let d = await fill(page, { dest: 'Akola', lr: 'LR-PLAN-1', vehicle: 'MH20 GT 7718', driver: 'Plan Test Driver', start: when(2, 8), end: when(2, 20) })
   await d.getByRole('button', { name: 'Create trip' }).click()
+  await expect(d.getByLabel('LR number')).toHaveText(/^LR\/[A-Z0-9]+\/\d{2}-\d{2}\/\d{6}$/) // issued automatically, never typed
+  await shot(page, 'planning-lr-created')
+  await d.getByRole('button', { name: 'Done' }).click()
   await expect(page.getByRole('button', { name: /^Trip TRP-7\d+$/ }).first()).toBeVisible()
   await shot(page, 'planning-board')
 
@@ -43,12 +45,14 @@ test('ops plans a trip, a clash is flagged, then the driver starts it from the p
   await d.getByLabel('End (optional)').fill(when(4, 18))
   await expect(d.getByRole('button', { name: 'Book anyway' })).toHaveCount(0) // editing clears the override
   await d.getByRole('button', { name: 'Create trip' }).click()
+  await d.getByRole('button', { name: 'Done' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
 
   // a trip with no time yet is listed underneath, and can be cancelled
   await page.getByRole('button', { name: 'New trip' }).click()
   d = await fill(page, { dest: 'Dhule', lr: 'LR-PLAN-3', vehicle: 'MH20 EL 4521', driver: 'No driver yet', start: '', end: '' })
   await d.getByRole('button', { name: 'Create trip' }).click()
+  await d.getByRole('button', { name: 'Done' }).click()
   const unscheduled = page.getByRole('region').or(page.locator('section')).filter({ hasText: 'On the road or without a time' })
   await unscheduled.getByRole('button', { name: /^Trip TRP-7\d+$/ }).last().click()
   await page.getByRole('button', { name: 'Cancel this trip' }).click()

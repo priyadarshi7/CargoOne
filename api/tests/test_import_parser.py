@@ -32,7 +32,7 @@ def test_client_sample_sheet_imports_as_is() -> None:
 
 
 def test_missing_lr_and_eway_columns_are_reported_clearly() -> None:
-    with pytest.raises(ImportFileError, match=r"Missing column\(s\): lr_no, eway_bill_no"):
+    with pytest.raises(ImportFileError, match=r"Missing column\(s\): eway_bill_no"):
         read_rows(CLIENT_SHEET.encode(), "trips.csv")
 
 
@@ -66,7 +66,7 @@ def rows(**override) -> list[dict[str, str]]:
     ({"freight": "abc"}, "not a number"),
     ({"freight": "0"}, "between 1"),
     ({"freight": "-5"}, "between 1"),
-    ({"lr_no": ""}, "LR number is empty"),
+    ({"lr_no": "x" * 41}, "longer than 40"),
     ({"eway_bill_no": "12345"}, "12 digits"),
     ({"eway_bill_no": ""}, "12 digits"),
     ({"delivered_at": "yesterday"}, "not understood"),
@@ -125,3 +125,8 @@ def test_tab_separated_and_latin1_files_work() -> None:
     legacy = tsv.replace("Nagpur", "Nagpür").encode("latin-1")  # old Excel "CSV" exports are not UTF-8
     res = parse(read_rows(legacy, "t.csv"))
     assert res.errors == [] and res.trips[0].destination == "Nagpür"
+
+
+def test_a_blank_lr_number_is_allowed_because_one_is_generated() -> None:
+    res = parse(rows(lr_no=""))
+    assert res.errors == [] and res.trips[0].lr_no == ""

@@ -33,7 +33,7 @@ ALIASES: dict[str, set[str]] = {
     "consignee_name": {"consigneename", "consignee"},
     "consignee_phone": {"consigneephone", "consigneemobile"},
 }
-REQUIRED = ["trip_code", "client", "vehicle", "destination", "freight", "lr_no", "eway_bill_no"]
+REQUIRED = ["trip_code", "client", "vehicle", "destination", "freight", "eway_bill_no"]  # LR number is optional: blank = generated
 _BY_ALIAS = {a: field_ for field_, aliases in ALIASES.items() for a in aliases}
 
 REG = re.compile(r"^([A-Z]{2})(\d{1,2})([A-Z]{1,3})(\d{4})$")
@@ -205,9 +205,7 @@ def parse(rows: list[dict[str, str]]) -> ParseResult:
         except InvalidOperation:
             problems.append(f"Freight '{r.get('freight', '')}' is not a number")
         lr = r.get("lr_no", "").strip()
-        if not lr:
-            problems.append("LR number is empty")
-        elif len(lr) > 40:
+        if len(lr) > 40:
             problems.append("LR number is longer than 40 characters")
         ewb = re.sub(r"\D", "", r.get("eway_bill_no", ""))
         if len(ewb) != 12:
@@ -238,5 +236,6 @@ def parse(rows: list[dict[str, str]]) -> ParseResult:
 TEMPLATE_CSV = (
     "Trip ID,Client,Vehicle,Origin,Destination,Freight,LR No,E-way Bill No,Delivery Date,Branch,Driver Phone\n"
     "TRP-70001,Company B,MH20 EL 4521,Chhatrapati Sambhajinagar,Nagpur,38500,LR-90001,341009000011,,Chhatrapati Sambhajinagar,9000000001\n"
-    "TRP-70002,Company D,MH17 BY 3092 (hired),Chhatrapati Sambhajinagar,Indore,41200,LR-90002,341009000022,05/11/2026,Pune,\n"
+    "TRP-70002,Company D,MH17 BY 3092 (hired),Chhatrapati Sambhajinagar,Indore,41200,,341009000022,05/11/2026,Pune,\n"  # blank LR = generated
+
 )

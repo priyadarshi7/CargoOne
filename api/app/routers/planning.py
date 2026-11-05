@@ -14,7 +14,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.db import get_session
+from app.lr import next_lr_no
 from app.models import AuditLog, Branch, Client, PodStatus, Role, Trip, TripState, User, Vehicle
+from app.phones import clean_phone
 from app.planning import overlaps, window
 from app.routers.setup import DOCS
 from app.security import require_roles
@@ -41,10 +43,14 @@ class NewTrip(BaseModel):
     origin: str | None = Field(default=None, min_length=1, max_length=120)
     destination: str = Field(min_length=1, max_length=120)
     freight_amount: Decimal = Field(gt=0, le=10_000_000, decimal_places=2)
-    lr_no: str = Field(min_length=1, max_length=40)
     eway_bill_no: str = Field(pattern=r"^\d{12}$")
     planned_start: datetime | None = None
     planned_end: datetime | None = None
+    material: str | None = Field(default=None, max_length=160)
+    weight_tonnes: Decimal | None = Field(default=None, gt=0, le=100, decimal_places=2)
+    packages: int | None = Field(default=None, gt=0, le=1_000_000)
+    consignee_name: str | None = Field(default=None, max_length=160)
+    consignee_phone: str | None = None
     force: bool = False
 
     @model_validator(mode="after")
@@ -65,6 +71,7 @@ class Reassign(BaseModel):
 class BoardTrip(BaseModel):
     id: str
     trip_code: str
+    lr_no: str
     client: str
     vehicle_id: str
     driver_id: str | None
@@ -118,7 +125,7 @@ def _clash_error(clashes: list[Clash]) -> HTTPException:
     })
 
 
-async def _check_people(session: AsyncSession, vehicle_id: uuid.UUID, driver_id: uuid.UUID | None) -> None:
+async def _check_people(session: AsyncSession, vehicle_id: uuid.UUID, driver_id: uuid.UUID | None) -> Vehicle:
     v = await session.get(Vehicle, vehicle_id)
     if v is None:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Unknown vehicle")
@@ -134,6 +141,7 @@ async def _check_people(session: AsyncSession, vehicle_id: uuid.UUID, driver_id:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Unknown driver")
         if d.licence_expiry and d.licence_expiry < today:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, f"{d.name}'s driving licence has expired. Update it in Setup first.")
+    return v
 
 
 @router.get("/refs", response_model=Refs)
@@ -143,7 +151,7 @@ async def refs(_: Viewer, session: Session) -> Refs:
         vehicles=[{"id": str(v.id), "reg_no": v.reg_no, "is_hired": v.is_hired, "availability": v.availability, "capacity_tonnes": float(v.capacity_tonnes) if v.capacity_tonnes else None,
                    "vehicle_type": v.vehicle_type} for v in (await session.scalars(select(Vehicle).where(Vehicle.is_active).order_by(Vehicle.reg_no))).all()],
         drivers=[{"id": str(u.id), "name": u.name, "assigned_vehicle_id": str(u.assigned_vehicle_id) if u.assigned_vehicle_id else None} for u in (await session.scalars(select(User).where(User.role == Role.driver, User.is_active).order_by(User.name))).all()],
-        branches=[{"id": str(b.id), "name": b.name} for b in (await session.scalars(select(Branch).order_by(Branch.name))).all()],
+        branches=[{"id": str(b.id), "name": b.name, "code": b.code} for b in (await session.scalars(select(Branch).order_by(Branch.name))).all()],
         default_origin=get_settings().default_origin,
     )
 
@@ -161,7 +169,7 @@ async def board(_: Viewer, session: Session) -> dict:
     return {
         "now": datetime.now(UTC).isoformat(),
         "vehicles": [{"id": str(v.id), "reg_no": v.reg_no, "is_hired": v.is_hired} for v in vehicles],
-        "trips": [BoardTrip(id=str(t.id), trip_code=t.trip_code, client=c, vehicle_id=str(t.vehicle_id), driver_id=str(t.driver_id) if t.driver_id else None, driver=d, origin=t.origin,
+        "trips": [BoardTrip(id=str(t.id), trip_code=t.trip_code, lr_no=t.lr_no, client=c, vehicle_id=str(t.vehicle_id), driver_id=str(t.driver_id) if t.driver_id else None, driver=d, origin=t.origin,
                             destination=t.destination, state=t.state.value, planned_start=t.planned_start, planned_end=t.planned_end,
                             started_at=t.started_at).model_dump(mode="json") for t, c, d in rows],
     }
@@ -171,22 +179,28 @@ async def board(_: Viewer, session: Session) -> dict:
 async def create_trip(body: NewTrip, user: Planner, session: Session) -> dict:
     if await session.get(Client, body.client_id) is None:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Unknown client")
-    await _check_people(session, body.vehicle_id, body.driver_id)
+    vehicle = await _check_people(session, body.vehicle_id, body.driver_id)
+    if body.weight_tonnes and vehicle.capacity_tonnes and body.weight_tonnes > vehicle.capacity_tonnes:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, f"{body.weight_tonnes} tonnes is more than {vehicle.reg_no} can carry ({vehicle.capacity_tonnes} tonnes)")
+    branch = await session.get(Branch, body.branch_id) if body.branch_id else None
     if not body.force:
         clashes = await find_clashes(session, vehicle_id=body.vehicle_id, driver_id=body.driver_id, start=body.planned_start, end=body.planned_end)
         if clashes:
             raise _clash_error(clashes)
     code = f"TRP-{await session.scalar(select(func.nextval('trip_code_seq')))}"
+    lr_no = await next_lr_no(session, branch)  # taken last, so a refused request never uses up a number
     trip = Trip(
         trip_code=code, client_id=body.client_id, vehicle_id=body.vehicle_id, driver_id=body.driver_id, branch_id=body.branch_id,
-        lr_no=body.lr_no.strip(), eway_bill_no=body.eway_bill_no, origin=(body.origin or get_settings().default_origin).strip(),
+        material=(body.material or "").strip() or None, weight_tonnes=body.weight_tonnes, packages=body.packages,
+        consignee_name=(body.consignee_name or "").strip() or None, consignee_phone=clean_phone(body.consignee_phone) if body.consignee_phone else None,
+        lr_no=lr_no, eway_bill_no=body.eway_bill_no, origin=(body.origin or get_settings().default_origin).strip(),
         destination=body.destination.strip(), freight_amount=body.freight_amount, pod_status=PodStatus.pending, state=TripState.planned,
         planned_start=body.planned_start, planned_end=body.planned_end,
     )
     session.add(trip)
     session.add(AuditLog(actor_id=user.id, action="trip.create", entity="trip", entity_id=code, meta={"forced": body.force}))
     await session.commit()
-    return {"id": str(trip.id), "trip_code": code}
+    return {"id": str(trip.id), "trip_code": code, "lr_no": lr_no}
 
 
 async def _planned_trip(session: AsyncSession, trip_id: uuid.UUID) -> Trip:

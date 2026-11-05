@@ -89,6 +89,7 @@ class Branch(Base):
     __tablename__ = "branches"
     id: Mapped[uuid.UUID] = pk()
     name: Mapped[str] = mapped_column(String(120), unique=True)
+    code: Mapped[str | None] = mapped_column(String(8), unique=True)  # prefix of this branch's LR numbers, e.g. MH20
 
 
 class User(Base):
@@ -209,6 +210,9 @@ class Trip(Base):
     freight_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
     consignee_name: Mapped[str | None] = mapped_column(String(160))  # PII
     consignee_phone: Mapped[str | None] = mapped_column(String(20))  # PII
+    material: Mapped[str | None] = mapped_column(String(160))  # goods description on the LR
+    weight_tonnes: Mapped[Decimal | None] = mapped_column(Numeric(8, 2))
+    packages: Mapped[int | None] = mapped_column(Integer)
     delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     pod_status: Mapped[PodStatus] = mapped_column(_enum(PodStatus), default=PodStatus.pending)
     retake_count: Mapped[int] = mapped_column(Integer, default=0)

@@ -7,7 +7,9 @@ import { btnGhost } from './ui'
 export interface Doc { id: string; kind: string; mime: string; size_bytes: number; uploaded_at: string | null }
 export const VEHICLE_DOCS = ['rc', 'insurance', 'fitness', 'permit', 'puc'] as const
 export const DRIVER_DOCS = ['licence', 'licence_back'] as const
-export type DocKind = (typeof VEHICLE_DOCS)[number] | (typeof DRIVER_DOCS)[number]
+export const TRIP_DOCS = ['lr_scan'] as const
+export type DocKind = (typeof VEHICLE_DOCS)[number] | (typeof DRIVER_DOCS)[number] | (typeof TRIP_DOCS)[number]
+export type OwnerType = 'vehicle' | 'driver' | 'trip'
 
 /** Phone photos are often 4-8 MB: scale a big image down before it leaves the browser. PDFs and small files go as they are. */
 async function shrink(file: File): Promise<File> {
@@ -22,7 +24,7 @@ async function shrink(file: File): Promise<File> {
   } catch { return file }
 }
 
-export async function uploadDoc(ownerType: 'vehicle' | 'driver', ownerId: string, kind: string, file: File): Promise<Doc> {
+export async function uploadDoc(ownerType: OwnerType, ownerId: string, kind: string, file: File): Promise<Doc> {
   const form = new FormData()
   form.set('owner_type', ownerType)
   form.set('owner_id', ownerId)
@@ -38,7 +40,7 @@ export async function openDoc(id: string): Promise<void> {
 }
 
 /** One row per paper kind: shows whether it is on file, and lets the ops head upload, replace, view or remove it. */
-export function DocSlots({ ownerType, ownerId, kinds, canEdit }: { ownerType: 'vehicle' | 'driver'; ownerId: string; kinds: readonly DocKind[]; canEdit: boolean }) {
+export function DocSlots({ ownerType, ownerId, kinds, canEdit }: { ownerType: OwnerType; ownerId: string; kinds: readonly DocKind[]; canEdit: boolean }) {
   const { t } = useI18n()
   const [docs, setDocs] = useState<Doc[] | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
@@ -102,7 +104,7 @@ export function PendingDocs({ kinds, files, onChange }: { kinds: readonly DocKin
 }
 
 /** Sends the files picked in a "new" form. A failure is reported but never undoes the record that was just saved. */
-export async function uploadPending(ownerType: 'vehicle' | 'driver', ownerId: string, files: Record<string, File | undefined>): Promise<string | null> {
+export async function uploadPending(ownerType: OwnerType, ownerId: string, files: Record<string, File | undefined>): Promise<string | null> {
   let failed: string | null = null
   for (const [kind, file] of Object.entries(files)) {
     if (!file) continue

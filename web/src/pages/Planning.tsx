@@ -1,13 +1,14 @@
 import { Plus, TriangleAlert, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { api, ApiError, type TripState } from '../lib/api'
+import { api, ApiError, download, type TripState } from '../lib/api'
+import { DocSlots, TRIP_DOCS } from './setup/Docs'
 import { useAuth } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
 
-interface BoardTrip { id: string; trip_code: string; client: string; vehicle_id: string; driver_id: string | null; driver: string | null; origin: string; destination: string; state: TripState; planned_start: string | null; planned_end: string | null; started_at: string | null }
-interface Vehicle { id: string; reg_no: string; is_hired: boolean }
+interface BoardTrip { id: string; trip_code: string; lr_no: string; client: string; vehicle_id: string; driver_id: string | null; driver: string | null; origin: string; destination: string; state: TripState; planned_start: string | null; planned_end: string | null; started_at: string | null }
+interface Vehicle { id: string; reg_no: string; is_hired: boolean; availability?: string; capacity_tonnes?: number | null }
 interface Board { now: string; vehicles: Vehicle[]; trips: BoardTrip[] }
-interface Refs { clients: { id: string; name: string }[]; vehicles: Vehicle[]; drivers: { id: string; name: string }[]; branches: { id: string; name: string }[]; default_origin: string }
+interface Refs { clients: { id: string; name: string }[]; vehicles: Vehicle[]; drivers: { id: string; name: string; assigned_vehicle_id?: string | null }[]; branches: { id: string; name: string }[]; default_origin: string }
 
 const DAY = 86_400_000
 const DAYS = 15 // yesterday + two weeks
@@ -154,14 +155,21 @@ function TripDialog({ trip, refs, canPlan, onClose, onSaved }: { trip: BoardTrip
   const locked = editing && (trip.state !== 'planned' || !canPlan)
   const [f, setF] = useState({
     client_id: refs.clients[0]?.id ?? '', vehicle_id: trip?.vehicle_id ?? refs.vehicles[0]?.id ?? '', driver_id: trip?.driver_id ?? '',
-    origin: refs.default_origin, destination: trip?.destination ?? '', freight_amount: '', lr_no: '', eway_bill_no: '',
+    origin: refs.default_origin, destination: trip?.destination ?? '', freight_amount: '', eway_bill_no: '', material: '', weight_tonnes: '', packages: '', consignee_name: '', consignee_phone: '',
     start: toLocalInput(trip?.planned_start ?? null), end: toLocalInput(trip?.planned_end ?? null),
   })
   const [error, setError] = useState<string | null>(null)
   const [clash, setClash] = useState(false)
   const [busy, setBusy] = useState(false)
   const [confirmCancel, setConfirmCancel] = useState(false)
+  const [created, setCreated] = useState<{ trip_code: string; lr_no: string; id: string } | null>(null)
   const set = (k: keyof typeof f, v: string) => { setF({ ...f, [k]: v }); setClash(false) }
+  const pickDriver = (id: string) => {
+    const own = refs.drivers.find((d) => d.id === id)?.assigned_vehicle_id // a driver normally drives one truck: suggest it
+    setF({ ...f, driver_id: id, vehicle_id: own && refs.vehicles.some((v) => v.id === own && v.availability !== 'maintenance' && v.availability !== 'breakdown') ? own : f.vehicle_id })
+    setClash(false)
+  }
+  const usable = refs.vehicles.filter((v) => v.id === trip?.vehicle_id || !v.availability || v.availability === 'available')
 
   async function save(e: FormEvent, force = false) {
     e.preventDefault()
@@ -172,9 +180,12 @@ function TripDialog({ trip, refs, canPlan, onClose, onSaved }: { trip: BoardTrip
       if (editing) {
         await api(`/planning/trips/${trip.id}`, { method: 'PATCH', body: JSON.stringify({ vehicle_id: f.vehicle_id, driver_id: f.driver_id || null, ...times, force }) })
       } else {
-        await api('/planning/trips', { method: 'POST', body: JSON.stringify({
+        const made = await api<{ id: string; trip_code: string; lr_no: string }>('/planning/trips', { method: 'POST', body: JSON.stringify({
           client_id: f.client_id, vehicle_id: f.vehicle_id, driver_id: f.driver_id || null, origin: f.origin || null, destination: f.destination,
-          freight_amount: f.freight_amount, lr_no: f.lr_no, eway_bill_no: f.eway_bill_no, ...times, force }) })
+          freight_amount: f.freight_amount, eway_bill_no: f.eway_bill_no, material: f.material || null, weight_tonnes: f.weight_tonnes || null,
+          packages: f.packages || null, consignee_name: f.consignee_name || null, consignee_phone: f.consignee_phone || null, ...times, force }) })
+        setCreated(made)
+        return
       }
       onSaved()
     } catch (err) {
@@ -194,7 +205,19 @@ function TripDialog({ trip, refs, canPlan, onClose, onSaved }: { trip: BoardTrip
   const field = 'w-full rounded-lg border border-line px-3 py-2 text-sm outline-none focus:border-accent disabled:opacity-60'
   const label = (text: string, input: React.ReactNode) => <label className="block space-y-1 text-sm"><span className="text-muted">{text}</span>{input}</label>
   return (
-    <dialog ref={ref} onClose={onClose} aria-label={editing ? trip.trip_code : t('plan.new')} className="m-auto w-[min(34rem,94vw)] rounded-2xl border border-line p-0 shadow-xl backdrop:bg-black/30">
+    <dialog ref={ref} onClose={created ? onSaved : onClose} aria-label={editing ? trip.trip_code : t('plan.new')} className="m-auto w-[min(34rem,94vw)] rounded-2xl border border-line p-0 shadow-xl backdrop:bg-black/30">
+      {created ? (
+        <div className="space-y-4 p-6">
+          <h2 className="text-lg font-semibold">{t('lr.created', { code: created.trip_code })}</h2>
+          <p className="text-2xl font-semibold tabular-nums" aria-label={t('lr.no')}>{created.lr_no}</p>
+          <p className="text-sm text-muted">{t('lr.createdLr', { lr: created.lr_no })}</p>
+          <div className="flex flex-wrap justify-end gap-3">
+            <button type="button" onClick={() => void download(`/trips/${created.id}/lr.pdf`, `${created.trip_code}-LR.pdf`).catch(() => setError(t('lr.pdfFail')))} className="rounded-lg border border-line px-4 py-2 text-sm">{t('lr.download')}</button>
+            <button type="button" onClick={onSaved} className="rounded-lg bg-accent px-5 py-2 text-sm font-medium text-on-solid">{t('lr.done')}</button>
+          </div>
+          {error && <p role="alert" className="text-sm text-bad">{error}</p>}
+        </div>
+      ) : (
       <form onSubmit={(e) => void save(e)} className="space-y-4 p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -215,8 +238,8 @@ function TripDialog({ trip, refs, canPlan, onClose, onSaved }: { trip: BoardTrip
           </>
         )}
         <div className="grid gap-4 sm:grid-cols-2">
-          {label(t('plan.vehicle'), <select className={field} disabled={locked} value={f.vehicle_id} onChange={(e) => set('vehicle_id', e.target.value)}>{refs.vehicles.map((v) => <option key={v.id} value={v.id}>{v.reg_no}{v.is_hired ? ` (${t('plan.hiredTag')})` : ''}</option>)}</select>)}
-          {label(t('plan.driver'), <select className={field} disabled={locked} value={f.driver_id} onChange={(e) => set('driver_id', e.target.value)}><option value="">{t('plan.noDriver')}</option>{refs.drivers.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select>)}
+          {label(t('plan.vehicle'), <select className={field} disabled={locked} value={f.vehicle_id} onChange={(e) => set('vehicle_id', e.target.value)}>{usable.map((v) => <option key={v.id} value={v.id}>{v.reg_no}{v.capacity_tonnes ? ` · ${v.capacity_tonnes} t` : ''}{v.is_hired ? ` (${t('plan.hiredTag')})` : ''}</option>)}</select>)}
+          {label(t('plan.driver'), <select className={field} disabled={locked} value={f.driver_id} onChange={(e) => pickDriver(e.target.value)}><option value="">{t('plan.noDriver')}</option>{refs.drivers.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select>)}
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           {label(t('plan.start'), <input type="datetime-local" className={field} disabled={locked} value={f.start} onChange={(e) => set('start', e.target.value)} />)}
@@ -225,8 +248,30 @@ function TripDialog({ trip, refs, canPlan, onClose, onSaved }: { trip: BoardTrip
         {!editing && (
           <div className="grid gap-4 sm:grid-cols-3">
             {label(t('plan.freight'), <input className={field} required inputMode="decimal" value={f.freight_amount} onChange={(e) => set('freight_amount', e.target.value)} />)}
-            {label(t('plan.lr'), <input className={field} required value={f.lr_no} onChange={(e) => set('lr_no', e.target.value)} />)}
             {label(t('plan.eway'), <input className={field} required inputMode="numeric" maxLength={12} value={f.eway_bill_no} onChange={(e) => set('eway_bill_no', e.target.value.replace(/\D/g, ''))} />)}
+            <p className="self-end pb-2 text-xs text-muted sm:col-span-1">{t('lr.auto')}</p>
+          </div>
+        )}
+        {!editing && (
+          <>
+            <div className="grid gap-4 sm:grid-cols-3">
+              {label(t('plan.material'), <input className={field} maxLength={160} value={f.material} onChange={(e) => set('material', e.target.value)} />)}
+              {label(t('plan.weight'), <input className={field} inputMode="decimal" value={f.weight_tonnes} onChange={(e) => set('weight_tonnes', e.target.value)} />)}
+              {label(t('plan.packages'), <input className={field} inputMode="numeric" value={f.packages} onChange={(e) => set('packages', e.target.value.replace(/\D/g, ''))} />)}
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {label(t('plan.consignee'), <input className={field} maxLength={160} value={f.consignee_name} onChange={(e) => set('consignee_name', e.target.value)} />)}
+              {label(t('plan.consigneePhone'), <input className={field} inputMode="tel" value={f.consignee_phone} onChange={(e) => set('consignee_phone', e.target.value)} />)}
+            </div>
+          </>
+        )}
+        {editing && (
+          <div className="space-y-3 rounded-xl border border-line p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+              <span><span className="text-muted">{t('lr.no')}</span> <b className="tabular-nums">{trip.lr_no}</b></span>
+              <button type="button" onClick={() => void download(`/trips/${trip.id}/lr.pdf`, `${trip.trip_code}-LR.pdf`).catch(() => setError(t('lr.pdfFail')))} className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium hover:border-accent hover:text-accent">{t('lr.download')}</button>
+            </div>
+            <DocSlots ownerType="trip" ownerId={trip.id} kinds={TRIP_DOCS} canEdit={canPlan} />
           </div>
         )}
 
@@ -256,6 +301,7 @@ function TripDialog({ trip, refs, canPlan, onClose, onSaved }: { trip: BoardTrip
           </div>
         )}
       </form>
+      )}
     </dialog>
   )
 }

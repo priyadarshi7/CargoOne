@@ -123,3 +123,17 @@ async def test_roles_and_audit(client: AsyncClient, driver: dict) -> None:
     async with SessionLocal() as s:
         meta = (await s.scalars(select(AuditLog.meta).where(AuditLog.action == "import.trips").order_by(AuditLog.at.desc()).limit(1))).first()
     assert meta["created"] == 1 and "Some Consignee" not in str(meta)
+
+
+async def test_a_blank_lr_in_the_sheet_gets_a_generated_number_but_a_dry_run_uses_none(client: AsyncClient) -> None:
+    code = f"IMP-{uid()}"
+    line = HEADER + f"{code},Company B,MH20 EL 4521,Nagpur,1000,,341000000001,,,\n"
+    assert (await send(client, line, dry_run=True)).json()["created"] == 1
+    assert (await trip_by_code(code)) is None  # nothing saved, so no number was consumed
+    done = (await send(client, line, dry_run=False)).json()
+    assert done["created"] == 1 and done["errors"] == []
+    t = await trip_by_code(code)
+    assert t.lr_no.startswith("LR/") and t.lr_no.count("/") == 3
+    again = (await send(client, line, dry_run=False)).json()
+    assert (again["created"], again["updated"]) == (0, 0)  # re-import keeps the number it already issued
+    assert (await trip_by_code(code)).lr_no == t.lr_no

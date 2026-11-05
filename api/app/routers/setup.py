@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth_policy import check_secret
 from app.db import get_session
-from app.models import AuditLog, Client, Role, Trip, TripState, User, Vehicle, Vendor
+from app.models import AuditLog, Branch, Client, Role, Trip, TripState, User, Vehicle, Vendor
 from app.phones import clean_phone
 from app.security import hash_secret, require_roles
 
@@ -386,3 +386,49 @@ async def reset_staff_password(user_id: uuid.UUID, actor: AdminOnly, session: Se
     await _audit(session, actor, "staff.reset_password", "user", u.id)
     await session.commit()
     return {"password": pw}
+
+
+# ---------------------------------------------------------------- branches
+
+class BranchIn(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    code: str = Field(pattern=r"^[A-Za-z0-9]{2,8}$", description="prefix of this branch's LR numbers, e.g. MH20")
+
+
+class BranchPatch(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=120)
+    code: str | None = Field(default=None, pattern=r"^[A-Za-z0-9]{2,8}$")
+
+
+def _branch_out(b: Branch, trips: int) -> dict:
+    return {"id": str(b.id), "name": b.name, "code": b.code, "trips": trips}
+
+
+@router.get("/branches")
+async def list_branches(_: Office, session: Session) -> list[dict]:
+    counts = dict((await session.execute(select(Trip.branch_id, func.count()).group_by(Trip.branch_id))).all())
+    return [_branch_out(b, counts.get(b.id, 0)) for b in (await session.scalars(select(Branch).order_by(Branch.name))).all()]
+
+
+@router.post("/branches", status_code=status.HTTP_201_CREATED)
+async def create_branch(body: BranchIn, actor: Manager, session: Session) -> dict:
+    b = Branch(name=body.name.strip(), code=body.code.upper())
+    session.add(b)
+    await _commit(session, "branch name or code", flush=True)
+    await _audit(session, actor, "branch.create", "branch", b.id, code=b.code)
+    await _commit(session, "branch")
+    return _branch_out(b, 0)
+
+
+@router.patch("/branches/{branch_id}")
+async def update_branch(branch_id: uuid.UUID, body: BranchPatch, actor: Manager, session: Session) -> dict:
+    b = await session.get(Branch, branch_id)
+    if b is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Branch not found")
+    if body.name is not None:
+        b.name = body.name.strip()
+    if body.code is not None:
+        b.code = body.code.upper()  # LR numbers already issued keep the old code: they are printed on paper
+    await _audit(session, actor, "branch.update", "branch", b.id, fields=sorted(body.model_fields_set))
+    await _commit(session, "branch name or code")
+    return _branch_out(b, await session.scalar(select(func.count()).select_from(Trip).where(Trip.branch_id == b.id)) or 0)
