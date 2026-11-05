@@ -26,7 +26,7 @@ export default function ReviewList() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">{t('review.title')}</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">{t('review.title')}</h1>
         <p className="text-sm text-muted">{t('review.sub')}</p>
       </div>
       {items.length === 0 ? (

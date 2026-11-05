@@ -49,7 +49,7 @@ export default function ClientPod() {
     <main className="mx-auto max-w-3xl space-y-8 px-4 py-10 sm:px-6">
       <header className="space-y-1">
         <p className="text-sm text-muted">{pod.company}</p>
-        <h1 className="text-2xl font-semibold">Proof of delivery</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Proof of delivery</h1>
         <p className="flex items-center gap-2 text-sm text-ok"><CircleCheck size={16} aria-hidden /> Verified {day(pod.verified_at)} · Trip {pod.trip_code}</p>
       </header>
 

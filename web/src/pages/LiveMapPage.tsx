@@ -48,7 +48,7 @@ export default function LiveMapPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">{t('live.title')}</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">{t('live.title')}</h1>
         <p className="text-sm text-muted">{t('live.sub')}</p>
       </div>
       <div className="grid grid-cols-2 gap-4 sm:max-w-md">

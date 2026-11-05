@@ -34,7 +34,7 @@ export default function Expenses() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">{t('exp.title')}</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">{t('exp.title')}</h1>
         <p className="text-sm text-muted">{t('exp.sub')}</p>
       </div>
       <div className="flex gap-6 border-b border-line" role="tablist">

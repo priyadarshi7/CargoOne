@@ -1,4 +1,4 @@
-import { Camera, CircleCheck, CloudUpload, KeyRound, LogOut, MapPin, Play, Wallet } from 'lucide-react'
+import { Camera, CircleCheck, CloudUpload, KeyRound, LogOut, MapPin, Play, Truck, Wallet } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import DriverInbox from '../components/DriverInbox'
@@ -12,6 +12,8 @@ import { useTracker } from '../lib/tracker'
 
 const OPEN: PodStatus[] = ['pending', 'retake_requested']
 const START: Record<'en' | 'hi' | 'mr', string> = { en: 'Start trip', hi: 'यात्रा शुरू करें', mr: 'प्रवास सुरू करा' }
+
+const PHOTO: Record<'en' | 'hi' | 'mr', string> = { en: 'POD photo', hi: 'POD फ़ोटो', mr: 'POD फोटो' }
 
 const LOC: Record<'en' | 'hi' | 'mr', Record<'title' | 'body' | 'allow' | 'later' | 'on', string>> = {
   en: { title: 'Share your location during trips?', body: 'The office sees where your truck is, only while a trip is running. You can stop any time.', allow: 'Allow', later: 'Not now', on: 'Location on' },
@@ -57,8 +59,11 @@ export default function DriverHome() {
 
   return (
     <div className="mx-auto flex min-h-full max-w-md flex-col px-5 pb-8 pt-6">
-      <header className="flex items-center justify-between">
-        <p className="text-lg font-medium">{user?.name}</p>
+      <header className="flex items-center justify-between border-b border-line pb-4">
+        <div className="flex items-center gap-3">
+          <span className="grid h-9 w-9 place-items-center rounded-xl bg-ink text-surface"><Truck size={18} aria-hidden /></span>
+          <div className="leading-tight"><p className="text-xs text-muted">CargoOne</p><p className="text-lg font-semibold tracking-tight">{user?.name}</p></div>
+        </div>
         <div className="flex items-center">
           {gps === 'on' && <span role="status" aria-label={loc.on} title={loc.on} className="mr-1 grid h-10 w-10 place-items-center rounded-full bg-ok-soft text-ok"><MapPin size={20} aria-hidden /></span>}
           <Link to="/driver/expense" aria-label="Expenses" className="grid h-12 w-12 place-items-center rounded-full text-muted"><Wallet aria-hidden /></Link>
@@ -91,7 +96,7 @@ export default function DriverHome() {
 
       {next?.state === 'planned' ? (
         <button onClick={() => void start(next.id)} disabled={starting}
-          className="mt-6 grid h-48 w-full place-items-center rounded-3xl bg-ok text-on-solid active:scale-[0.98] disabled:opacity-60">
+          className="mt-6 grid h-44 w-full place-items-center rounded-3xl bg-ok text-on-solid transition-transform active:scale-[0.98] disabled:opacity-60">
           <span className="flex flex-col items-center gap-3 text-xl font-semibold">
             <Play size={64} aria-hidden /> {START[user?.language ?? 'en']}
             <span className="text-base font-normal opacity-90">{next.destination}</span>
@@ -99,15 +104,15 @@ export default function DriverHome() {
         </button>
       ) : next ? (
         <Link to={`/driver/trip/${next.id}`}
-          className="mt-6 grid h-48 w-full place-items-center rounded-3xl bg-ink text-surface active:scale-[0.98]">
+          className="mt-6 grid h-44 w-full place-items-center rounded-3xl bg-ink text-surface transition-transform active:scale-[0.98]">
           <span className="flex flex-col items-center gap-3 text-xl font-semibold">
-            <Camera size={64} aria-hidden /> POD
+            <Camera size={64} aria-hidden /> {PHOTO[user?.language ?? 'en']}
             <span className="text-base font-normal opacity-90">{next.destination}</span>
           </span>
         </Link>
       ) : (
         trips && (
-          <div className="mt-6 grid h-48 w-full place-items-center rounded-3xl bg-ok-soft text-ok">
+          <div className="mt-6 grid h-44 w-full place-items-center rounded-3xl bg-ok-soft text-ok">
             <CircleCheck size={80} aria-label="All done" />
           </div>
         )
@@ -115,7 +120,7 @@ export default function DriverHome() {
 
       {focus && <DriverTripDetails trip={focus} />}
 
-      <ul className="mt-8 space-y-3">
+      <ul className="mt-8 space-y-3" aria-label="Trips">
         {trips?.map((t) => {
           const { icon: Icon, cls, label } = statusIcon(t.pod_status)
           return (

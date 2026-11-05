@@ -3,6 +3,7 @@
 
 /* Design tokens: white space, one accent, three semantic colours. Nothing decorative. */
 @theme {
+  --radius-lg: 0.625rem; --radius-xl: 0.875rem; --radius-2xl: 1.125rem; /* softer, consistent corners: controls 10, cards 14, panels 18 */
   --font-sans: "Geist Variable", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Noto Sans Devanagari", sans-serif;
   --color-ink: #0e0e10;
   --color-muted: #67676f;

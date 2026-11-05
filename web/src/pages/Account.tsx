@@ -38,7 +38,7 @@ export default function Account() {
   return (
     <div className="max-w-md space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold">{t('acct.title')}</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">{t('acct.title')}</h1>
         <p className="text-sm text-muted">{user?.name} · {user?.role}</p>
       </div>
       <p className="text-sm"><Link to="/progress" className="text-accent underline underline-offset-2">{t('nav.progress')}</Link></p>

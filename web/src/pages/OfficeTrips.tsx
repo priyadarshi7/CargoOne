@@ -37,6 +37,7 @@ export default function OfficeTrips() {
 
   return (
     <div className="space-y-8">
+      <h1 className="text-3xl font-semibold tracking-tight">{tx('nav.trips')}</h1>
       {note && <p role="alert" className="text-sm text-bad">{note}</p>}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {stats.map(([label, n]) => (

@@ -62,7 +62,7 @@ export default function Dashboard() {
     <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">{user?.role === 'md' ? tr('dash.md') : tr('dash.ops')}</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">{user?.role === 'md' ? tr('dash.md') : tr('dash.ops')}</h1>
           <p className="text-sm text-muted">{tr('dash.sub', { days: d.window_days, n: k.trips_in_window })}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">

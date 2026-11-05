@@ -25,7 +25,7 @@ function Body() {
       <section>
         <div className="flex items-end justify-between">
           <div>
-            <h1 className="text-2xl font-semibold">Build progress</h1>
+            <h1 className="text-3xl font-semibold tracking-tight">Build progress</h1>
             <p className="text-sm text-muted">Read live from docs/02-roadmap.md</p>
           </div>
           <div className="text-right">

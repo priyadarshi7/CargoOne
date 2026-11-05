@@ -19,7 +19,7 @@ const inr = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR',
 function Tile({ label, value, to, icon: Icon, tone, extra }: TileDef) {
   const hot = tone === 'warn' && value > 0
   return (
-    <Link to={to} className="group rounded-xl border border-line p-5 hover:bg-wash">
+    <Link to={to} className="group rounded-2xl border border-line p-4 transition-colors sm:p-5 hover:border-ink/30 hover:bg-wash">
       <div className="flex items-center justify-between">
         <span className={`grid h-9 w-9 place-items-center rounded-full ${hot ? 'bg-warn-soft text-warn' : 'bg-accent-soft text-accent'}`}><Icon size={18} aria-hidden /></span>
         <ArrowRight size={16} className="text-muted group-hover:text-accent" aria-hidden />
@@ -31,19 +31,22 @@ function Tile({ label, value, to, icon: Icon, tone, extra }: TileDef) {
   )
 }
 
-function DeskFrame({ title, sub, tiles, actions }: { title: string; sub: string; tiles: TileDef[] | null; actions: Action[] }) {
+function DeskFrame({ title, sub, tiles, actions, primary }: { title: string; sub: string; tiles: TileDef[] | null; actions: Action[]; primary: Action }) {
   const { t } = useI18n()
   const { user } = useAuth()
   return (
     <div className="space-y-8">
-      <div>
-        <p className="text-sm text-muted">{t('desk.hello', { name: user?.name ?? '' })}</p>
-        <h1 className="text-2xl font-semibold">{title}</h1>
-        <p className="text-sm text-muted">{sub}</p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-sm text-muted">{t('desk.hello', { name: user?.name ?? '' })}</p>
+          <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
+          <p className="mt-1 text-sm text-muted">{sub}</p>
+        </div>
+        <Link to={primary.to} className="inline-flex h-11 items-center gap-2 rounded-xl bg-ink px-5 text-sm font-medium text-surface hover:opacity-90"><primary.icon size={16} aria-hidden /> {primary.label}</Link>
       </div>
       <Attention />
       {tiles === null ? <p className="text-muted">{t('common.loading')}</p> : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{tiles.map((x) => <Tile key={x.to + x.label} {...x} />)}</div>
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3">{tiles.map((x) => <Tile key={x.to + x.label} {...x} />)}</div>
       )}
       <section aria-label={t('desk.actions')}>
         <h2 className="mb-3 font-semibold">{t('desk.actions')}</h2>
@@ -81,8 +84,8 @@ export function OpsDesk() {
   return (
     <>
       {failed && <p className="mb-4 text-bad">{t('desk.loadFail')}</p>}
-      <DeskFrame title={t('desk.ops.title')} sub={t('desk.ops.sub')} tiles={failed ? [] : tiles} actions={[
-        { label: t('desk.a.plan'), to: '/office/planning', icon: Route }, { label: t('desk.a.requests'), to: '/office/requests', icon: Inbox },
+      <DeskFrame title={t('desk.ops.title')} sub={t('desk.ops.sub')} tiles={failed ? [] : tiles} primary={{ label: t('desk.a.plan'), to: '/office/planning', icon: Route }} actions={[
+        { label: t('desk.a.requests'), to: '/office/requests', icon: Inbox },
         { label: t('desk.a.live'), to: '/office/live', icon: Map }, { label: t('desk.a.drivers'), to: '/office/setup?tab=drivers', icon: Users },
         { label: t('desk.a.trucks'), to: '/office/setup?tab=trucks', icon: Truck }, { label: t('desk.a.import'), to: '/office/import', icon: Upload },
       ]} />
@@ -104,8 +107,8 @@ export function BillingDesk() {
   return (
     <>
       {failed && <p className="mb-4 text-bad">{t('desk.loadFail')}</p>}
-      <DeskFrame title={t('desk.billing.title')} sub={t('desk.billing.sub')} tiles={failed ? [] : tiles} actions={[
-        { label: t('desk.a.review'), to: '/office/review', icon: ClipboardCheck }, { label: t('desk.a.invoice'), to: '/office/billing', icon: Receipt },
+      <DeskFrame title={t('desk.billing.title')} sub={t('desk.billing.sub')} tiles={failed ? [] : tiles} primary={{ label: t('desk.a.invoice'), to: '/office/billing', icon: Receipt }} actions={[
+        { label: t('desk.a.review'), to: '/office/review', icon: ClipboardCheck },
         { label: t('desk.a.expenses'), to: '/office/expenses', icon: ReceiptText }, { label: t('desk.a.trips'), to: '/office/trips', icon: Route },
       ]} />
     </>

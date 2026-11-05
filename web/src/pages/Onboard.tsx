@@ -49,7 +49,7 @@ export default function Onboard() {
   return (
     <main className="mx-auto flex min-h-full max-w-md flex-col gap-5 px-6 py-10">
       <CircleCheck size={56} className="text-ok" aria-hidden />
-      <h1 className="text-2xl font-semibold">{x.hello.replace('{name}', info.name)}</h1>
+      <h1 className="text-3xl font-semibold tracking-tight">{x.hello.replace('{name}', info.name)}</h1>
       <p className="text-muted">{x.intro}</p>
       <form onSubmit={(e) => void submit(e)} className="space-y-4">
         <label className="block space-y-1"><span className="text-sm font-medium">{x.pin}</span>

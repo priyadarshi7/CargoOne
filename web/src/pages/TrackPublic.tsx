@@ -40,7 +40,7 @@ export default function TrackPublic() {
     <main className="mx-auto max-w-3xl space-y-6 px-4 py-10 sm:px-6">
       <header className="space-y-1">
         <p className="text-sm text-muted">{t.company}</p>
-        <h1 className="text-2xl font-semibold">Where is my load?</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Where is my load?</h1>
         <p className="text-sm text-muted">Trip {t.trip_code} · {t.vehicle}</p>
       </header>
 

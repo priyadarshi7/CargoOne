@@ -31,7 +31,7 @@ export default function Setup() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">{t('setup.title')}</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">{t('setup.title')}</h1>
         <p className="text-sm text-muted">{t('setup.sub')}</p>
         {!canEdit && <p className="mt-1 text-sm text-warn">{t('setup.canRead')}</p>}
       </div>

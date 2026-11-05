@@ -30,7 +30,7 @@ export default function Requests() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div><h1 className="text-2xl font-semibold">{t('req.o.title')}</h1><p className="text-sm text-muted">{t('req.o.sub')}</p></div>
+        <div><h1 className="text-3xl font-semibold tracking-tight">{t('req.o.title')}</h1><p className="text-sm text-muted">{t('req.o.sub')}</p></div>
         <div role="tablist" className="flex gap-1 rounded-lg border border-line p-1 text-sm">
           {(['open', 'all'] as const).map((x) => <button key={x} role="tab" aria-selected={state === x} onClick={() => setState(x)} className={`rounded-md px-3 py-1 ${state === x ? 'bg-accent-soft font-medium text-accent' : 'text-muted'}`}>{t(`req.o.${x}`)}</button>)}
         </div>
