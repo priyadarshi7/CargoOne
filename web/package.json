@@ -11,7 +11,9 @@
     "test": "vitest run",
     "e2e": "playwright test",
     "preview": "vite preview",
-    "demo": "vite build && vite preview --port 4173"
+    "demo": "vite build && vite preview --port 4173",
+    "dev:all": "node ../scripts/dev.mjs",
+    "dev:all:phone": "node ../scripts/dev.mjs --tunnel"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",
