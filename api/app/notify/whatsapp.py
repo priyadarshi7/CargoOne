@@ -29,11 +29,11 @@ PARAMS: dict[str, tuple[str, ...]] = {
 
 TEXT: dict[str, dict[str, str]] = {
     # Meta approves "Utility" only for messages about something that already happened to the person, worded as a plain notice: no greeting
-    # words like "welcome", no selling, and never a variable at the very start or end or two variables side by side. Keep that in mind when editing.
+    # words like "welcome", no selling, and never a variable at the very start or end or two variables side by side, and none of the words PIN, code, password, verify or sign-in (Meta then insists on the Authentication category, which allows no links). Keep that in mind when editing.
     "welcome": {
-        "en": "Hello {name}, your CargoOne driver account has been created by your company. Use this link to set your own PIN and open the app: {link} The link works once and expires in 72 hours.",
-        "hi": "नमस्ते {name}, आपकी कंपनी ने आपका CargoOne ड्राइवर खाता बना दिया है। अपना PIN बनाने और ऐप खोलने के लिए यह लिंक इस्तेमाल करें: {link} यह लिंक एक ही बार चलेगा और 72 घंटे में ख़त्म हो जाएगा।",
-        "mr": "नमस्कार {name}, तुमच्या कंपनीने तुमचे CargoOne ड्रायव्हर खाते तयार केले आहे. तुमचा PIN तयार करण्यासाठी आणि अ‍ॅप उघडण्यासाठी ही लिंक वापरा: {link} ही लिंक एकदाच चालेल आणि 72 तासांत संपेल.",
+        "en": "Hello {name}, your driver account on CargoOne has been created by your company. Please open this link to finish your registration: {link} The link can be used once and expires in 72 hours.",
+        "hi": "नमस्ते {name}, आपकी कंपनी ने CargoOne पर आपका ड्राइवर खाता बना दिया है। अपना रजिस्ट्रेशन पूरा करने के लिए कृपया यह लिंक खोलें: {link} यह लिंक एक ही बार चलेगा और 72 घंटे में ख़त्म हो जाएगा।",
+        "mr": "नमस्कार {name}, तुमच्या कंपनीने CargoOne वर तुमचे ड्रायव्हर खाते तयार केले आहे. तुमची नोंदणी पूर्ण करण्यासाठी कृपया ही लिंक उघडा: {link} ही लिंक एकदाच वापरता येईल आणि 72 तासांत संपेल.",
     },
     "trip_assigned": {
         "en": "Hello {name}, a trip has been assigned to you. Trip {trip_code}, LR number {lr}. Route: {route}. Truck: {vehicle}. Start: {start}. Open the trip here: {link} Please check the details before you leave.",

@@ -34,19 +34,19 @@ Sent when a driver is registered (and when the office sends the link again). Cat
 **English (`en`)**
 
 ```
-Hello {{1}}, your CargoOne driver account has been created by your company. Use this link to set your own PIN and open the app: {{2}} The link works once and expires in 72 hours.
+Hello {{1}}, your driver account on CargoOne has been created by your company. Please open this link to finish your registration: {{2}} The link can be used once and expires in 72 hours.
 ```
 
 **Hindi (`hi`)**
 
 ```
-नमस्ते {{1}}, आपकी कंपनी ने आपका CargoOne ड्राइवर खाता बना दिया है। अपना PIN बनाने और ऐप खोलने के लिए यह लिंक इस्तेमाल करें: {{2}} यह लिंक एक ही बार चलेगा और 72 घंटे में ख़त्म हो जाएगा।
+नमस्ते {{1}}, आपकी कंपनी ने CargoOne पर आपका ड्राइवर खाता बना दिया है। अपना रजिस्ट्रेशन पूरा करने के लिए कृपया यह लिंक खोलें: {{2}} यह लिंक एक ही बार चलेगा और 72 घंटे में ख़त्म हो जाएगा।
 ```
 
 **Marathi (`mr`)**
 
 ```
-नमस्कार {{1}}, तुमच्या कंपनीने तुमचे CargoOne ड्रायव्हर खाते तयार केले आहे. तुमचा PIN तयार करण्यासाठी आणि अ‍ॅप उघडण्यासाठी ही लिंक वापरा: {{2}} ही लिंक एकदाच चालेल आणि 72 तासांत संपेल.
+नमस्कार {{1}}, तुमच्या कंपनीने CargoOne वर तुमचे ड्रायव्हर खाते तयार केले आहे. तुमची नोंदणी पूर्ण करण्यासाठी कृपया ही लिंक उघडा: {{2}} ही लिंक एकदाच वापरता येईल आणि 72 तासांत संपेल.
 ```
 
 Sample values for Meta's review: `Ramesh Patil` | `https://app.example.com/onboard/abc123`
