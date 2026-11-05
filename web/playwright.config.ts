@@ -30,6 +30,8 @@ export default defineConfig({
         MOCK_SCENARIO: 'clean',
         AI_FALLBACKS: '',
         GEMINI_API_KEY: '', // never reach a real AI from tests, whatever .env says
+        WHATSAPP_PROVIDER: 'mock', // never message a real phone from tests, whatever .env says
+        WHATSAPP_TOKEN: '',
         STORAGE_DIR: './storage_e2e',
         WEB_ORIGIN: `http://localhost:${WEB_PORT}`,
       },
