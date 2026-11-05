@@ -6,6 +6,20 @@ from typing import Protocol
 from pydantic import BaseModel, Field
 
 
+class Box(BaseModel):
+    """Where on the photo something was found. x, y, w, h are fractions of the image (0 to 1) measured from the top-left, so they
+    stay right at any zoom. `field` is what it is (lr_no, stamp, signature, delivery_date, quantity_received, remarks)."""
+
+    field: str
+    x: float = Field(ge=0, le=1)
+    y: float = Field(ge=0, le=1)
+    w: float = Field(ge=0, le=1)
+    h: float = Field(ge=0, le=1)
+    text: str | None = None  # the words read inside the box, when there are any
+    conf: float | None = Field(default=None, ge=0, le=1)
+    source: str = "ocr"  # ocr: found by the text reader | vlm: pointed out by the vision model
+
+
 class PodExtraction(BaseModel):
     """What a vision model reads off the photo. The image stays the source of truth;
     humans may correct these fields in the review queue."""
@@ -21,6 +35,7 @@ class PodExtraction(BaseModel):
     shortage_or_damage: bool = Field(default=False, description="Remarks mention shortage/damage/leakage/broken")
     confidence: float = Field(ge=0, le=1)
     issues: list[str] = Field(default_factory=list)
+    boxes: list[Box] = Field(default_factory=list, description="Where each detected field is on the photo (local reader only)")
 
 
 class ProviderError(Exception):

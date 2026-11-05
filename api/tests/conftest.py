@@ -33,7 +33,7 @@ def _use_test_database() -> None:
 
 # Tests must never reach a real AI provider (cost, flakiness, and photos leaving the machine),
 # whatever the developer's .env says. Environment variables beat .env files.
-os.environ.update({"AI_PROVIDER": "mock", "AI_FALLBACKS": "", "GEMINI_API_KEY": "", "APP_ENV": "test"})
+os.environ.update({"AI_PROVIDER": "mock", "AI_FALLBACKS": "", "GEMINI_API_KEY": "", "APP_ENV": "test", "WHATSAPP_PROVIDER": "mock", "WHATSAPP_TOKEN": "", "EMAIL_PROVIDER": "mock", "SMTP_HOST": "", "VAPID_PUBLIC_KEY": "", "VAPID_PRIVATE_KEY": ""})
 _use_test_database()  # must run before `app` is imported anywhere
 
 from collections.abc import AsyncIterator, Iterator
@@ -41,6 +41,7 @@ from pathlib import Path
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
 
 from app.db import SessionLocal
 from app.main import app
@@ -52,6 +53,10 @@ from app.storage import LocalStorage, get_storage
 async def seeded() -> None:
     """Requires migrated Postgres (`alembic upgrade head`). Seed is idempotent."""
     async with SessionLocal() as session:
+        # Earlier runs leave trips behind; past ~1000 of them new ones fall off the planning board's page and tests that look for them fail.
+        for stmt in ("delete from expenses", "delete from advances", "delete from trips where trip_code not in ('TRP-66120', 'TRP-66134', 'TRP-66141')"):
+            await session.execute(text(stmt))
+        await session.commit()
         await seed(session)
 
 
@@ -78,3 +83,21 @@ def tmp_storage(tmp_path: Path) -> Iterator[None]:
 @pytest.fixture
 async def driver(client: AsyncClient) -> dict[str, str]:
     return await login(client, "9000000001", "1234")
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limits() -> Iterator[None]:
+    from app.routers.auth import ident_failures, ip_failures
+    from app.routers.client_view import bad_token_limiter as client_limiter
+    from app.routers.links import bad_token_limiter, upload_limiter
+
+    bad_token_limiter.reset()
+    upload_limiter.reset()
+    client_limiter.reset()
+    ip_failures.reset()
+    ident_failures.reset()
+    from app.routers import onboard, requests
+
+    for limiter in (requests.submit_limiter, requests.phone_limiter, requests.bad_token_limiter, onboard.bad_token_limiter):
+        limiter.reset()
+    yield

@@ -13,9 +13,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.providers.mock import MockProvider
+from app.config import get_settings
 from app.db import SessionLocal
 from app.devtools.synthetic_pod import SCENARIOS, render
-from app.models import Branch, Client, PodStatus, PodSubmission, Role, Trip, User, Vehicle
+from app.models import Branch, Client, PodStatus, PodSubmission, Role, Trip, TripState, User, Vehicle
 from app.security import hash_secret
 from app.storage import get_storage
 
@@ -32,6 +33,8 @@ async def get_or_create(session: AsyncSession, model, key: dict, **values):
 
 
 async def seed(session: AsyncSession) -> None:
+    if not get_settings().is_dev:
+        raise RuntimeError("Refusing to seed demo users: APP_ENV is not dev/test")
     hq = await get_or_create(session, Branch, {"name": "Chhatrapati Sambhajinagar"})
     pune = await get_or_create(session, Branch, {"name": "Pune"})
 
@@ -80,6 +83,11 @@ async def seed(session: AsyncSession) -> None:
         trip = await session.scalar(select(Trip).where(Trip.trip_code == code))
         if await session.scalar(select(PodSubmission.id).where(PodSubmission.trip_id == trip.id)):
             continue
+        arrived = trip.delivered_at + timedelta(hours=2)  # sample PODs reached the system 2 h after delivery
+        trip.first_pod_at = trip.pod_uploaded_at = arrived
+        trip.state = TripState.delivered
+        if trip.pod_status == PodStatus.verified:
+            trip.verified_at = arrived + timedelta(hours=1)
         png = render(SCENARIOS[scenario], trip.lr_no, seed=1)
         extraction = await MockProvider().extract(png, "image/png", trip.lr_no)
         sub_id = uuid.uuid4()

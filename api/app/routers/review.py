@@ -15,10 +15,12 @@ from sqlalchemy.orm import aliased
 from app.config import get_settings
 from app.db import get_session
 from app.models import AuditLog, Client, PodStatus, PodSubmission, Role, Trip, User
+from app.notify.service import pod_retake_asked, safely
 from app.security import require_roles
 
 router = APIRouter(prefix="/review", tags=["review"])
 Reviewer = Annotated[User, Depends(require_roles(Role.billing, Role.ops))]
+Viewer = Annotated[User, Depends(require_roles(Role.billing, Role.ops, Role.md))]  # may look at any POD and what the AI read, not decide
 Session = Annotated[AsyncSession, Depends(get_session)]
 
 
@@ -41,6 +43,8 @@ class ReviewItem(BaseModel):
     lat: float | None
     lng: float | None
     retakes_left: int
+    pod_status: str  # needs_review = decide here; anything else = look only (verified by the AI, approved, rejected, billed...)
+    ai_provider: str | None  # which reader produced `ai` (local, gemini, mock); None when the AI was unavailable
 
 
 class CorrectedFields(BaseModel):
@@ -69,6 +73,7 @@ def _item(trip: Trip, client: str, sub: PodSubmission) -> ReviewItem:
         confidence=sub.ai_confidence, ai={k: v for k, v in (sub.ai_result or {}).items() if not k.startswith("_")},
         corrected=sub.corrected_fields, captured_at=sub.captured_at, lat=sub.lat, lng=sub.lng,
         retakes_left=max(0, get_settings().max_retakes - trip.retake_count),
+        pod_status=trip.pod_status.value, ai_provider=sub.ai_provider,
     )
 
 
@@ -93,7 +98,8 @@ async def queue(_: Reviewer, session: Session) -> list[ReviewItem]:
 
 
 @router.get("/{trip_id}", response_model=ReviewItem)
-async def detail(trip_id: uuid.UUID, _: Reviewer, session: Session) -> ReviewItem:
+async def detail(trip_id: uuid.UUID, _: Viewer, session: Session) -> ReviewItem:
+    """Any trip that has a photo, in any state: this is how people see what the AI read, including PODs it verified by itself."""
     row = (await session.execute(_latest_per_trip().where(Trip.id == trip_id))).first()
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No POD for this trip")
@@ -140,4 +146,6 @@ async def decide_review(trip_id: uuid.UUID, body: ReviewDecision, user: Reviewer
     session.add(AuditLog(actor_id=user.id, action=f"review.{body.action}", entity="trip", entity_id=str(trip.id),
                          meta={"submission": str(sub.id), "corrected": sorted(k for k in corrected if k != "_note")}))
     await session.commit()
+    if body.action == "request_retake":
+        await safely(session, pod_retake_asked(session, trip))
     return _item(trip, client, sub)

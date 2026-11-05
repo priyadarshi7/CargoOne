@@ -26,14 +26,27 @@ Default is `mock`, which only understands the synthetic test images. Automated t
 - http://localhost:5173 — sign in with a demo login below (office → trips table, driver → mobile home)
 - http://localhost:8000/docs — API explorer
 
-## Demo logins (local seed, fake data only)
+## Demo logins (LOCAL DEVELOPMENT ONLY — fake data; seed refuses to run unless APP_ENV is dev/test)
 | Role | Login | Secret |
 |---|---|---|
 | Ops head / Billing / MD / Admin | `ops@` · `billing@` · `md@` · `admin@cargoone.dev` | `cargoone-dev` |
 | Driver | phone `9000000001` | PIN `1234` |
 
+Dashboards look empty without history. Add illustrative demo trips (clearly coded `DEMO-…`, banner shown on the dashboard):
+`cd api && uv run python -m app.demo_data` (remove again with `--remove`). Dev/test only.
+
+Browser tests (Playwright, real Chromium incl. a phone-sized driver project): `cd web && pnpm exec playwright install chromium && pnpm e2e`.
+They start their own API (:8001), web (:5174) and a throw-away `cargoone_e2e` database, so your dev data is never touched.
+
 Tests need migrated Postgres: `cd api && uv run pytest`.
+
+## Trip import
+Office → **Import**: upload a CSV/Excel (download the template there). It is checked first and only written when you confirm; re-uploading is safe.
 
 ## Docs
 - [Product brief](docs/01-product-brief.md) · [Roadmap / to-do](docs/02-roadmap.md) · [Decisions](docs/03-decisions.md)
 - [Git workflow](docs/05-git-workflow.md) · [CLAUDE.md](CLAUDE.md) (working rules for AI-assisted development)
+
+## Showing the app on a phone (tunnel)
+
+`vite preview` serves the last build, so rebuild before showing changes: `cd web && pnpm demo` (build, then serve on port 4173), and point the tunnel at `http://localhost:4173`. Phones pick up a new build on the next open. For live editing use `pnpm dev` (port 5173) and tunnel that instead, but the offline behaviour only exists in the built app.

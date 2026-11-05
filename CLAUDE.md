@@ -3,7 +3,7 @@
 Client: Company A (Chhatrapati Sambhajinagar). Driver photographs the signed LR/POD at the consignee gate,
 AI verifies it on the spot, billing invoices in days instead of weeks.
 Targets: 80% PODs in-system within 24h · POD→invoice 18→4 days · lost/disputed PODs 1.5%→0.5%.
-Budget ₹7.5L / 6 weeks. Brief: `docs/01-product-brief.md` · To-do: `docs/02-roadmap.md` · Decisions: `docs/03-decisions.md`.
+Budget ₹7.5L / 6 weeks. Brief: `docs/01-product-brief.md` · Security/privacy status: `docs/04-security-privacy.md` · To-do: `docs/02-roadmap.md` · Decisions: `docs/03-decisions.md`.
 
 ## Stack
 - `web/` — Vite + React + TypeScript + Tailwind v4, **PWA** (vite-plugin-pwa), offline queue in IndexedDB (`idb`). pnpm.
@@ -15,7 +15,8 @@ Budget ₹7.5L / 6 weeks. Brief: `docs/01-product-brief.md` · To-do: `docs/02-r
 ## Commands
 - DB: `docker compose up -d db` (needs Docker Desktop running)
 - API (in `api/`): `uv run alembic upgrade head` · `uv run uvicorn app.main:app --reload` · `uv run pytest` · `uv run ruff check .`
-- Web (in `web/`): `pnpm dev` · `pnpm build` · `pnpm lint` · `pnpm test`
+- Web (in `web/`): `pnpm dev` · `pnpm build` · `pnpm lint` · `pnpm test` (unit) · `pnpm e2e` (Playwright; own stack + own `cargoone_e2e` DB, scripted mock AI; screenshots land in `web/e2e/screenshots/`)
+- Look at screenshots after UI changes (`web/e2e/screenshots/*.png`) — layout bugs are invisible to assertions.
 - New migration: `uv run alembic revision --autogenerate -m "msg"` — always review the generated file.
 
 ## Git workflow (strict)

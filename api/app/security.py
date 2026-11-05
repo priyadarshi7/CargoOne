@@ -10,7 +10,7 @@ from typing import Annotated
 import jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,6 +21,7 @@ from app.models import Role, User
 _hasher = PasswordHasher()
 _bearer = HTTPBearer(auto_error=False)
 TOKEN_TTL = timedelta(hours=12)
+PIN_FREE_PATHS = {"/auth/me", "/auth/change-secret"}  # all a person with a temporary PIN may do
 
 
 def hash_secret(secret: str) -> str:
@@ -38,11 +39,12 @@ def verify_secret(secret: str, hashed: str | None) -> bool:
 
 def create_token(user: User) -> str:
     now = datetime.now(UTC)
-    payload = {"sub": str(user.id), "role": user.role.value, "iat": now, "exp": now + TOKEN_TTL}
+    payload = {"sub": str(user.id), "role": user.role.value, "ver": user.token_version, "iat": now, "exp": now + TOKEN_TTL}
     return jwt.encode(payload, get_settings().jwt_secret, algorithm="HS256")
 
 
 async def current_user(
+    request: Request,
     creds: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> User:
@@ -54,8 +56,12 @@ async def current_user(
         user = await session.get(User, uuid.UUID(claims["sub"]))
     except (jwt.PyJWTError, ValueError, KeyError):
         raise unauthorised from None
-    if user is None:
-        raise unauthorised
+    if user is None or not user.is_active:
+        raise unauthorised  # unknown, or deactivated since the token was issued
+    if claims.get("ver", 0) != user.token_version:
+        raise unauthorised  # signed in before the password/PIN was changed
+    if user.must_change_secret and request.url.path not in PIN_FREE_PATHS:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Choose your own PIN first", headers={"X-Must-Change-Secret": "1"})
     return user
 
 

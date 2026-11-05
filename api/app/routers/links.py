@@ -1,0 +1,132 @@
+"""Tokenised upload links for hired drivers (no app, no login) and the public endpoints they open.
+
+Security model: a link is a bearer secret scoped to ONE trip and ONE purpose (upload a POD photo). Only the SHA-256 of
+the token is stored, so a database leak does not leak working links. Links expire, can be revoked, are rate limited,
+reveal no personal data, and a new link revokes the older ones for that trip.
+"""
+import hashlib
+import secrets
+import uuid
+from datetime import UTC, datetime, timedelta
+from typing import Annotated, Literal
+
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response, UploadFile, status
+from pydantic import BaseModel, Field
+from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.config import get_settings
+from app.db import get_session
+from app.models import AccessLink, AuditLog, LinkKind, Role, Trip, User, Vehicle
+from app.notify.sms import Sms, get_sms, mask_phone, render
+from app.pod.ingest import OPEN_STATUSES, UploadResult, ingest_pod
+from app.ratelimit import RateLimiter
+from app.security import require_roles
+from app.storage import Storage, get_storage
+
+router = APIRouter(tags=["links"])
+Session = Annotated[AsyncSession, Depends(get_session)]
+
+bad_token_limiter = RateLimiter(max_hits=30, window_s=60)  # per client IP: guessing tokens
+upload_limiter = RateLimiter(max_hits=12, window_s=3600)  # per link: photos per hour (retakes are capped at 2 anyway)
+
+
+def _hash(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+class CreateLink(BaseModel):
+    phone: str | None = Field(default=None, pattern=r"^\+?\d{10,15}$", description="driver's mobile; SMS is sent if given")
+    lang: Literal["hi", "mr", "en"] = "hi"
+
+
+class LinkOut(BaseModel):
+    url: str
+    expires_at: datetime
+    sms_sent: bool
+
+
+class LinkInfo(BaseModel):
+    """Everything the public page may know: no client, amount, consignee or other trips."""
+
+    destination: str
+    vehicle: str
+    status: str
+    retakes_left: int
+    expires_at: datetime
+
+
+@router.post("/trips/{trip_id}/upload-link", response_model=LinkOut, status_code=status.HTTP_201_CREATED)
+async def create_link(
+    trip_id: uuid.UUID, body: CreateLink, user: Annotated[User, Depends(require_roles(Role.ops, Role.billing))],
+    session: Session, sms: Annotated[Sms, Depends(get_sms)],
+) -> LinkOut:
+    s = get_settings()
+    trip = await session.get(Trip, trip_id)
+    if trip is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Trip not found")
+    if trip.pod_status not in OPEN_STATUSES:
+        raise HTTPException(status.HTTP_409_CONFLICT, f"POD already {trip.pod_status.value}; no upload needed")
+
+    await session.execute(update(AccessLink).where(AccessLink.trip_id == trip.id, AccessLink.kind == LinkKind.sms_upload,
+                                                   AccessLink.revoked.is_(False)).values(revoked=True))
+    raw = secrets.token_urlsafe(32)  # 256 bits
+    expires = datetime.now(UTC) + timedelta(hours=s.upload_link_ttl_hours)
+    session.add(AccessLink(token=_hash(raw), trip_id=trip.id, kind=LinkKind.sms_upload, expires_at=expires))
+    url = f"{s.app_base_url.rstrip('/')}/u/{raw}?l={body.lang}"
+    if body.phone:
+        sms.send(body.phone, render(body.lang, trip.destination, url))
+    session.add(AuditLog(actor_id=user.id, action="link.create", entity="trip", entity_id=str(trip.id),
+                         meta={"kind": "sms_upload", "sms_to": mask_phone(body.phone) if body.phone else None}))
+    await session.commit()
+    return LinkOut(url=url, expires_at=expires, sms_sent=bool(body.phone))
+
+
+@router.delete("/trips/{trip_id}/upload-link", status_code=status.HTTP_204_NO_CONTENT)
+async def revoke_links(trip_id: uuid.UUID, user: Annotated[User, Depends(require_roles(Role.ops, Role.billing))],
+                       session: Session) -> Response:
+    await session.execute(update(AccessLink).where(AccessLink.trip_id == trip_id, AccessLink.kind == LinkKind.sms_upload)
+                          .values(revoked=True))
+    session.add(AuditLog(actor_id=user.id, action="link.revoke", entity="trip", entity_id=str(trip_id)))
+    await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+async def _resolve(token: str, request: Request, session: AsyncSession) -> tuple[AccessLink, Trip]:
+    link = await session.get(AccessLink, _hash(token)) if 20 <= len(token) <= 128 else None
+    if link is None or link.kind != LinkKind.sms_upload:
+        # Throttle guessing, but ONLY for unknown tokens: carrier NAT puts many real drivers behind one IP, so a
+        # blocked address must still be able to use its valid link. (Tokens are 256-bit; this limits load, not risk.)
+        ip = request.client.host if request.client else "unknown"
+        if bad_token_limiter.blocked(ip):
+            raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many attempts. Try again later.")
+        bad_token_limiter.record(ip)
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Link not found")
+    if link.revoked or link.expires_at <= datetime.now(UTC):
+        raise HTTPException(status.HTTP_410_GONE, "This link has expired. Ask the office for a new one.")
+    trip = await session.get(Trip, link.trip_id)
+    return link, trip
+
+
+@router.get("/u/{token}", response_model=LinkInfo)
+async def link_info(token: str, request: Request, session: Session) -> LinkInfo:
+    link, trip = await _resolve(token, request, session)
+    vehicle = await session.scalar(select(Vehicle.reg_no).where(Vehicle.id == trip.vehicle_id))
+    return LinkInfo(destination=trip.destination, vehicle=vehicle or "", status=trip.pod_status.value,
+                    retakes_left=max(0, get_settings().max_retakes - trip.retake_count), expires_at=link.expires_at)
+
+
+@router.post("/u/{token}/pod", response_model=UploadResult)
+async def link_upload(
+    token: str, request: Request, file: UploadFile, session: Session, storage: Annotated[Storage, Depends(get_storage)],
+    client_upload_id: Annotated[str, Form(min_length=8, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")],
+    captured_at: Annotated[datetime, Form()],
+    lat: Annotated[float | None, Form(ge=-90, le=90)] = None,
+    lng: Annotated[float | None, Form(ge=-180, le=180)] = None,
+) -> UploadResult:
+    link, trip = await _resolve(token, request, session)
+    if upload_limiter.blocked(link.token):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many photos for this link.")
+    upload_limiter.record(link.token)
+    return await ingest_pod(session, storage, trip=trip, file=file, client_upload_id=client_upload_id,
+                            captured_at=captured_at, lat=lat, lng=lng, actor_id=None, source="sms_link")
