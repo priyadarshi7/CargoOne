@@ -34,7 +34,7 @@ def build_provider(name: str, s: Settings) -> VisionProvider:
     if name == "gemini":
         return GeminiProvider(s.gemini_api_key, s.gemini_model, s.ai_timeout_s)
     if name == "local":
-        return LocalProvider(s.ollama_url, s.ollama_model, s.local_ai_timeout_s, s.ocr_langs, s.ocr_models)
+        return LocalProvider(s.ollama_url, s.ollama_model, s.local_ai_timeout_s, s.ocr_langs, s.ocr_models, s.ocr_engine)
     raise ValueError(f"Unknown AI provider '{name}' (available: mock, gemini, local)")
 
 

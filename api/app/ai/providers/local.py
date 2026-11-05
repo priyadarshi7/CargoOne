@@ -15,6 +15,7 @@ import io
 import json
 import logging
 import re
+import threading
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import date
@@ -111,6 +112,7 @@ class PaddleReader:
         self._langs = [x.strip() for x in langs.split(",") if x.strip()] or ["en"]
         self._light = models == "mobile"  # light models: about 3x faster on a CPU, a little less exact than the "server" ones
         self._engines: dict[str, object] = {}
+        self._lock = threading.Lock()  # one photo at a time (the engines are not safe to start or use from two threads at once)
 
     def _engine(self, lang: str):
         if lang not in self._engines:
@@ -135,7 +137,9 @@ class PaddleReader:
         W, H = im.size
         found: list[tuple[str, float, tuple[float, float, float, float]]] = []
         for lang in self._langs:
-            for res in self._engine(lang).predict(arr):
+            with self._lock:
+                results = list(self._engine(lang).predict(arr))
+            for res in results:
                 texts, scores, polys = res["rec_texts"], res["rec_scores"], res["rec_polys"]
                 for text, score, poly in zip(texts, scores, polys, strict=False):
                     if not str(text).strip():
@@ -143,9 +147,56 @@ class PaddleReader:
                     xs, ys = [float(p[0]) for p in poly], [float(p[1]) for p in poly]
                     x0, y0, x1, y1 = max(0.0, min(xs) / W), max(0.0, min(ys) / H), min(1.0, max(xs) / W), min(1.0, max(ys) / H)
                     found.append((str(text).strip(), float(score), (x0, y0, x1 - x0, y1 - y0)))
-        found = _drop_overlaps(found)
-        found.sort(key=lambda f: (round(f[2][1] * 40), f[2][0]))  # top to bottom, then left to right
-        return [Line(i, t, c, *b) for i, (t, c, b) in enumerate(found)]
+        return _lines(found)
+
+
+def _lines(found: list[tuple[str, float, tuple[float, float, float, float]]]) -> list[Line]:
+    """(text, confidence, (x, y, w, h)) in reading order, one reading per place."""
+    found = _drop_overlaps(found)
+    found.sort(key=lambda f: (round(f[2][1] * 40), f[2][0]))  # top to bottom, then left to right
+    return [Line(i, t, c, *b) for i, (t, c, b) in enumerate(found)]
+
+
+class RapidReader:
+    """The same PaddleOCR text models, run through ONNX Runtime: about 30 times faster than PaddlePaddle on a CPU, and it uses the GPU
+    (DirectML on Windows, so no CUDA setup) when there is one. Reads English print; for Devanagari use the paddle engine."""
+
+    def __init__(self, langs: str) -> None:
+        self._engine = None
+        self._lock = threading.Lock()  # one photo at a time: starting or using the GPU engine from two threads at once crashed the process
+        if "devanagari" in langs:
+            log.warning("OCR_ENGINE=rapid reads English print only; set OCR_ENGINE=paddle to read Devanagari")
+
+    def _get(self):
+        if self._engine is None:
+            try:
+                from rapidocr import RapidOCR
+            except ImportError as e:
+                raise ProviderError("local OCR is not installed (uv sync --extra local-ai)") from e
+            try:
+                self._engine = RapidOCR(params={"EngineConfig.onnxruntime.use_dml": True})  # the GPU, when onnxruntime has a way to reach it
+            except Exception as e:  # noqa: BLE001
+                log.warning("OCR on the GPU unavailable (%s): using the CPU", type(e).__name__)
+                self._engine = RapidOCR(params={"EngineConfig.onnxruntime.use_dml": False})
+        return self._engine
+
+    def __call__(self, image: bytes) -> list[Line]:
+        import numpy as np
+
+        im = prepare(image)
+        W, H = im.size
+        with self._lock:
+            out = self._get()(np.array(im)[:, :, ::-1])  # BGR, like the other reader
+        if out.txts is None or out.boxes is None:
+            return []
+        found = []
+        for text, score, poly in zip(out.txts, out.scores, out.boxes, strict=False):
+            if not str(text).strip():
+                continue
+            xs, ys = [float(p[0]) for p in poly], [float(p[1]) for p in poly]
+            x0, y0, x1, y1 = max(0.0, min(xs) / W), max(0.0, min(ys) / H), min(1.0, max(xs) / W), min(1.0, max(ys) / H)
+            found.append((str(text).strip(), float(score), (x0, y0, x1 - x0, y1 - y0)))
+        return _lines(found)
 
 
 def _iou(a: tuple[float, float, float, float], b: tuple[float, float, float, float]) -> float:
@@ -336,9 +387,9 @@ def merge(raw: dict, lines: list[Line], expected_lr_no: str) -> PodExtraction:
 class LocalProvider:
     name = "local"
 
-    def __init__(self, url: str, model: str, timeout_s: float, langs: str = "en", ocr_models: str = "mobile", *, ocr: Ocr | None = None, vlm: Vlm | None = None,
+    def __init__(self, url: str, model: str, timeout_s: float, langs: str = "en", ocr_models: str = "mobile", ocr_engine: str = "rapid", *, ocr: Ocr | None = None, vlm: Vlm | None = None,
                  sign: Sign | None = None) -> None:
-        self._ocr = ocr or PaddleReader(langs, ocr_models)
+        self._ocr = ocr or (RapidReader(langs) if ocr_engine == "rapid" else PaddleReader(langs, ocr_models))
         self._vlm = vlm or ollama_vlm(url, model, timeout_s)
         self._url, self._model = url, model
         self._sign = sign or (ollama_signature(url, model, timeout_s) if vlm is None else None)
