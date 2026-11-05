@@ -14,6 +14,7 @@ interface Refs { clients: { id: string; name: string }[]; vehicles: Vehicle[]; d
 
 const DAY = 86_400_000
 const DAYS = 15 // yesterday + two weeks
+const LANE = 44 // px per lane: a truck with overlapping trips gets one lane for each
 const BAR: Record<TripState, string> = {
   planned: 'border border-dashed border-accent bg-accent-soft text-accent',
   in_transit: 'bg-ink text-surface',
@@ -105,30 +106,42 @@ export default function Planning() {
                 ))}
               </div>
             </div>
-            {board.vehicles.map((v) => (
-              <div key={v.id} className="grid grid-cols-[10.5rem_1fr] border-b border-line last:border-0">
-                <div className="px-3 py-3 text-sm font-medium">{v.reg_no}{v.is_hired && <span className="ml-1.5 text-xs font-normal text-muted">{t('plan.hiredTag')}</span>}</div>
-                <div className="relative h-12">
-                  <div className="absolute inset-0 grid" style={{ gridTemplateColumns: `repeat(${DAYS}, 1fr)` }} aria-hidden>
-                    {Array.from({ length: DAYS }, (_, i) => <div key={i} className={`border-l border-line ${i === todayIdx ? 'bg-accent-soft/50' : ''}`} />)}
+            {board.vehicles.map((v) => {
+              // trips of one truck that overlap in time go in separate lanes, so none is ever drawn on top of another
+              const mine = scheduled.filter((x) => x.vehicle_id === v.id && pct(slot(x)!.b) > pct(slot(x)!.a)).sort((p, q) => slot(p)!.a - slot(q)!.a)
+              const laneEnds: number[] = []
+              const placed = mine.map((x) => {
+                const s = slot(x)!
+                const visualEnd = Math.max(s.b, s.a + DAY * 0.9) // a bar is at least about a day wide on screen
+                let lane = laneEnds.findIndex((e) => e <= s.a)
+                if (lane < 0) lane = laneEnds.length
+                laneEnds[lane] = visualEnd
+                return { x, s, lane }
+              })
+              const lanes = Math.max(1, laneEnds.length)
+              return (
+                <div key={v.id} className="grid grid-cols-[10.5rem_1fr] border-b border-line last:border-0">
+                  <div className="px-3 py-3 text-sm font-medium">{v.reg_no}{v.is_hired && <span className="ml-1.5 text-xs font-normal text-muted">{t('plan.hiredTag')}</span>}{lanes > 1 && <span className="ml-1.5 text-xs font-normal text-muted">{t('plan.overlap', { n: mine.length })}</span>}</div>
+                  <div className="relative" style={{ height: lanes * LANE + 8 }}>
+                    <div className="absolute inset-0 grid" style={{ gridTemplateColumns: `repeat(${DAYS}, 1fr)` }} aria-hidden>
+                      {Array.from({ length: DAYS }, (_, i) => <div key={i} className={`border-l border-line ${i === todayIdx ? 'bg-accent-soft/50' : ''}`} />)}
+                    </div>
+                    {placed.map(({ x, s, lane }) => {
+                      const left = pct(s.a), right = pct(s.b)
+                      return (
+                        <button key={x.id} onClick={() => setDialog({ trip: x })} title={`${x.trip_code} · ${x.origin} → ${x.destination}${x.driver ? ` · ${x.driver}` : ''}`}
+                          aria-label={t('plan.opens', { code: x.trip_code })}
+                          className={`absolute h-9 min-w-[3.25rem] overflow-hidden rounded-md px-2 text-left text-xs font-medium leading-tight ${BAR[x.state]}`}
+                          style={{ left: `${left}%`, width: `${Math.max(right - left, 0.5)}%`, top: lane * LANE + 6 }}>
+                          <span className="block truncate">{x.destination}</span>
+                          <span className="block truncate opacity-80">{x.driver ?? t('plan.noDriver')}</span>
+                        </button>
+                      )
+                    })}
                   </div>
-                  {scheduled.filter((x) => x.vehicle_id === v.id).map((x) => {
-                    const s = slot(x)!
-                    const left = pct(s.a), right = pct(s.b)
-                    if (right <= left) return null
-                    return (
-                      <button key={x.id} onClick={() => setDialog({ trip: x })} title={`${x.trip_code} · ${x.origin} → ${x.destination}${x.driver ? ` · ${x.driver}` : ''}`}
-                        aria-label={t('plan.opens', { code: x.trip_code })}
-                        className={`absolute top-1.5 h-9 min-w-[3.25rem] overflow-hidden rounded-md px-2 text-left text-xs font-medium leading-tight ${BAR[x.state]}`}
-                        style={{ left: `${left}%`, width: `${right - left}%` }}>
-                        <span className="block truncate">{x.destination}</span>
-                        <span className="block truncate opacity-80">{x.driver ?? t('plan.noDriver')}</span>
-                      </button>
-                    )
-                  })}
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}

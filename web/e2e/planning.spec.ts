@@ -84,3 +84,29 @@ test('billing can look at the board but not plan; planning is translated', async
   await expect(page.getByRole('heading', { name: 'ट्रिप की योजना' })).toBeVisible()
   await page.getByLabel('भाषा').selectOption('en')
 })
+
+test('trips of one truck that overlap in time are drawn in separate lanes, none hidden behind another', async ({ page }) => {
+  await login(page, 'ops@cargoone.dev')
+  await page.getByRole('link', { name: 'Planning' }).click()
+  await expect(page.getByRole('heading', { name: 'Trip planning' })).toBeVisible()
+
+  // a long trip, then a second one on the same truck inside it (booked anyway): the second used to be drawn under the first
+  await page.getByRole('button', { name: 'New trip' }).click()
+  let d = await fill(page, { dest: 'Lane-long', lr: 'LR-LANE-1', vehicle: 'MH20 EL 4521', driver: 'No driver yet', start: when(6, 6), end: when(10, 20) })
+  await d.getByRole('button', { name: 'Create trip' }).click()
+  await d.getByRole('button', { name: 'Done' }).click()
+  await page.getByRole('button', { name: 'New trip' }).click()
+  d = await fill(page, { dest: 'Lane-short', lr: 'LR-LANE-2', vehicle: 'MH20 EL 4521', driver: 'No driver yet', start: when(7, 9), end: when(7, 18) })
+  await d.getByRole('button', { name: 'Create trip' }).click()
+  await d.getByRole('button', { name: 'Book anyway' }).click()
+  await d.getByRole('button', { name: 'Done' }).click()
+
+  const long = page.locator('button[title*="Lane-long"]')
+  const short = page.locator('button[title*="Lane-short"]')
+  await expect(long).toBeVisible()
+  await expect(short).toBeVisible()
+  const a = (await long.boundingBox())!
+  const b = (await short.boundingBox())!
+  expect(b.y >= a.y + a.height || a.y >= b.y + b.height, 'bars must not overlap on screen').toBe(true)
+  await shot(page, 'planning-lanes')
+})
