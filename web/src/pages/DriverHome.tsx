@@ -1,9 +1,11 @@
 import { Camera, CircleCheck, CloudUpload, KeyRound, LogOut, MapPin, Play, Wallet } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
+import DriverInbox from '../components/DriverInbox'
+import DriverTripDetails from '../components/DriverTripDetails'
 import InstallBanner from '../components/InstallBanner'
 import { statusIcon } from '../components/StatusBadge'
-import { api, tokenStore, type PodStatus, type Trip, type User } from '../lib/api'
+import { api, tokenStore, type DriverTrip, type PodStatus, type User } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useSyncedQueue } from '../lib/capture/sync'
 import { useTracker } from '../lib/tracker'
@@ -21,16 +23,18 @@ const LOC: Record<'en' | 'hi' | 'mr', Record<'title' | 'body' | 'allow' | 'later
 export default function DriverHome() {
   const { user, logout, adopt } = useAuth()
   const pending = useSyncedQueue()
-  const [trips, setTrips] = useState<Trip[] | null>(null)
+  const [trips, setTrips] = useState<DriverTrip[] | null>(null)
+  const [params] = useSearchParams()
   const [starting, setStarting] = useState(false)
   const [later, setLater] = useState(false)
 
   useEffect(() => {
-    api<Trip[]>('/trips/mine').then(setTrips).catch(() => setTrips([]))
+    api<DriverTrip[]>('/trips/mine').then(setTrips).catch(() => setTrips([]))
   }, [pending]) // refresh statuses after queued photos finish uploading
 
   const next = trips?.find((t) => OPEN.includes(t.pod_status))
   const onRoad = trips?.find((t) => t.state === 'in_transit' && OPEN.includes(t.pod_status))
+  const focus = trips?.find((t) => t.id === params.get('trip')) ?? next // a message's link opens that trip's details
   const consent = user?.tracking_consent === true
   const gps = useTracker(onRoad?.id ?? null, consent && !!onRoad)
   const loc = LOC[user?.language ?? 'en']
@@ -44,8 +48,8 @@ export default function DriverHome() {
   async function start(id: string) {
     setStarting(true)
     try {
-      const updated = await api<Trip>(`/trips/${id}/start`, { method: 'POST' })
-      setTrips((all) => all?.map((t) => (t.id === id ? updated : t)) ?? null)
+      const updated = await api<DriverTrip>(`/trips/${id}/start`, { method: 'POST' })
+      setTrips((all) => all?.map((t) => (t.id === id ? { ...t, ...updated } : t)) ?? null)
     } finally {
       setStarting(false)
     }
@@ -66,6 +70,7 @@ export default function DriverHome() {
       </header>
 
       <InstallBanner />
+      <DriverInbox />
 
       {onRoad && !consent && !later && (
         <section aria-label={loc.title} className="mt-4 space-y-3 rounded-2xl border border-line p-4">
@@ -107,6 +112,8 @@ export default function DriverHome() {
           </div>
         )
       )}
+
+      {focus && <DriverTripDetails trip={focus} />}
 
       <ul className="mt-8 space-y-3">
         {trips?.map((t) => {

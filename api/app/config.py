@@ -40,6 +40,12 @@ class Settings(BaseSettings):
     tracking_retention_days: int = 30
     login_max_failures: int = 5
     login_lock_minutes: int = 15
+    whatsapp_provider: str = "mock"  # mock | meta. "meta" needs the three settings below; messages use pre-approved templates
+    whatsapp_token: str = ""  # permanent access token of the WhatsApp Cloud API app (a secret: .env only)
+    whatsapp_phone_number_id: str = ""
+    whatsapp_api_version: str = "v21.0"
+    whatsapp_template_prefix: str = "cargoone"  # templates are <prefix>_welcome, <prefix>_trip_assigned, <prefix>_trip_update
+    onboarding_link_ttl_hours: int = 72
     default_branch_code: str = "MH20"  # LR prefix used when a trip has no branch
     default_origin: str = "Chhatrapati Sambhajinagar"  # used when an import row has no origin
     company_name: str = "Company A (demo)"  # printed on invoices

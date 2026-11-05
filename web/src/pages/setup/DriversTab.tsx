@@ -1,8 +1,9 @@
-import { Eye, KeyRound, Lock, Pencil, Plus } from 'lucide-react'
+import { Eye, KeyRound, Lock, MessageCircle, Pencil, Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
 import { useI18n } from '../../lib/i18n'
 import { DocSlots, DRIVER_DOCS, PendingDocs, uploadPending } from './Docs'
+import InviteDialog, { type Invite } from './Invite'
 import type { Truck } from './TrucksTab'
 import { btnGhost, btnPrimary, Facts, Field, FormModal, inputCls, Modal, Secret, StatusPill, Table } from './ui'
 
@@ -25,6 +26,14 @@ export default function DriversTab({ canEdit }: { canEdit: boolean }) {
   const [form, setForm] = useState<Driver | 'new' | null>(null)
   const [reset, setReset] = useState<Driver | null>(null)
   const [secret, setSecret] = useState<{ title: string; note: string; value: string } | null>(null)
+  const [invite, setInvite] = useState<{ name: string; pin: string | null; invite: Invite } | null>(null)
+  const [sendError, setSendError] = useState<string | null>(null)
+
+  async function resend(d: Driver) {
+    setSendError(null)
+    try { setInvite({ name: d.name, pin: null, invite: await api<Invite>(`/drivers/${d.id}/invite`, { method: 'POST' }) }) }
+    catch (e) { setSendError(e instanceof ApiError ? e.message : t('notif.sendFail')) }
+  }
 
   const load = () => api<Driver[]>('/drivers').then((r) => { setRows(r); setView((v) => (v ? r.find((x) => x.id === v.id) ?? null : v)) }).catch(() => setError(true))
   useEffect(() => {
@@ -59,6 +68,7 @@ export default function DriversTab({ canEdit }: { canEdit: boolean }) {
               <div className="flex justify-end gap-2">
                 <button onClick={() => setView(d)} className={`${btnGhost} inline-flex items-center gap-1.5`}><Eye size={14} aria-hidden /> {t('onb.details')}</button>
                 {canEdit && <button onClick={() => setForm(d)} className={`${btnGhost} inline-flex items-center gap-1.5`}><Pencil size={14} aria-hidden /> {t('setup.edit')}</button>}
+                {canEdit && d.is_active && d.must_change_pin && <button onClick={() => void resend(d)} className={`${btnGhost} inline-flex items-center gap-1.5`}><MessageCircle size={14} aria-hidden /> {t('notif.sendLink')}</button>}
                 {d.is_active && <button onClick={() => setReset(d)} className={`${btnGhost} inline-flex items-center gap-1.5`}><KeyRound size={14} aria-hidden /> {t('drv.reset')}</button>}
               </div>
             </td>
@@ -68,7 +78,9 @@ export default function DriversTab({ canEdit }: { canEdit: boolean }) {
 
       {view && <DriverDetails driver={view} canEdit={canEdit} onClose={() => setView(null)} />}
       {form && <DriverForm driver={form === 'new' ? null : form} vendors={vendors.filter((v) => v.is_active)} trucks={trucks.filter((x) => x.is_active)} onClose={() => setForm(null)}
-        onSaved={(pin, d) => { setForm(null); void load(); if (pin) setSecret({ title: t('setup.drv.pinTitle', { name: d.name }), note: t('setup.drv.pinNote', { name: d.name }), value: pin }) }} />}
+        onSaved={(pin, d, inv) => { setForm(null); void load(); if (pin && inv) setInvite({ name: d.name, pin, invite: inv }); else if (pin) setSecret({ title: t('setup.drv.pinTitle', { name: d.name }), note: t('setup.drv.pinNote', { name: d.name }), value: pin }) }} />}
+      {invite && <InviteDialog name={invite.name} pin={invite.pin} invite={invite.invite} onClose={() => setInvite(null)} />}
+      {sendError && <p role="alert" className="text-sm text-bad">{sendError}</p>}
       {reset && <ResetDialog driver={reset} onClose={() => setReset(null)} onPin={(pin) => { setSecret({ title: t('drv.tempFor', { name: reset.name }), note: t('drv.tempNote'), value: pin }); setReset(null); void load() }} />}
       {secret && <Secret {...secret} onClose={() => setSecret(null)} />}
     </div>
@@ -92,7 +104,7 @@ function DriverDetails({ driver: d, canEdit, onClose }: { driver: Driver; canEdi
   )
 }
 
-function DriverForm({ driver, vendors, trucks, onClose, onSaved }: { driver: Driver | null; vendors: VendorRef[]; trucks: Truck[]; onClose: () => void; onSaved: (pin: string | null, d: Driver) => void }) {
+function DriverForm({ driver, vendors, trucks, onClose, onSaved }: { driver: Driver | null; vendors: VendorRef[]; trucks: Truck[]; onClose: () => void; onSaved: (pin: string | null, d: Driver, inv?: Invite | null) => void }) {
   const { t } = useI18n()
   const [f, setF] = useState({
     name: driver?.name ?? '', phone: driver?.phone ?? '', language: driver?.language ?? 'hi', employment_type: driver?.employment_type ?? 'company', vendor_id: driver?.vendor_id ?? '',
@@ -106,9 +118,9 @@ function DriverForm({ driver, vendors, trucks, onClose, onSaved }: { driver: Dri
   async function save() {
     const common = { name: f.name, phone: f.phone, language: f.language, employment_type: f.employment_type, vendor_id: hired ? f.vendor_id || null : null, licence_no: f.licence_no, licence_expiry: f.licence_expiry }
     if (!driver) {
-      const res = await api<{ driver: Driver; pin: string }>('/drivers', { method: 'POST', body: JSON.stringify({ ...common, assigned_vehicle_id: f.assigned_vehicle_id || null }) })
+      const res = await api<{ driver: Driver; pin: string; invite: Invite | null }>('/drivers', { method: 'POST', body: JSON.stringify({ ...common, assigned_vehicle_id: f.assigned_vehicle_id || null }) })
       await uploadPending('driver', res.driver.id, files)
-      return onSaved(res.pin, res.driver)
+      return onSaved(res.pin, res.driver, res.invite)
     }
     const d = await api<Driver>(`/drivers/${driver.id}`, { method: 'PATCH', body: JSON.stringify({ ...common, clear_vendor: !hired, assigned_vehicle_id: f.assigned_vehicle_id || null, clear_vehicle: !f.assigned_vehicle_id }) })
     onSaved(null, d)

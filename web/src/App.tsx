@@ -14,6 +14,7 @@ import Expenses from './pages/Expenses'
 import Setup from './pages/Setup'
 import DriverHome from './pages/DriverHome'
 import ImportTrips from './pages/ImportTrips'
+import Onboard from './pages/Onboard'
 import Login from './pages/Login'
 import OfficeTrips from './pages/OfficeTrips'
 import Planning from './pages/Planning'
@@ -63,6 +64,7 @@ export default function App() {
           <Route path="/" element={<Root />} />
           <Route path="/login" element={<Login />} />
           <Route path="/progress" element={<Progress />} />
+          <Route path="/onboard/:token" element={<Onboard />} />
           <Route path="/u/:token" element={<SmsCapture />} />
           <Route path="/v/:token" element={<ClientPod />} />
           <Route path="/t/:token" element={<TrackPublic />} />

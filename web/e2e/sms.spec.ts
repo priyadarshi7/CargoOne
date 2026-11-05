@@ -50,7 +50,7 @@ test('office sends a link; a hired driver with NO login uploads the POD from it'
 test('a revoked link stops working and an invalid one is rejected', async ({ page, browser }) => {
   await login(page, 'ops@cargoone.dev')
   await page.getByRole('link', { name: 'Trips' }).click()
-  const row = page.locator('tr', { hasText: 'TRP-E2E-2' }) // a plain open trip also gets a link
+  const row = page.locator('tr', { hasText: 'TRP-E2E-SMS' }) // a plain open trip also gets a link
   await row.getByRole('button', { name: /Link/ }).click()
   const dialog = page.getByRole('dialog', { name: 'Upload link' })
   await dialog.getByRole('button', { name: 'Create link' }).click()

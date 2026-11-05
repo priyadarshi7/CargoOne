@@ -16,6 +16,7 @@ from app.config import get_settings
 from app.db import get_session
 from app.lr import next_lr_no
 from app.models import AuditLog, Branch, Client, PodStatus, Role, Trip, TripState, User, Vehicle
+from app.notify.service import safely, trip_assigned, trip_update, when_text
 from app.phones import clean_phone
 from app.planning import overlaps, window
 from app.routers.setup import DOCS
@@ -200,7 +201,11 @@ async def create_trip(body: NewTrip, user: Planner, session: Session) -> dict:
     session.add(trip)
     session.add(AuditLog(actor_id=user.id, action="trip.create", entity="trip", entity_id=code, meta={"forced": body.force}))
     await session.commit()
-    return {"id": str(trip.id), "trip_code": code, "lr_no": lr_no}
+    result = {"id": str(trip.id), "trip_code": code, "lr_no": lr_no}  # built first: a rollback in the notifier would expire `trip`
+    if trip.driver_id:
+        driver = await session.get(User, trip.driver_id)
+        await safely(session, trip_assigned(session, trip, driver, vehicle))
+    return result
 
 
 async def _planned_trip(session: AsyncSession, trip_id: uuid.UUID) -> Trip:
@@ -227,10 +232,32 @@ async def reassign(trip_id: uuid.UUID, body: Reassign, user: Planner, session: S
         clashes = await find_clashes(session, vehicle_id=vehicle_id, driver_id=driver_id, start=start, end=end, exclude=trip.id)
         if clashes:
             raise _clash_error(clashes)
+    before = (trip.vehicle_id, trip.driver_id, trip.planned_start, trip.planned_end)
     trip.vehicle_id, trip.driver_id, trip.planned_start, trip.planned_end = vehicle_id, driver_id, start, end
     session.add(AuditLog(actor_id=user.id, action="trip.replan", entity="trip", entity_id=trip.trip_code, meta={"forced": body.force}))
     await session.commit()
-    return {"id": str(trip.id), "trip_code": trip.trip_code}
+    result = {"id": str(trip.id), "trip_code": trip.trip_code}
+    await safely(session, _tell_drivers(session, trip, before))
+    return result
+
+
+async def _tell_drivers(session: AsyncSession, trip: Trip, before: tuple) -> None:
+    """After a re-plan: the new driver gets the trip, the old one is told it is gone, an unchanged driver hears about a new truck or time."""
+    old_vehicle, old_driver, old_start, old_end = before
+    veh = await session.get(Vehicle, trip.vehicle_id)
+    if old_driver != trip.driver_id:
+        if old_driver and (gone := await session.get(User, old_driver)):
+            await trip_update(session, trip, gone, "has been given to another driver")
+        if trip.driver_id and (new := await session.get(User, trip.driver_id)):
+            await trip_assigned(session, trip, new, veh)
+    elif trip.driver_id and (trip.vehicle_id != old_vehicle or trip.planned_start != old_start or trip.planned_end != old_end):
+        parts = []
+        if trip.vehicle_id != old_vehicle and veh:
+            parts.append(f"truck is now {veh.reg_no}")
+        if trip.planned_start != old_start or trip.planned_end != old_end:
+            parts.append(f"start is now {when_text(trip.planned_start)}")
+        if driver := await session.get(User, trip.driver_id):
+            await trip_update(session, trip, driver, "has changed: " + ", ".join(parts))
 
 
 @router.post("/trips/{trip_id}/cancel")
@@ -241,4 +268,7 @@ async def cancel(trip_id: uuid.UUID, user: Planner, session: Session) -> dict:
     trip.state = TripState.cancelled
     session.add(AuditLog(actor_id=user.id, action="trip.cancel", entity="trip", entity_id=trip.trip_code))
     await session.commit()
-    return {"id": str(trip.id), "state": trip.state.value}
+    result = {"id": str(trip.id), "state": trip.state.value}
+    if trip.driver_id and (driver := await session.get(User, trip.driver_id)):
+        await safely(session, trip_update(session, trip, driver, "was cancelled"))
+    return result

@@ -8,8 +8,8 @@ test('ops head sees KPI tiles, missing-POD chart area and the chase list without
   for (const t of ['PODs in system within 24 h', 'POD to invoice', 'Lost or disputed PODs', 'Cash freed by faster billing']) {
     await expect(page.getByText(t, { exact: true })).toBeVisible()
   }
-  // the sample PODs reached the system 2 h after delivery, so the 24 h KPI is met
-  await expect(page.locator('div', { hasText: /^PODs in system within 24 h/ }).first()).toContainText('100%')
+  // the three sample PODs reached the system 2 h after delivery; one delivered trip (TRP-E2E-MISSING) never got one: 3 of 4
+  await expect(page.locator('div', { hasText: /^PODs in system within 24 h/ }).first()).toContainText('75%')
   await expect(page.getByText('Trips without a POD')).toBeVisible()
   await expect(page.getByText('Oldest trips still without a POD')).toBeVisible()
   await expect(page.getByRole('note')).toHaveCount(0) // no demo-data banner on a clean database

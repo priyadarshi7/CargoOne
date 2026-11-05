@@ -4,11 +4,12 @@ import { useI18n } from '../lib/i18n'
 import BranchesTab from './setup/BranchesTab'
 import ClientsTab from './setup/ClientsTab'
 import DriversTab from './setup/DriversTab'
+import MessagesTab from './setup/MessagesTab'
 import StaffTab from './setup/StaffTab'
 import TrucksTab from './setup/TrucksTab'
 import VendorsTab from './setup/VendorsTab'
 
-const TABS = ['drivers', 'trucks', 'clients', 'vendors', 'branches', 'staff'] as const
+const TABS = ['drivers', 'trucks', 'clients', 'vendors', 'branches', 'messages', 'staff'] as const
 type Tab = (typeof TABS)[number]
 
 /** Everything trips are built from: drivers, trucks, clients, hired vendors, and (admin only) office staff. */
@@ -42,6 +43,7 @@ export default function Setup() {
       {tab === 'clients' && <ClientsTab canEdit={canEdit} />}
       {tab === 'vendors' && <VendorsTab canEdit={canEdit} />}
       {tab === 'branches' && <BranchesTab canEdit={canEdit} />}
+      {tab === 'messages' && <MessagesTab />}
       {tab === 'staff' && isAdmin && <StaffTab />}
     </div>
   )

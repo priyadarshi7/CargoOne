@@ -39,6 +39,16 @@ class TripOut(BaseModel):
     started_at: datetime | None
 
 
+class DriverTripOut(TripOut):
+    """What the trip's own driver may see: the load, and who receives it (they have to find and call them)."""
+
+    material: str | None
+    weight_tonnes: float | None
+    packages: int | None
+    consignee_name: str | None
+    consignee_phone: str | None
+
+
 _COLUMNS = (Trip, Client.name, Vehicle.reg_no, Vehicle.is_hired, Branch.name)
 
 
@@ -72,13 +82,14 @@ async def list_trips(
     return [_out(r) for r in (await session.execute(_query().limit(500))).all()]
 
 
-@router.get("/mine", response_model=list[TripOut])
+@router.get("/mine", response_model=list[DriverTripOut])
 async def my_trips(
     user: Annotated[User, Depends(require_roles(Role.driver))],
     session: Annotated[AsyncSession, Depends(get_session)],
-) -> list[TripOut]:
+) -> list[DriverTripOut]:
     rows = (await session.execute(_query().where(Trip.driver_id == user.id))).all()
-    return [_out(r) for r in rows]
+    return [DriverTripOut(**_out(r).model_dump(), material=r[0].material, weight_tonnes=float(r[0].weight_tonnes) if r[0].weight_tonnes is not None else None,
+                          packages=r[0].packages, consignee_name=r[0].consignee_name, consignee_phone=r[0].consignee_phone) for r in rows]
 
 
 @router.get("/{trip_id}/lr.pdf")

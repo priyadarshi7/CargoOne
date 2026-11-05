@@ -329,3 +329,49 @@ class AuditLog(Base):
     entity_id: Mapped[str | None] = mapped_column(String(64))
     meta: Mapped[dict | None] = mapped_column(JSONB)
     at: Mapped[datetime] = now()
+
+
+class Notification(Base):
+    """A message inside the app for one person (shown in the driver's inbox)."""
+
+    __tablename__ = "notifications"
+    __table_args__ = (Index("ix_notifications_user_time", "user_id", "created_at"),)
+    id: Mapped[uuid.UUID] = pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    kind: Mapped[str] = mapped_column(String(24))  # welcome | trip_assigned | trip_update
+    title: Mapped[str] = mapped_column(String(160))
+    body: Mapped[str] = mapped_column(String(600))
+    link: Mapped[str | None] = mapped_column(String(200))  # an in-app path, e.g. /driver?trip=...
+    trip_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("trips.id", ondelete="SET NULL"))
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = now()
+
+
+class Message(Base):
+    """A WhatsApp message we tried to send: what, to whom, and what the provider answered. Secrets in links are cut out of `body`."""
+
+    __tablename__ = "messages"
+    __table_args__ = (Index("ix_messages_time", "created_at"),)
+    id: Mapped[uuid.UUID] = pk()
+    user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    trip_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("trips.id", ondelete="SET NULL"))
+    channel: Mapped[str] = mapped_column(String(12), default="whatsapp")
+    template: Mapped[str] = mapped_column(String(40))
+    provider: Mapped[str] = mapped_column(String(12))  # mock | meta
+    status: Mapped[str] = mapped_column(String(12))  # sent | simulated | failed | skipped
+    provider_id: Mapped[str | None] = mapped_column(String(80))
+    error: Mapped[str | None] = mapped_column(String(200))
+    to_masked: Mapped[str | None] = mapped_column(String(20))
+    body: Mapped[str] = mapped_column(String(1200))
+    created_at: Mapped[datetime] = now()
+
+
+class OnboardingLink(Base):
+    """One-time link that lets a newly registered driver choose their own PIN and open the app. Only the SHA-256 is stored."""
+
+    __tablename__ = "onboarding_links"
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = now()

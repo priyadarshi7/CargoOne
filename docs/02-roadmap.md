@@ -99,6 +99,14 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [x] Planning refuses a truck that is not available or has an expired paper, and a driver whose licence has expired; the ops dashboard's needs-attention panel lists PUC and licences due within 30 days.
 - [ ] Not done: reading the licence/RC photo automatically (AI), a fleet-availability calendar, and e-challan/Vahan lookups.
 
+## Driver onboarding and notifications
+- [x] **Registering a driver sends a WhatsApp message** with a one-time link: the driver opens it, chooses their own PIN, and lands signed in on the home screen with the install card. The office-read PIN stays as a backup. The link works once, expires in 72 h, is replaced when sent again, and dies the moment the driver sets a PIN.
+- [x] **Assigning, re-planning or cancelling a trip** tells the driver: an in-app notification (inbox card on the driver home, refreshed every minute and when the app comes back to the front) and a WhatsApp message with trip code, LR number, route, truck, start time and a link that opens that trip. A driver who has not opened the app yet gets a fresh onboarding link in the same message.
+- [x] The driver home shows the trip's details: LR number, route, truck, start, goods/weight, e-way bill, who to deliver to (with a Call button) and the LR copy as a PDF.
+- [x] Real **WhatsApp Cloud API** sender (template messages in English, Hindi, Marathi) behind the same interface as a recording mock; **Setup > Messages** logs every attempt with the result (numbers masked, secrets cut out). Until the Meta credentials are added the app is honest that nothing was sent (see `docs/07-whatsapp-setup.md`).
+- [x] A failing sender never blocks planning or registration; the failure is recorded and the in-app notification still arrives.
+- [ ] Not done: delivery/read receipts from Meta (webhook), push notifications to a closed phone (needs Web Push keys), SMS as a second channel, per-driver opt-out.
+
 ## LR numbers and the LR document
 - [x] **LR numbers are generated, never typed**: `LR/<branch code>/<financial year>/<serial>`, e.g. `LR/MH20/26-27/000123`. The serial counts per branch code and restarts each April; two people saving at the same moment cannot get the same number; a refused trip does not use one up. A typed number in the request is ignored.
 - [x] **Branches** (Setup): name and LR code; changing a code never changes numbers already issued.

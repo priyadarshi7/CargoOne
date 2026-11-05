@@ -53,6 +53,16 @@ async def _seed() -> None:
         s.add(Trip(trip_code="TRP-E2E-HIRED", client_id=client.id, vehicle_id=hired.id, driver_id=None, branch_id=driver.branch_id,
                    lr_no="LR-E2E003", eway_bill_no="341000000098", origin="Chhatrapati Sambhajinagar", destination="Latur",
                    freight_amount=Decimal(19000), pod_status=PodStatus.pending))
+        # trips no driver test touches (those consume the demo driver's open trips): one delivered long ago with no POD, one for the SMS-link tests
+        from datetime import UTC, datetime, timedelta
+
+        from app.models import TripState
+
+        s.add(Trip(trip_code="TRP-E2E-MISSING", client_id=client.id, vehicle_id=hired.id, driver_id=None, branch_id=driver.branch_id, lr_no="LR-E2E004",
+                   eway_bill_no="341000000097", origin="Chhatrapati Sambhajinagar", destination="Beed", freight_amount=Decimal(18000), pod_status=PodStatus.pending,
+                   state=TripState.delivered, delivered_at=datetime.now(UTC) - timedelta(days=5)))
+        s.add(Trip(trip_code="TRP-E2E-SMS", client_id=client.id, vehicle_id=veh.id, driver_id=None, branch_id=driver.branch_id, lr_no="LR-E2E005",
+                   eway_bill_no="341000000096", origin="Chhatrapati Sambhajinagar", destination="Jalna", freight_amount=Decimal(17000), pod_status=PodStatus.pending))
         # throw-away accounts for the password-change and lockout browser tests (the shared dev users must stay usable)
         from app.security import hash_secret
 

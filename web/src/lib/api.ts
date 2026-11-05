@@ -72,6 +72,13 @@ export interface Trip {
   planned_end: string | null
   started_at: string | null
 }
+export interface DriverTrip extends Trip {
+  material: string | null
+  weight_tonnes: number | null
+  packages: number | null
+  consignee_name: string | null
+  consignee_phone: string | null
+}
 export type TripState = 'planned' | 'in_transit' | 'delivered' | 'cancelled'
 export type PodStatus =
   | 'pending' | 'uploaded' | 'verified' | 'needs_review' | 'retake_requested' | 'rejected' | 'billed'

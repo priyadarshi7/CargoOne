@@ -17,6 +17,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth_policy import check_secret
 from app.db import get_session
 from app.models import AuditLog, Branch, Role, Trip, TripState, User, Vehicle, Vendor
+from app.notify.service import safely, welcome_driver
+from app.notify.whatsapp import click_to_chat
 from app.phones import clean_phone
 from app.routers.setup import paper_state
 from app.security import hash_secret, require_roles
@@ -81,9 +83,19 @@ class DriverPatch(BaseModel):
     is_active: bool | None = None
 
 
+class InviteOut(BaseModel):
+    url: str  # the one-time onboarding link, for the office to copy if WhatsApp does not arrive
+    status: str  # sent | simulated | failed | skipped
+    error: str | None = None
+    provider: str
+    text: str  # the message as the driver sees it
+    whatsapp_link: str | None = None  # opens WhatsApp on the office person's own phone with the message ready
+
+
 class CreatedOut(BaseModel):
     driver: DriverOut
     pin: str
+    invite: InviteOut | None = None
 
 
 class ResetOut(BaseModel):
@@ -164,7 +176,37 @@ async def create_driver(body: DriverIn, actor: Manager, session: Session) -> Cre
     await session.flush()
     session.add(AuditLog(actor_id=actor.id, action="driver.create", entity="user", entity_id=str(driver.id), meta={"hired": body.vendor_id is not None}))
     await session.commit()
-    return CreatedOut(driver=await _row(session, driver), pin=pin)
+    return CreatedOut(driver=await _row(session, driver), pin=pin, invite=await _invite(session, driver))
+
+
+async def _invite(session: AsyncSession, driver: User) -> InviteOut | None:
+    out: dict = {}
+
+    async def job() -> None:
+        out.update(await welcome_driver(session, driver))
+
+    await safely(session, job())
+    if not out:
+        return None
+    return InviteOut(url=out["url"], status=out["status"], error=out["error"], provider=out["provider"], text=out["text"],
+                     whatsapp_link=click_to_chat(out["phone"], out["text"]) if out["phone"] else None)
+
+
+@router.post("/{driver_id}/invite", response_model=InviteOut)
+async def send_invite(driver_id: uuid.UUID, actor: Manager, session: Session) -> InviteOut:
+    """Send the app link again (a new one: the old link stops working). Only for a driver who has not chosen their own PIN yet."""
+    driver = await session.get(User, driver_id)
+    if driver is None or driver.role != Role.driver:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Driver not found")
+    if not driver.is_active:
+        raise HTTPException(status.HTTP_409_CONFLICT, "This driver is inactive")
+    if not driver.must_change_secret:
+        raise HTTPException(status.HTTP_409_CONFLICT, "This driver has already set their PIN and opened the app")
+    session.add(AuditLog(actor_id=actor.id, action="driver.invite", entity="user", entity_id=str(driver.id)))
+    out = await _invite(session, driver)
+    if out is None:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Could not prepare the message. Try again.")
+    return out
 
 
 @router.patch("/{driver_id}", response_model=DriverOut)

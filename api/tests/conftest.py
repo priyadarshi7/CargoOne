@@ -33,7 +33,7 @@ def _use_test_database() -> None:
 
 # Tests must never reach a real AI provider (cost, flakiness, and photos leaving the machine),
 # whatever the developer's .env says. Environment variables beat .env files.
-os.environ.update({"AI_PROVIDER": "mock", "AI_FALLBACKS": "", "GEMINI_API_KEY": "", "APP_ENV": "test"})
+os.environ.update({"AI_PROVIDER": "mock", "AI_FALLBACKS": "", "GEMINI_API_KEY": "", "APP_ENV": "test", "WHATSAPP_PROVIDER": "mock", "WHATSAPP_TOKEN": ""})
 _use_test_database()  # must run before `app` is imported anywhere
 
 from collections.abc import AsyncIterator, Iterator
@@ -41,6 +41,7 @@ from pathlib import Path
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
 
 from app.db import SessionLocal
 from app.main import app
@@ -52,6 +53,9 @@ from app.storage import LocalStorage, get_storage
 async def seeded() -> None:
     """Requires migrated Postgres (`alembic upgrade head`). Seed is idempotent."""
     async with SessionLocal() as session:
+        # Earlier runs leave planned/cancelled trips behind; enough of them would push new ones off the planning board's page.
+        await session.execute(text("delete from trips where state in ('planned', 'cancelled') and pod_status = 'pending'"))
+        await session.commit()
         await seed(session)
 
 
