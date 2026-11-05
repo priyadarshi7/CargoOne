@@ -1,4 +1,4 @@
-import { Bell, BellDot, CheckCheck, Truck, UserRoundCheck, type LucideIcon } from 'lucide-react'
+import { Bell, BellDot, Camera, CheckCheck, CircleCheck, CircleX, Truck, UserRoundCheck, type LucideIcon } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import DriverShell from '../components/DriverShell'
 import { api } from '../lib/api'
@@ -8,7 +8,7 @@ import { useCachedApi } from '../lib/offline/cache'
 
 interface Item { id: string; kind: string; title: string; body: string; link: string | null; read: boolean; created_at: string }
 interface Box { unread: number; items: Item[] }
-const ICON: Record<string, LucideIcon> = { welcome: UserRoundCheck, trip_assigned: Truck, trip_update: Truck }
+const ICON: Record<string, LucideIcon> = { welcome: UserRoundCheck, trip_assigned: Truck, trip_update: Truck, expense_approved: CircleCheck, expense_rejected: CircleX, pod_retake: Camera }
 
 /** Everything the office has told this driver, newest first, unread ones marked. Tapping one opens the trip it is about. Works offline (the phone's saved copy). */
 export default function DriverMessages() {

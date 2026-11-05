@@ -26,6 +26,9 @@ TITLES = {
     "welcome": {"en": "Welcome to CargoOne", "hi": "CargoOne में स्वागत है", "mr": "CargoOne मध्ये स्वागत"},
     "trip_assigned": {"en": "New trip assigned", "hi": "नई ट्रिप मिली", "mr": "नवीन ट्रिप मिळाली"},
     "trip_update": {"en": "Trip changed", "hi": "ट्रिप में बदलाव", "mr": "ट्रिपमध्ये बदल"},
+    "expense_approved": {"en": "Expense approved", "hi": "खर्च मंज़ूर", "mr": "खर्च मंजूर"},
+    "expense_rejected": {"en": "Expense not accepted", "hi": "खर्च मंज़ूर नहीं हुआ", "mr": "खर्च मंजूर झाला नाही"},
+    "pod_retake": {"en": "Please photograph the receipt again", "hi": "रसीद की फ़ोटो फिर से लें", "mr": "पावतीचा फोटो पुन्हा काढा"},
 }
 WELCOME_BODY = {"en": "Set your PIN and install the app from the link in your WhatsApp.", "hi": "WhatsApp के लिंक से अपना PIN बनाएँ और ऐप इंस्टॉल करें।",
                 "mr": "WhatsApp मधील लिंकवरून तुमचा PIN तयार करा आणि अ‍ॅप इन्स्टॉल करा."}
@@ -144,6 +147,25 @@ async def trip_update(session: AsyncSession, trip: Trip, driver: User, change: s
     link = f"{s.app_base_url.rstrip('/')}/driver?trip={trip.id}"
     await send_whatsapp(session, driver, "trip_update", {"name": driver.name, "trip_code": trip.trip_code, "change": change, "link": link}, trip=trip)
     await _notify(session, driver, "trip_update", f"{trip.trip_code} {change}", link=f"/driver?trip={trip.id}", trip=trip)
+    await session.commit()
+
+
+async def expense_decided(session: AsyncSession, driver_id: uuid.UUID, approved: bool, label: str, note: str | None) -> None:
+    """Tell the driver what happened to a claim: in the app and as a phone alert (no WhatsApp template needed)."""
+    driver = await session.get(User, driver_id)
+    if driver is None:
+        return
+    body = label if approved or not note else f"{label} - {note}"
+    await _notify(session, driver, "expense_approved" if approved else "expense_rejected", body, link="/driver/expense")
+    await session.commit()
+
+
+async def pod_retake_asked(session: AsyncSession, trip: Trip) -> None:
+    """The office looked at the photo and wants another one."""
+    driver = await session.get(User, trip.driver_id) if trip.driver_id else None
+    if driver is None:
+        return
+    await _notify(session, driver, "pod_retake", f"{trip.trip_code} · LR {trip.lr_no}", link=f"/driver?trip={trip.id}", trip=trip)
     await session.commit()
 
 

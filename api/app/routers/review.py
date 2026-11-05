@@ -15,6 +15,7 @@ from sqlalchemy.orm import aliased
 from app.config import get_settings
 from app.db import get_session
 from app.models import AuditLog, Client, PodStatus, PodSubmission, Role, Trip, User
+from app.notify.service import pod_retake_asked, safely
 from app.security import require_roles
 
 router = APIRouter(prefix="/review", tags=["review"])
@@ -140,4 +141,6 @@ async def decide_review(trip_id: uuid.UUID, body: ReviewDecision, user: Reviewer
     session.add(AuditLog(actor_id=user.id, action=f"review.{body.action}", entity="trip", entity_id=str(trip.id),
                          meta={"submission": str(sub.id), "corrected": sorted(k for k in corrected if k != "_note")}))
     await session.commit()
+    if body.action == "request_retake":
+        await safely(session, pod_retake_asked(session, trip))
     return _item(trip, client, sub)

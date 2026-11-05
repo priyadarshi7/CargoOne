@@ -97,3 +97,30 @@ async def test_a_driver_can_mark_one_message_read_but_not_someone_elses(client: 
     assert not next(i for i in (await inbox(client, d))["items"] if i["id"] == mine[0]["id"])["read"]
     assert (await client.post(f"/notifications/{mine[0]['id']}/read", headers=d)).status_code == 204
     assert next(i for i in (await inbox(client, d))["items"] if i["id"] == mine[0]["id"])["read"]
+
+
+async def test_an_expense_decision_alerts_the_driver(client: AsyncClient) -> None:
+    from tests.test_expenses import driver_with_trip, spend
+    from tests.test_expenses import ops as ops_login
+
+    h, trip = await driver_with_trip(client)
+    o = await ops_login(client)
+    ok = (await spend(client, h, trip, "toll", "450")).json()
+    no = (await spend(client, h, trip, "food", "90")).json()
+    assert (await client.post(f"/expenses/{ok['id']}/decision", headers=o, json={"action": "approve"})).status_code == 200
+    assert (await client.post(f"/expenses/{no['id']}/decision", headers=o, json={"action": "reject", "note": "no bill"})).status_code == 200
+    items = (await client.get("/notifications/mine", headers=h)).json()["items"]
+    kinds = {i["kind"]: i for i in items}
+    assert "450" in kinds["expense_approved"]["body"] and kinds["expense_approved"]["link"] == "/driver/expense"
+    assert "no bill" in kinds["expense_rejected"]["body"]
+
+
+async def test_asking_for_a_retake_alerts_the_driver(client: AsyncClient, driver: dict) -> None:
+    from tests.test_review import billing, shortage_trip
+
+    trip_id, lr, _ = await shortage_trip(client, driver)
+    res = await client.post(f"/review/{trip_id}/decision", headers=await billing(client), json={"action": "request_retake"})
+    assert res.status_code == 200
+    items = (await client.get("/notifications/mine", headers=driver)).json()["items"]
+    hit = next(i for i in items if i["kind"] == "pod_retake" and lr in i["body"])
+    assert hit["link"] == f"/driver?trip={trip_id}"

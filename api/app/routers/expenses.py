@@ -32,6 +32,7 @@ from app.models import (
     User,
     Vehicle,
 )
+from app.notify.service import expense_decided, safely
 from app.pod.ingest import validate_image
 from app.security import current_user, require_roles
 from app.storage import Storage, get_storage
@@ -174,6 +175,8 @@ async def decide(expense_id: uuid.UUID, body: Decision, user: Office, session: S
     exp.reviewed_by, exp.reviewed_at, exp.review_note = user.id, datetime.now(UTC), (body.note or "").strip() or None
     session.add(AuditLog(actor_id=user.id, action=f"expense.{body.action}", entity="expense", entity_id=str(exp.id)))
     await session.commit()
+    await safely(session, expense_decided(session, exp.driver_id, exp.status == ExpenseStatus.approved,
+                                          f"{exp.category.value} ₹{exp.amount:,.0f}", exp.review_note))
     row = (await session.execute(_Q.where(Expense.id == exp.id))).one()
     return _out(*row)
 
