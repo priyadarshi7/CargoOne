@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../api'
 import { db } from './db'
+import { markServer } from './online'
 
 export async function readCache<T>(key: string): Promise<{ value: T; savedAt: number } | null> {
   try {
@@ -34,11 +35,13 @@ export function useCachedApi<T>(path: string, scope: string, refreshKey: unknown
       try {
         const fresh = await api<T>(path)
         if (!alive) return
+        markServer(true)
         setData(fresh); setStale(false); setLoaded(true)
         void writeCache(key, fresh)
       } catch (e) {
         if (!alive) return
-        if (e instanceof ApiError) { setLoaded(true); return } // the server answered with an error: not an offline case
+        if (e instanceof ApiError) { markServer(true); setLoaded(true); return } // the server answered with an error: not an offline case
+        markServer(false)
         setStale(saved !== null); setLoaded(true)
       }
     })()
