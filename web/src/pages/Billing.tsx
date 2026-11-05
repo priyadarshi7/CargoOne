@@ -1,4 +1,3 @@
-import Attention from '../components/Attention'
 import { FileCode2, FileText, Sheet } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError, download, type Invoice, type QueueGroup } from '../lib/api'
@@ -26,7 +25,7 @@ export default function Billing() {
   useEffect(() => { void load() }, [load])
 
   const tabBtn = (k: typeof tab, label: string, n?: number) => (
-    <button onClick={() => setTab(k)} className={`border-b-2 px-1 pb-2 text-sm font-medium ${tab === k ? 'border-accent text-accent' : 'border-transparent text-muted hover:text-ink'}`}>
+    <button onClick={() => setTab(k)} className={`border-b-2 px-1 pb-2 text-sm font-medium ${tab === k ? 'border-ink text-ink' : 'border-transparent text-muted hover:text-ink'}`}>
       {label}{n ? <span className="ml-1.5 text-xs text-muted">{n}</span> : null}
     </button>
   )
@@ -40,7 +39,6 @@ export default function Billing() {
         <h1 className="text-3xl font-semibold tracking-tight">{t('bill.title')}</h1>
         <p className="text-sm text-muted">{t('bill.sub')}</p>
       </div>
-      <Attention />
       <div className="flex gap-6 border-b border-line">
         {tabBtn('ready', t('bill.tabReady'), groups.reduce((n, g) => n + g.trips.length, 0))}
         {tabBtn('invoices', t('bill.tabInvoices'), invoices.length)}
@@ -55,7 +53,7 @@ export default function Billing() {
 function Ready({ groups, onCreated, onStale }: { groups: QueueGroup[]; onCreated: () => Promise<void>; onStale: () => Promise<void> }) {
   const { t } = useI18n()
   if (groups.length === 0) {
-    return <div className="rounded-xl border border-line py-16 text-center text-muted">{t('bill.emptyReady')}</div>
+    return <div className="rounded-2xl border border-line py-20 text-center text-muted">{t('bill.emptyReady')}</div>
   }
   return <div className="space-y-6">{groups.map((g) => <Group key={`${g.client_id}-${g.period_key}`} group={g} onCreated={onCreated} onStale={onStale} />)}</div>
 }
@@ -85,7 +83,7 @@ function Group({ group, onCreated, onStale }: { group: QueueGroup; onCreated: ()
   }
 
   return (
-    <section className="overflow-hidden rounded-xl border border-line">
+    <section className="overflow-hidden rounded-2xl border border-line">
       <header className="flex flex-wrap items-baseline justify-between gap-2 bg-wash px-5 py-3">
         <div>
           <span className="font-semibold">{group.client}</span>
@@ -110,7 +108,7 @@ function Group({ group, onCreated, onStale }: { group: QueueGroup; onCreated: ()
         <div className="text-sm"><span className="text-muted">{tx('bill.count', { a: chosen.length, b: group.trips.length, unit: tx(group.trips.length === 1 ? 'bill.trip' : 'bill.trips') })} · </span><span className="font-semibold tabular-nums">{inr.format(sum)}</span></div>
         {error && <span role="alert" className="text-sm text-bad">{error}</span>}
         <button disabled={busy || chosen.length === 0} onClick={() => void create()}
-          className="rounded-lg bg-ink px-4 py-2 text-sm font-medium text-surface disabled:opacity-50">
+          className="h-10 rounded-lg bg-ink px-5 text-sm font-medium text-surface hover:opacity-90 disabled:opacity-50">
           {busy ? tx('bill.creating') : tx('bill.create')}
         </button>
       </footer>
@@ -130,12 +128,12 @@ function Invoices({ invoices, onExported }: { invoices: Invoice[]; onExported: (
       setError(t('bill.dlFail'))
     }
   }
-  if (invoices.length === 0) return <div className="rounded-xl border border-line py-16 text-center text-muted">{t('bill.emptyInvoices')}</div>
-  const btn = 'inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-ink hover:border-accent hover:text-accent'
+  if (invoices.length === 0) return <div className="rounded-2xl border border-line py-20 text-center text-muted">{t('bill.emptyInvoices')}</div>
+  const btn = 'inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-ink hover:border-ink hover:bg-wash'
   return (
     <div className="space-y-3">
       {error && <p role="alert" className="text-sm text-bad">{error}</p>}
-      <div className="overflow-x-auto rounded-xl border border-line">
+      <div className="overflow-x-auto rounded-2xl border border-line">
         <table className="w-full min-w-[760px] text-left text-sm">
           <thead className="bg-wash text-muted">
             <tr>{(['bill.invoice', 'bill.client', 'bill.period', 'bill.tripsCol', 'bill.total', 'bill.exported', 'bill.download'] as const).map((h) => <th key={h} className="px-4 py-3 font-medium">{t(h)}</th>)}</tr>

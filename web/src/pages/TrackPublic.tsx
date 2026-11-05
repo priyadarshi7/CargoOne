@@ -2,6 +2,7 @@ import { CircleCheck, Clock, LinkIcon, LoaderCircle, Truck } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { LiveMap } from '../components/LiveMap'
+import ClientFrame from '../components/ClientFrame'
 import { BASE } from '../lib/api'
 
 interface Track {
@@ -37,7 +38,7 @@ export default function TrackPublic() {
   const { t } = state
   const mins = t.seen_at ? Math.max(0, Math.round((Date.now() - new Date(t.seen_at).getTime()) / 60_000)) : null
   return (
-    <main className="mx-auto max-w-3xl space-y-6 px-4 py-10 sm:px-6">
+    <ClientFrame className="space-y-6">
       <header className="space-y-1">
         <p className="text-sm text-muted">{t.company}</p>
         <h1 className="text-3xl font-semibold tracking-tight">Where is my load?</h1>
@@ -62,7 +63,7 @@ export default function TrackPublic() {
         <p className="rounded-xl bg-wash px-4 py-4 text-muted">The truck is on the road, but its location is not available yet.</p>
       )}
       <p className="text-xs text-muted">This link is read-only and expires {new Date(t.expires_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}. Map data © OpenStreetMap contributors.</p>
-    </main>
+    </ClientFrame>
   )
 }
 

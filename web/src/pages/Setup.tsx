@@ -38,7 +38,7 @@ export default function Setup() {
       <div role="tablist" className="flex gap-1 overflow-x-auto border-b border-line">
         {tabs.map((x) => (
           <button key={x} role="tab" aria-selected={tab === x} onClick={() => setParams({ tab: x })}
-            className={`whitespace-nowrap border-b-2 px-4 py-2 text-sm ${tab === x ? 'border-accent font-medium text-accent' : 'border-transparent text-muted hover:text-ink'}`}>
+            className={`whitespace-nowrap border-b-2 px-4 py-2 text-sm ${tab === x ? 'border-ink font-medium text-ink' : 'border-transparent text-muted hover:text-ink'}`}>
             {t(`setup.tab.${x}`)}
           </button>
         ))}

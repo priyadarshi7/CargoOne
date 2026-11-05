@@ -108,6 +108,8 @@ export const en = {
   "login.title": "Sign in", "login.sub": "For CargoOne staff and drivers.", "login.forgot": "Forgot your PIN? Ask your office to reset it.", "login.needTruck": "Need a truck?", "login.show": "Show password", "login.hide": "Hide password", "login.eyebrow": "One system, every role", "login.panelH": "Each person lands on the screen built for their work.", "login.r.driver": "Drivers", "login.r.driverB": "Trip details, delivery photo, expenses.", "login.r.ops": "Operations", "login.r.opsB": "Plan trips, answer companies, watch the fleet.", "login.r.billing": "Billing", "login.r.billingB": "Check receipts, create and export invoices.", "login.r.md": "Management", "login.r.mdB": "Performance and cash, read only.", "login.shared": "Signing in on a shared phone? Sign out when you finish.",
   // req2
   "req.s1": "Your company", "req.s2": "The load", "req.next": "What happens next", "req.n1.t": "We read your request", "req.n1.b": "Our team reviews every request.", "req.n2.t": "We confirm the truck", "req.n2.b": "On WhatsApp, by phone or by email.", "req.n3.t": "You follow it", "req.n3.b": "Your private page updates at each step.", "req.after": "You get a private page to follow it.", "req.privacy": "Your details are used only to answer this request.", "req.back": "Back", "req.quick": "Quick pick",
+  // plansec
+  "plan.sec.route": "Client and route", "plan.sec.truck": "Truck, driver and time", "plan.sec.freight": "Freight and goods", "plan.sec.consignee": "Who receives it",
 } as const
 
 export type Key = keyof typeof en

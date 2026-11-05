@@ -30,16 +30,16 @@ export default function ReviewList() {
         <p className="text-sm text-muted">{t('review.sub')}</p>
       </div>
       {items.length === 0 ? (
-        <div className="grid place-items-center gap-3 rounded-xl border border-line py-16 text-muted">
+        <div className="grid place-items-center gap-3 rounded-2xl border border-line py-20 text-muted">
           <CircleCheck size={40} className="text-ok" aria-hidden /> {t('review.empty')}
         </div>
       ) : (
-        <ul className="divide-y divide-line rounded-xl border border-line">
+        <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line">
           {items.map((it) => (
             <li key={it.trip_id}>
               <Link to={`/office/review/${it.trip_id}`} className="flex flex-wrap items-center gap-x-6 gap-y-2 px-5 py-4 hover:bg-wash">
                 <div className="min-w-40">
-                  <div className="font-medium">{it.trip_code}</div>
+                  <div className="font-mono text-sm font-medium">{it.trip_code}</div>
                   <div className="text-sm text-muted">{it.client} · {it.destination}</div>
                 </div>
                 <div className="flex-1"><ReasonChips reasons={it.reasons} /></div>

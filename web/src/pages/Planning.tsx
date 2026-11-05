@@ -214,10 +214,11 @@ function TripDialog({ trip, prefill, refs, canPlan, onClose, onSaved }: { trip: 
     catch (err) { setError(err instanceof ApiError ? err.message : t('plan.failed')); setConfirmCancel(false); setBusy(false) }
   }
 
-  const field = 'w-full rounded-lg border border-line px-3 py-2 text-sm outline-none focus:border-accent disabled:opacity-60'
-  const label = (text: string, input: React.ReactNode) => <label className="block space-y-1 text-sm"><span className="text-muted">{text}</span>{input}</label>
+  const field = 'h-11 w-full rounded-lg border border-line bg-surface px-3.5 text-sm outline-none focus:border-ink disabled:opacity-60'
+  const label = (text: string, input: React.ReactNode) => <label className="block space-y-1.5 text-sm"><span className="font-medium">{text}</span>{input}</label>
+  const sec = (title: string) => <h3 className="border-t border-line pt-4 text-xs font-medium uppercase tracking-wider text-muted first:border-0 first:pt-0">{title}</h3>
   return (
-    <dialog ref={ref} onClose={created ? onSaved : onClose} aria-label={editing ? trip.trip_code : t('plan.new')} className="m-auto w-[min(34rem,94vw)] rounded-2xl border border-line p-0 shadow-xl backdrop:bg-black/30">
+    <dialog ref={ref} onClose={created ? onSaved : onClose} aria-label={editing ? trip.trip_code : t('plan.new')} className="m-auto max-h-[92vh] w-[min(40rem,94vw)] overflow-y-auto rounded-2xl border border-line bg-surface p-0 text-ink shadow-xl backdrop:bg-black/30">
       {created ? (
         <div className="space-y-4 p-6">
           <h2 className="text-lg font-semibold">{t('lr.created', { code: created.trip_code })}</h2>
@@ -242,6 +243,7 @@ function TripDialog({ trip, prefill, refs, canPlan, onClose, onSaved }: { trip: 
 
         {!editing && (
           <>
+            {sec(t('plan.sec.route'))}
             {label(t('plan.client'), <select className={field} value={f.client_id} onChange={(e) => set('client_id', e.target.value)}>{refs.clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>)}
             <div className="grid gap-4 sm:grid-cols-2">
               {label(t('plan.origin'), <input className={field} value={f.origin} onChange={(e) => set('origin', e.target.value)} />)}
@@ -249,6 +251,7 @@ function TripDialog({ trip, prefill, refs, canPlan, onClose, onSaved }: { trip: 
             </div>
           </>
         )}
+        {sec(t('plan.sec.truck'))}
         <div className="grid gap-4 sm:grid-cols-2">
           {label(t('plan.vehicle'), <select className={field} disabled={locked} value={f.vehicle_id} onChange={(e) => set('vehicle_id', e.target.value)}>{usable.map((v) => <option key={v.id} value={v.id}>{v.reg_no}{v.capacity_tonnes ? ` · ${v.capacity_tonnes} t` : ''}{v.is_hired ? ` (${t('plan.hiredTag')})` : ''}</option>)}</select>)}
           {label(t('plan.driver'), <select className={field} disabled={locked} value={f.driver_id} onChange={(e) => pickDriver(e.target.value)}><option value="">{t('plan.noDriver')}</option>{refs.drivers.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select>)}
@@ -257,6 +260,7 @@ function TripDialog({ trip, prefill, refs, canPlan, onClose, onSaved }: { trip: 
           {label(t('plan.start'), <input type="datetime-local" className={field} disabled={locked} value={f.start} onChange={(e) => set('start', e.target.value)} />)}
           {label(t('plan.end'), <input type="datetime-local" className={field} disabled={locked} value={f.end} onChange={(e) => set('end', e.target.value)} />)}
         </div>
+        {!editing && sec(t('plan.sec.freight'))}
         {!editing && (
           <div className="grid gap-4 sm:grid-cols-3">
             {label(t('plan.freight'), <input className={field} required inputMode="decimal" value={f.freight_amount} onChange={(e) => set('freight_amount', e.target.value)} />)}
@@ -271,6 +275,7 @@ function TripDialog({ trip, prefill, refs, canPlan, onClose, onSaved }: { trip: 
               {label(t('plan.weight'), <input className={field} inputMode="decimal" value={f.weight_tonnes} onChange={(e) => set('weight_tonnes', e.target.value)} />)}
               {label(t('plan.packages'), <input className={field} inputMode="numeric" value={f.packages} onChange={(e) => set('packages', e.target.value.replace(/\D/g, ''))} />)}
             </div>
+            {sec(t('plan.sec.consignee'))}
             <div className="grid gap-4 sm:grid-cols-2">
               {label(t('plan.consignee'), <input className={field} maxLength={160} value={f.consignee_name} onChange={(e) => set('consignee_name', e.target.value)} />)}
               {label(t('plan.consigneePhone'), <input className={field} inputMode="tel" value={f.consignee_phone} onChange={(e) => set('consignee_phone', e.target.value)} />)}

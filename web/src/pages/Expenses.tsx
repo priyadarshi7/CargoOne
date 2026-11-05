@@ -40,7 +40,7 @@ export default function Expenses() {
       <div className="flex gap-6 border-b border-line" role="tablist">
         {tabs.map(([k, label]) => (
           <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
-            className={`border-b-2 px-1 pb-2 text-sm font-medium ${tab === k ? 'border-accent text-accent' : 'border-transparent text-muted hover:text-ink'}`}>{t(label)}</button>
+            className={`border-b-2 px-1 pb-2 text-sm font-medium ${tab === k ? 'border-ink text-ink' : 'border-transparent text-muted hover:text-ink'}`}>{t(label)}</button>
         ))}
       </div>
       {tab === 'review' && <Review canDecide={canDecide} />}

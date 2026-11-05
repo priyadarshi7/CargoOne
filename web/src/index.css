@@ -85,6 +85,8 @@ body {
   }
 }
 
+input[type='checkbox'], input[type='radio'] { accent-color: var(--color-ink); }
+
 input, select, textarea {
   background: var(--color-surface);
   color: var(--color-ink);

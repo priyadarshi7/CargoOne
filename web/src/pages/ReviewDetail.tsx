@@ -75,7 +75,7 @@ export default function ReviewDetail() {
 
   if (!item || !form) return <p className={error ? 'text-bad' : 'text-muted'}>{error ?? t('common.loading')}</p>
 
-  const field = 'w-full rounded-lg border border-line px-3 py-2 text-sm outline-none focus:border-accent'
+  const field = 'h-11 w-full rounded-lg border border-line bg-surface px-3.5 text-sm outline-none focus:border-ink'
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm({ ...form, [k]: v })
   const lrEmpty = norm(form.lr_no) === ''
   const lrChanged = !lrEmpty && norm(form.lr_no) !== norm(item.lr_no) // same rule as the server
@@ -86,12 +86,12 @@ export default function ReviewDetail() {
         <ArrowLeft size={16} aria-hidden /> {t('review.title')}
       </Link>
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <ImageViewer key={item.submission_id} submissionId={item.submission_id} />
 
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-xl font-semibold">{item.trip_code}</h1>
+        <div className="space-y-5 lg:sticky lg:top-20">
+          <div className="rounded-2xl border border-line p-5">
+            <h1 className="text-2xl font-semibold tracking-tight">{item.trip_code}</h1>
             <p className="text-sm text-muted">{item.client} · {item.destination} · LR {item.lr_no}</p>
             <div className="mt-3"><ReasonChips reasons={item.reasons} /></div>
             <p className="mt-3 text-xs text-muted">
@@ -101,24 +101,24 @@ export default function ReviewDetail() {
             </p>
           </div>
 
-          <div className="space-y-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted">{t('rd.check')}</p>
-            <label className="block space-y-1 text-sm"><span className="text-muted">{t('rd.lr')}</span>
+          <div className="space-y-4 rounded-2xl border border-line p-5">
+            <p className="text-xs font-medium uppercase tracking-wider text-muted">{t('rd.check')}</p>
+            <label className="block space-y-1 text-sm"><span className="font-medium">{t('rd.lr')}</span>
               <input className={`${field} ${lrChanged ? 'border-warn' : ''}`} value={form.lr_no} onChange={(e) => set('lr_no', e.target.value)} />
               {lrEmpty && <span className="text-xs text-warn">{t('rd.lrUnread', { lr: item.lr_no })}</span>}
               {lrChanged && <span className="text-xs text-warn">{t('rd.lrDiff', { lr: item.lr_no })}</span>}
             </label>
-            <label className="block space-y-1 text-sm"><span className="text-muted">{t('rd.date')}</span>
+            <label className="block space-y-1 text-sm"><span className="font-medium">{t('rd.date')}</span>
               <input type="date" className={field} value={form.delivery_date} onChange={(e) => set('delivery_date', e.target.value)} /></label>
-            <label className="block space-y-1 text-sm"><span className="text-muted">{t('rd.qty')}</span>
+            <label className="block space-y-1 text-sm"><span className="font-medium">{t('rd.qty')}</span>
               <input className={field} value={form.quantity_received} onChange={(e) => set('quantity_received', e.target.value)} /></label>
-            <label className="block space-y-1 text-sm"><span className="text-muted">{t('rd.remarks')}</span>
+            <label className="block space-y-1 text-sm"><span className="font-medium">{t('rd.remarks')}</span>
               <input className={field} value={form.remarks} onChange={(e) => set('remarks', e.target.value)} /></label>
             <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={form.shortage_or_damage} onChange={(e) => set('shortage_or_damage', e.target.checked)} />
+              <input type="checkbox" className="h-5 w-5 accent-[var(--color-ink)]" checked={form.shortage_or_damage} onChange={(e) => set('shortage_or_damage', e.target.checked)} />
               {t('rd.shortage')}
             </label>
-            <label className="block space-y-1 text-sm"><span className="text-muted">{t('rd.note')}</span>
+            <label className="block space-y-1 text-sm"><span className="font-medium">{t('rd.note')}</span>
               <input className={field} value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} /></label>
           </div>
 
@@ -126,17 +126,17 @@ export default function ReviewDetail() {
 
           <div className="grid gap-2 sm:grid-cols-3">
             <button disabled={busy} onClick={() => void submit('approve')}
-              className="flex items-center justify-center gap-2 rounded-lg bg-ok px-4 py-3 font-medium text-on-solid disabled:opacity-60">
-              <Check size={18} aria-hidden /> {t('rd.approve')} <kbd className="text-xs opacity-70">A</kbd>
+              className="flex h-12 items-center justify-center gap-2 rounded-xl bg-ok px-4 font-medium text-on-solid hover:opacity-90 disabled:opacity-60">
+              <Check size={18} aria-hidden /> {t('rd.approve')} <kbd className="rounded border border-current px-1.5 text-[11px] font-sans opacity-70">A</kbd>
             </button>
             <button disabled={busy || item.retakes_left === 0} onClick={() => void submit('request_retake')}
               title={item.retakes_left === 0 ? t('rd.retakeLimit') : undefined}
-              className="flex items-center justify-center gap-2 rounded-lg bg-warn px-4 py-3 font-medium text-on-solid disabled:opacity-40">
-              <RotateCcw size={18} aria-hidden /> {t('rd.retake')} <kbd className="text-xs opacity-70">R</kbd>
+              className="flex h-12 items-center justify-center gap-2 rounded-xl bg-warn px-4 font-medium text-on-solid hover:opacity-90 disabled:opacity-40">
+              <RotateCcw size={18} aria-hidden /> {t('rd.retake')} <kbd className="rounded border border-current px-1.5 text-[11px] font-sans opacity-70">R</kbd>
             </button>
             <button disabled={busy} onClick={() => void submit('reject')}
-              className={`flex items-center justify-center gap-2 rounded-lg px-4 py-3 font-medium disabled:opacity-60 ${confirmReject ? 'bg-bad text-on-solid' : 'border border-bad text-bad'}`}>
-              <X size={18} aria-hidden /> {confirmReject ? t('rd.confirmReject') : t('rd.reject')} <kbd className="text-xs opacity-70">X</kbd>
+              className={`flex h-12 items-center justify-center gap-2 rounded-xl px-4 font-medium disabled:opacity-60 ${confirmReject ? 'bg-bad text-on-solid' : 'border border-bad text-bad'}`}>
+              <X size={18} aria-hidden /> {confirmReject ? t('rd.confirmReject') : t('rd.reject')} <kbd className="rounded border border-current px-1.5 text-[11px] font-sans opacity-70">X</kbd>
             </button>
           </div>
           <p className="text-xs text-muted">{t('rd.footer', { n: item.retakes_left })}</p>

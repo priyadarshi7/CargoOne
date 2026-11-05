@@ -1,6 +1,7 @@
 import { CircleCheck, Clock, LinkIcon, LoaderCircle, RotateCw, ZoomIn, ZoomOut } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import ClientFrame from '../components/ClientFrame'
 import { BASE } from '../lib/api'
 
 interface Pod {
@@ -46,14 +47,14 @@ export default function ClientPod() {
     ['LR number', pod.lr_no], ['Vehicle', pod.vehicle], ['From', pod.origin], ['To', pod.destination], ['Delivered', day(pod.delivered_at)],
   ]
   return (
-    <main className="mx-auto max-w-3xl space-y-8 px-4 py-10 sm:px-6">
+    <ClientFrame className="space-y-8">
       <header className="space-y-1">
         <p className="text-sm text-muted">{pod.company}</p>
         <h1 className="text-3xl font-semibold tracking-tight">Proof of delivery</h1>
         <p className="flex items-center gap-2 text-sm text-ok"><CircleCheck size={16} aria-hidden /> Verified {day(pod.verified_at)} · Trip {pod.trip_code}</p>
       </header>
 
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3">
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-5 rounded-2xl border border-line p-5 sm:grid-cols-3">
         {facts.map(([k, v]) => (<div key={k}><dt className="text-xs text-muted">{k}</dt><dd className="font-medium">{v}</dd></div>))}
       </dl>
 
@@ -69,7 +70,7 @@ export default function ClientPod() {
         </div>
       </section>
       <p className="text-xs text-muted">This link is read-only and expires on {day(pod.expires_at)}.</p>
-    </main>
+    </ClientFrame>
   )
 }
 

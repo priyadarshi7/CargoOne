@@ -48,17 +48,17 @@ export default function Onboard() {
   if (info === 'dead') return <main className="mx-auto max-w-md p-8"><p role="alert" className="text-lg">{TXT.en.dead}</p><p className="mt-3 text-lg">{TXT.hi.dead}</p><p className="mt-3 text-lg">{TXT.mr.dead}</p></main>
   return (
     <main className="mx-auto flex min-h-full max-w-md flex-col gap-5 px-6 py-10">
-      <CircleCheck size={56} className="text-ok" aria-hidden />
+      <span className="grid h-14 w-14 place-items-center rounded-full bg-ok-soft text-ok"><CircleCheck size={30} aria-hidden /></span>
       <h1 className="text-3xl font-semibold tracking-tight">{x.hello.replace('{name}', info.name)}</h1>
       <p className="text-muted">{x.intro}</p>
       <form onSubmit={(e) => void submit(e)} className="space-y-4">
         <label className="block space-y-1"><span className="text-sm font-medium">{x.pin}</span>
           <input type="password" inputMode="numeric" autoComplete="new-password" required minLength={4} maxLength={8} pattern="\d{4,8}" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-            className="w-full rounded-xl border border-line bg-surface px-4 py-4 text-center text-2xl tracking-[0.5em]" />
+            className="h-16 w-full rounded-xl border border-line bg-surface px-4 text-center text-2xl tracking-[0.5em] outline-none focus:border-ink" />
         </label>
         <label className="block space-y-1"><span className="text-sm font-medium">{x.again}</span>
           <input type="password" inputMode="numeric" autoComplete="new-password" required minLength={4} maxLength={8} pattern="\d{4,8}" value={again} onChange={(e) => setAgain(e.target.value.replace(/\D/g, ''))}
-            className="w-full rounded-xl border border-line bg-surface px-4 py-4 text-center text-2xl tracking-[0.5em]" />
+            className="h-16 w-full rounded-xl border border-line bg-surface px-4 text-center text-2xl tracking-[0.5em] outline-none focus:border-ink" />
         </label>
         {error && <p role="alert" className="text-sm text-bad">{error}</p>}
         <button disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-xl bg-ink py-4 text-lg font-semibold text-surface disabled:opacity-60"><KeyRound aria-hidden /> {x.save}</button>
