@@ -13,6 +13,18 @@ cd api && uv sync && uv run alembic upgrade head && uv run python -m app.seed &&
 cd web && pnpm install && pnpm dev                                                          # http://localhost:5173
 ```
 
+## One command for everything (recommended)
+After the one-time setup below (`uv sync`, `pnpm install`, `ollama pull qwen3-vl:4b`), from `web/`:
+
+```bash
+pnpm dev:all          # or: node scripts/dev.mjs
+pnpm dev:all:phone    # the same, plus a phone link (Cloudflare quick tunnel); the link is printed
+```
+It starts Docker (and Postgres), runs migrations, starts Ollama, the API and the phone build, and **keeps them current by itself**: saving `.env` restarts the API, editing API code reloads it, editing web code rebuilds the phone app (refresh the phone after a few seconds). Run it again at any time: it first clears stale processes (old API workers left behind are what made "I changed it and nothing changed"). Ctrl+C stops everything it started. A quick tunnel gets a new address each time it starts, so leave the tunnel running; restarting only the app does not change the link.
+
+## AI provider
+Local reader (no cloud, free): see `docs/09-local-ai-setup.md`. Set `AI_PROVIDER=local` in `.env`.
+
 ## AI provider (Gemini)
 Put these in `.env` in the repo root (or `api/.env`; never commit it):
 ```
