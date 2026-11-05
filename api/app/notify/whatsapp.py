@@ -58,6 +58,11 @@ TEXT: dict[str, dict[str, str]] = {
 }
 
 
+def template_name(s: Settings, template: str) -> str:
+    """The name Meta knows the template by: an explicit setting if there is one, otherwise <prefix>_<template>."""
+    return getattr(s, f"whatsapp_template_{template}", "") or f"{s.whatsapp_template_prefix}_{template}"
+
+
 def render(template: str, lang: str, values: dict[str, str]) -> str:
     return TEXT[template].get(lang, TEXT[template]["en"]).format(**values)
 
@@ -107,7 +112,7 @@ class MetaWhatsApp:
         body = {
             "messaging_product": "whatsapp", "to": f"91{phone}", "type": "template",
             "template": {
-                "name": f"{s.whatsapp_template_prefix}_{template}", "language": {"code": lang if lang in ("en", "hi", "mr") else "en"},
+                "name": template_name(s, template), "language": {"code": lang if lang in ("en", "hi", "mr") else "en"},
                 "components": [{"type": "body", "parameters": [{"type": "text", "text": meta_clean(values[k])} for k in PARAMS[template]]}],
             },
         }

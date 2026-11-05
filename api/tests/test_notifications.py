@@ -229,3 +229,12 @@ async def test_meta_without_credentials_falls_back_to_the_recording_mock(monkeyp
     monkeypatch.setattr(wa, "get_settings", lambda: wa.Settings(whatsapp_provider="meta", whatsapp_token="", whatsapp_phone_number_id="", _env_file=None))
     assert wa.get_whatsapp().name == "mock" and wa.is_live() is False
     _ = login  # (imported for parity with the other suites)
+
+
+def test_template_names_can_be_overridden_and_welcome_has_its_own_default() -> None:
+    from app.config import Settings
+
+    s = Settings(_env_file=None)
+    assert wa.template_name(s, "welcome") == "cargoone_driver_account" and wa.template_name(s, "trip_update") == "cargoone_trip_update"
+    assert wa.template_name(s.model_copy(update={"whatsapp_template_welcome": "my_name"}), "welcome") == "my_name"
+    assert wa.template_name(s.model_copy(update={"whatsapp_template_prefix": "acme"}), "request_update") == "acme_request_update"

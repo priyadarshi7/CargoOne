@@ -15,6 +15,8 @@ WHATSAPP_PROVIDER=meta
 WHATSAPP_TOKEN=<permanent access token>
 WHATSAPP_PHONE_NUMBER_ID=<phone number id>
 # optional: WHATSAPP_API_VERSION=v21.0   WHATSAPP_TEMPLATE_PREFIX=cargoone
+# a template name can be changed without code (Meta will not let you reuse a deleted name for a while):
+# WHATSAPP_TEMPLATE_WELCOME=cargoone_driver_account   (also _TRIP_ASSIGNED, _TRIP_UPDATE, _REQUEST_RECEIVED, _REQUEST_UPDATE)
 ```
 
 6. Register a driver with your own phone number (and submit a test transport request) and check **Setup > Messages**: the status should say **Sent**. If it says **Failed**, the reason (Meta's error code) is shown next to it; the usual causes are a template that is not approved yet in that language, a wrong phone number ID, or an expired token.
@@ -27,7 +29,7 @@ Meta approves **Utility** only for plain notices about something that already ha
 
 ## The templates
 
-### `cargoone_welcome`
+### `cargoone_driver_account`
 
 Sent when a driver is registered (and when the office sends the link again). Category: **Utility**. Variables in order: {{1}} = name, {{2}} = link.
 

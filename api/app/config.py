@@ -44,7 +44,13 @@ class Settings(BaseSettings):
     whatsapp_token: str = ""  # permanent access token of the WhatsApp Cloud API app (a secret: .env only)
     whatsapp_phone_number_id: str = ""
     whatsapp_api_version: str = "v21.0"
-    whatsapp_template_prefix: str = "cargoone"  # templates are <prefix>_welcome, <prefix>_trip_assigned, <prefix>_trip_update
+    whatsapp_template_prefix: str = "cargoone"  # templates are <prefix>_trip_assigned, <prefix>_trip_update, ... (welcome is named below)
+    # Exact template names as registered in Meta. A deleted name cannot be reused for a while, so each can be changed here without touching code.
+    whatsapp_template_welcome: str = "cargoone_driver_account"
+    whatsapp_template_trip_assigned: str = ""
+    whatsapp_template_trip_update: str = ""
+    whatsapp_template_request_received: str = ""
+    whatsapp_template_request_update: str = ""
     onboarding_link_ttl_hours: int = 72
     default_branch_code: str = "MH20"  # LR prefix used when a trip has no branch
     default_origin: str = "Chhatrapati Sambhajinagar"  # used when an import row has no origin
