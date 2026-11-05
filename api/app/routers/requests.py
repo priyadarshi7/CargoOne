@@ -25,7 +25,7 @@ from app.billing.periods import IST
 from app.config import get_settings
 from app.db import get_session
 from app.models import AuditLog, Client, Role, TransportRequest, Trip, User
-from app.notify.service import safely, send_to_phone
+from app.notify.service import safely, send_email, send_to_phone
 from app.phones import clean_phone
 from app.ratelimit import RateLimiter
 from app.security import require_roles
@@ -122,8 +122,11 @@ async def submit(body: RequestIn, request: Request, session: Session) -> dict:
     async def notify() -> None:
         msg = await send_to_phone(session, phone, body.language, "request_received", {"name": body.contact_name.strip(), "reference": ref, "link": _link(ref)},
                                   secret=status_token(ref).split(".")[1])
-        await session.commit()
         sent["status"] = msg.status
+        if body.email:  # a second channel for companies that gave an address
+            await send_email(session, body.email, body.language, "request_received", {"name": body.contact_name.strip(), "reference": ref, "link": _link(ref)},
+                             secret=status_token(ref).split(".")[1])
+        await session.commit()
 
     await safely(session, notify())
     result["message_status"] = sent.get("status", "skipped")
@@ -199,6 +202,9 @@ async def tell_requester(session: AsyncSession, r: TransportRequest, kind: str, 
     text = UPDATES[kind].get(r.language, UPDATES[kind]["en"]).format(**fmt)
     await send_to_phone(session, r.phone, r.language, "request_update", {"name": r.contact_name, "reference": r.reference, "update": text, "link": _link(r.reference)},
                         secret=status_token(r.reference).split(".")[1])
+    if r.email:
+        await send_email(session, r.email, r.language, "request_update", {"name": r.contact_name, "reference": r.reference, "update": text, "link": _link(r.reference)},
+                         secret=status_token(r.reference).split(".")[1])
     await session.commit()
 
 

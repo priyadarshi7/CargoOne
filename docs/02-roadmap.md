@@ -99,6 +99,10 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [x] Planning refuses a truck that is not available or has an expired paper, and a driver whose licence has expired; the ops dashboard's needs-attention panel lists PUC and licences due within 30 days.
 - [ ] Not done: reading the licence/RC photo automatically (AI), a fleet-availability calendar, and e-challan/Vahan lookups.
 
+## Email
+- [x] **Email to requesting companies** (request received and every update) over plain SMTP (Gmail app password or the company's mail host), only when they gave an address, in their language, with their status link. Recorded in the same Setup > Messages log as WhatsApp, with a channel column and a **Send a test email** box to check the mailbox. Recording mode (stated on screen) until the SMTP settings are filled in. Setup guide: `docs/08-email-setup.md`.
+- [ ] Not done: the MD's weekly digest by email, bounce handling, a sending service with domain authentication (better delivery than a personal mailbox), driver/staff emails.
+
 ## Client requests and onboarding
 - [x] **Public request page** (`/request`, no login, English / Hindi / Marathi): company, contact, mobile, optional email and GSTIN, pickup and delivery city, material, weight, truck type, pickup date, notes, and an explicit agreement to be contacted. Linked from the sign-in page.
 - [x] The requester gets a reference (REQ-1001) and a **private status link** (reference plus an HMAC signature, nothing stored) that shows received / accepted / booked as trip TRP-... / declined, with the office's reply and quote. They are also told on WhatsApp (recording mode until Meta is set up).

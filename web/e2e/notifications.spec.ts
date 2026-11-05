@@ -84,5 +84,9 @@ test('a new driver gets an app link, sets their own PIN from it, and is told abo
   const row = page.locator('tr', { hasText: 'Trip assigned' }).first()
   await expect(row).toContainText(name)
   await expect(row).toContainText('Not sent (not connected)')
+  await page.getByLabel('Send a test email').fill('owner@example.test')
+  await page.getByRole('button', { name: 'Send test' }).click()
+  await expect(page.getByRole('status')).toContainText('Email is not connected') // honest: recorded, not sent
+  await expect(page.locator('tr', { hasText: 'Test email' }).first()).toContainText('o***@example.test')
   await shot(page, 'setup-messages')
 })

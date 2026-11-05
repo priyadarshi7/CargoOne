@@ -52,6 +52,13 @@ class Settings(BaseSettings):
     whatsapp_template_request_received: str = ""
     whatsapp_template_request_update: str = ""
     onboarding_link_ttl_hours: int = 72
+    email_provider: str = "mock"  # mock | smtp. "smtp" needs the host and a from address
+    smtp_host: str = ""  # e.g. smtp.gmail.com
+    smtp_port: int = 587
+    smtp_security: Literal["starttls", "ssl", "none"] = "starttls"  # 587 = starttls, 465 = ssl
+    smtp_user: str = ""
+    smtp_password: str = ""  # a secret: .env only. For Gmail an "app password", never the account password
+    email_from: str = ""  # e.g. CargoOne <you@gmail.com>; blank = the smtp user. Gmail only sends as the signed-in mailbox
     default_branch_code: str = "MH20"  # LR prefix used when a trip has no branch
     default_origin: str = "Chhatrapati Sambhajinagar"  # used when an import row has no origin
     company_name: str = "Company A (demo)"  # printed on invoices

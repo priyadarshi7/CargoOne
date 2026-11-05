@@ -179,7 +179,7 @@ async def test_the_inbox_is_private_and_the_message_log_is_for_the_office(client
     assert (await client.get("/notifications/mine")).status_code == 401
     log = (await client.get("/messages", headers=ops)).json()
     assert log["live"] is False and log["provider"] == "mock" and log["items"]
-    assert all(re.fullmatch(r"\**\d{4}", i["to"] or "0000") for i in log["items"])  # numbers are masked
+    assert all(re.fullmatch(r"\**\d{4}|.\*\*\*@.+", i["to"] or "0000") for i in log["items"])  # numbers and addresses are masked
     assert (await client.get("/messages", headers=await office(client, "billing@cargoone.dev"))).status_code == 200
     assert (await client.get("/messages", headers=await office(client, "md@cargoone.dev"))).status_code == 403
     assert (await client.get("/messages", headers=driver)).status_code == 403

@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.billing.periods import IST
 from app.config import get_settings
 from app.models import Message, Notification, OnboardingLink, Trip, User, Vehicle
+from app.notify.email import compose, get_email, mask_email
 from app.notify.sms import mask_phone
 from app.notify.whatsapp import get_whatsapp, render
 
@@ -74,6 +75,27 @@ async def send_to_phone(session: AsyncSession, phone: str | None, language: str,
             log.exception("whatsapp sender crashed")
             msg.status, msg.error = "failed", f"sender error: {type(e).__name__}"
 
+    session.add(msg)
+    await session.flush()
+    return msg
+
+
+async def send_email(session: AsyncSession, to: str | None, language: str, template: str, values: dict[str, str], *, secret: str | None = None) -> Message:
+    """Render, send, and record an email (same log as WhatsApp, channel `email`). `secret` is cut out of the stored copy."""
+    lang = language if language in ("en", "hi", "mr") else "en"
+    subject, text = compose(template, lang, values)
+    provider = get_email()
+    msg = Message(channel="email", template=template, provider=provider.name, status="skipped", to_masked=mask_email(to) if to else None,
+                  body=(f"{subject}\n\n{text}".replace(secret, "•••") if secret else f"{subject}\n\n{text}")[:1200])
+    if not to:
+        msg.error = "no email address"
+    else:
+        try:
+            res = await provider.send(to, subject, text)
+            msg.status, msg.provider_id, msg.error = res.status, res.provider_id, res.error
+        except Exception as e:
+            log.exception("email sender crashed")
+            msg.status, msg.error = "failed", f"sender error: {type(e).__name__}"
     session.add(msg)
     await session.flush()
     return msg
