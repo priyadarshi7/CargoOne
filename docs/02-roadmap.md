@@ -99,6 +99,12 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [x] Planning refuses a truck that is not available or has an expired paper, and a driver whose licence has expired; the ops dashboard's needs-attention panel lists PUC and licences due within 30 days.
 - [ ] Not done: reading the licence/RC photo automatically (AI), a fleet-availability calendar, and e-challan/Vahan lookups.
 
+## Local AI reader and boxes on the photo
+- [x] **Local reader (no cloud, no cost):** `AI_PROVIDER=local` reads the photo with PaddleOCR (text and where it is) and Qwen3-VL 4B through Ollama (is it a POD, stamp, signature, remarks), then checks every claim of the model against the OCR text. The LR number counts only when the text reader can see it on the paper. Gemini stays an optional fallback. Setup and limits: `docs/09-local-ai-setup.md`.
+- [x] **Boxes with tags in Review:** each found field (LR number, date, quantity, remarks, stamp, signature) is drawn on the photo with a tag; a list says what was found and what was not; focusing a form field lights its box and the other way round; the reviewer can hide the boxes. Stored as fractions of the photo, so zoom and rotate keep them in place.
+- [x] **Measured (18 synthetic photos, original and phone-degraded):** 0 unsafe errors, 18 of 18 decisions match a perfect reader, 0 good PODs sent back; median 36 s, slowest 96 s per photo on an RTX 4050 laptop.
+- [ ] Not done: measuring on real client photos (needed before trusting any number above); speed (the signature second look dominates: options are a larger or faster model, a GPU build of PaddleOCR, or checking after the driver has left); Hindi/Marathi print (`OCR_LANGS=en,devanagari`, untested); boxes on the driver's own result screen; boxes from Gemini.
+
 ## Driver alerts (Web Push) and Messages
 - [x] **Alerts reach a closed app.** Assigning, changing or cancelling a trip, and registering a driver, now buzz the driver's phone (Web Push, signed with VAPID keys) as well as the in-app message and WhatsApp. Tapping the alert opens that trip. Sending runs in the background and never blocks planning; a phone the push service says is gone is forgotten; one phone belongs to one person; 5 phones per person at most.
 - [x] **Driver turns alerts on with one big button** (offered on the home screen once, and always in Help), can turn them off, and can **send themselves a test alert**. The screen says plainly when alerts are blocked, impossible on this phone, or not set up by the office.

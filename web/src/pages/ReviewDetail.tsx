@@ -1,7 +1,7 @@
 import { ArrowLeft, Check, RotateCcw, X } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ImageViewer } from '../components/ImageViewer'
+import { FIELD_LABEL, ImageViewer, type FoundBox } from '../components/ImageViewer'
 import { ReasonChips } from '../components/ReasonChips'
 import { api, ApiError, type ReviewItem } from '../lib/api'
 import { useI18n } from '../lib/i18n'
@@ -30,6 +30,7 @@ export default function ReviewDetail() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [confirmReject, setConfirmReject] = useState(false)
+  const [active, setActive] = useState<string | null>(null)
 
   useEffect(() => {
     api<ReviewItem>(`/review/${tripId}`).then((it) => { setItem(it); setForm(initial(it)) })
@@ -77,6 +78,11 @@ export default function ReviewDetail() {
 
   const field = 'h-11 w-full rounded-lg border border-line bg-surface px-3.5 text-sm outline-none focus:border-ink'
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm({ ...form, [k]: v })
+  const boxes: FoundBox[] = Array.isArray(item.ai.boxes) ? (item.ai.boxes as FoundBox[]) : []
+  const located = new Set(boxes.map((b) => b.field))
+  // What the AI looked for; shown only when it drew boxes (the local reader). A missing one reads "not found".
+  const seeking = boxes.length > 0 ? ['lr_no', 'delivery_date', 'quantity_received', 'remarks', 'stamp', 'signature'] : []
+  const focus = (f: string) => ({ onFocus: () => setActive(f), onBlur: () => setActive(null), onMouseEnter: () => setActive(f), onMouseLeave: () => setActive(null) })
   const lrEmpty = norm(form.lr_no) === ''
   const lrChanged = !lrEmpty && norm(form.lr_no) !== norm(item.lr_no) // same rule as the server
 
@@ -87,7 +93,7 @@ export default function ReviewDetail() {
       </Link>
 
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-        <ImageViewer key={item.submission_id} submissionId={item.submission_id} />
+        <ImageViewer key={item.submission_id} submissionId={item.submission_id} boxes={boxes} active={active} onActive={setActive} />
 
         <div className="space-y-5 lg:sticky lg:top-20">
           <div className="rounded-2xl border border-line p-5">
@@ -101,19 +107,40 @@ export default function ReviewDetail() {
             </p>
           </div>
 
+          {seeking.length > 0 && (
+            <div className="rounded-2xl border border-line p-5">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted">{t('rd.boxes')}</p>
+              <ul className="mt-3 flex flex-wrap gap-2">
+                {seeking.map((f) => {
+                  const found = located.has(f)
+                  const label = t(FIELD_LABEL[f] as 'rd.lr')
+                  return (
+                    <li key={f}>
+                      <button type="button" disabled={!found} {...focus(f)} title={found ? t('rd.seen') : t('rd.notFound')}
+                        className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-sm ${found ? (active === f ? 'border-accent bg-accent-soft text-ink' : 'border-line text-ink hover:border-accent') : 'border-dashed border-line text-muted'}`}>
+                        {found ? <Check size={14} aria-hidden /> : <X size={14} aria-hidden />} {label}
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+              <p className="mt-3 text-xs text-muted">{t('rd.boxHint')}</p>
+            </div>
+          )}
+
           <div className="space-y-4 rounded-2xl border border-line p-5">
             <p className="text-xs font-medium uppercase tracking-wider text-muted">{t('rd.check')}</p>
             <label className="block space-y-1 text-sm"><span className="font-medium">{t('rd.lr')}</span>
-              <input className={`${field} ${lrChanged ? 'border-warn' : ''}`} value={form.lr_no} onChange={(e) => set('lr_no', e.target.value)} />
+              <input {...focus('lr_no')} className={`${field} ${lrChanged ? 'border-warn' : ''}`} value={form.lr_no} onChange={(e) => set('lr_no', e.target.value)} />
               {lrEmpty && <span className="text-xs text-warn">{t('rd.lrUnread', { lr: item.lr_no })}</span>}
               {lrChanged && <span className="text-xs text-warn">{t('rd.lrDiff', { lr: item.lr_no })}</span>}
             </label>
             <label className="block space-y-1 text-sm"><span className="font-medium">{t('rd.date')}</span>
-              <input type="date" className={field} value={form.delivery_date} onChange={(e) => set('delivery_date', e.target.value)} /></label>
+              <input type="date" {...focus('delivery_date')} className={field} value={form.delivery_date} onChange={(e) => set('delivery_date', e.target.value)} /></label>
             <label className="block space-y-1 text-sm"><span className="font-medium">{t('rd.qty')}</span>
-              <input className={field} value={form.quantity_received} onChange={(e) => set('quantity_received', e.target.value)} /></label>
+              <input {...focus('quantity_received')} className={field} value={form.quantity_received} onChange={(e) => set('quantity_received', e.target.value)} /></label>
             <label className="block space-y-1 text-sm"><span className="font-medium">{t('rd.remarks')}</span>
-              <input className={field} value={form.remarks} onChange={(e) => set('remarks', e.target.value)} /></label>
+              <input {...focus('remarks')} className={field} value={form.remarks} onChange={(e) => set('remarks', e.target.value)} /></label>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" className="h-5 w-5 accent-[var(--color-ink)]" checked={form.shortage_or_damage} onChange={(e) => set('shortage_or_damage', e.target.checked)} />
               {t('rd.shortage')}

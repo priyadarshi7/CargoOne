@@ -27,6 +27,7 @@ export const en = {
   'rd.lrDiff': 'Differs from trip LR {lr} - approval will be refused.', 'rd.date': 'Delivery date', 'rd.qty': 'Quantity received', 'rd.remarks': 'Remarks on the paper',
   'rd.shortage': 'Shortage or damage recorded', 'rd.note': 'Note (optional)', 'rd.approve': 'Approve', 'rd.retake': 'Retake', 'rd.reject': 'Reject', 'rd.confirmReject': 'Confirm reject',
   'rd.retakeLimit': 'Retake limit reached', 'rd.footer': 'Approving does not send an invoice. Retakes left for the driver: {n}.',
+  'rd.boxes': 'Show what the AI found', 'rd.stamp': 'Stamp', 'rd.signature': 'Signature', 'rd.notFound': 'Not found on the photo', 'rd.show': 'Show on photo', 'rd.seen': 'Found on the photo', 'rd.ocr': 'text reader', 'rd.vlm': 'vision model', 'rd.boxHint': 'Boxes are what the AI found. Check each against the photo.',
   // dashboard
   'dash.error': 'Could not load the dashboard.', 'dash.md': 'Business overview', 'dash.ops': 'Operations', 'dash.sub': 'Trips delivered in the last {days} days · {n} trips',
   'dash.window': 'Time window', 'dash.last': 'Last {n} days', 'dash.digest': 'Download digest', 'dash.demo': 'Showing illustrative DEMO data (trips coded DEMO-…). These figures are not real performance.',

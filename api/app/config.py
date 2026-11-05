@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     gemini_model: str = "gemini-2.5-flash"  # configurable: model names change over time
     ai_timeout_s: float = 20.0
+    ollama_url: str = "http://localhost:11434"  # the local vision model runs here (Ollama)
+    ollama_model: str = "qwen3-vl:4b"
+    local_ai_timeout_s: float = 120.0  # a laptop GPU needs longer than a cloud model; first call also loads the model
+    ocr_models: str = "mobile"  # mobile (fast) | server (heavier, a little more exact)
+    ocr_langs: str = "en"  # PaddleOCR language packs, comma separated (en, devanagari)
     ai_confidence_threshold: float = 0.85
     max_image_bytes: int = 300 * 1024
     max_retakes: int = 2
