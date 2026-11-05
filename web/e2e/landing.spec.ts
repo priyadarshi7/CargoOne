@@ -36,3 +36,10 @@ test('the landing page fits a phone without sideways scrolling', async ({ page }
   expect(wide).toBe(false)
   await shot(page, 'landing-mobile')
 })
+
+test('the landing page keeps the scene in dark mode', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark' })
+  await page.goto('/')
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  await shot(page, 'landing-dark')
+})

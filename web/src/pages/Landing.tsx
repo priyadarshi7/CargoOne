@@ -1,13 +1,16 @@
-import { ArrowRight, Check, Truck } from 'lucide-react'
+import { ArrowRight, Check, FileCheck2, MessageCircle, Route, Truck, type LucideIcon } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import HeroRoute from '../components/HeroRoute'
+import HeroScene from '../components/HeroScene'
 import { LANGUAGES, useI18n, type Lang } from '../lib/i18n'
 
 const STEPS = ['s1', 's2', 's3'] as const
+const FACTS: { icon: LucideIcon; key: 'f1' | 'f2' | 'f3' | 'f4' }[] = [
+  { icon: Truck, key: 'f1' }, { icon: FileCheck2, key: 'f2' }, { icon: Route, key: 'f3' }, { icon: MessageCircle, key: 'f4' },
+]
 const BENEFITS = ['w1', 'w2', 'w3', 'w4'] as const
 const PREVIEW = ['pv.s1', 'pv.s2', 'pv.s3'] as const
 const solid = 'inline-flex items-center justify-center gap-2 rounded-xl bg-ink px-7 py-3.5 text-base font-medium text-surface hover:opacity-90'
-const outline = 'inline-flex items-center justify-center gap-2 rounded-xl border border-line px-7 py-3.5 text-base font-medium hover:bg-wash'
+const outline = 'inline-flex items-center justify-center gap-2 rounded-xl border border-ink/15 bg-surface/70 px-7 py-3.5 text-base font-medium hover:bg-surface'
 const wrap = 'mx-auto w-full max-w-6xl px-5 sm:px-8'
 
 /** The public front door at "/": what CargoOne does, how a company asks for a truck, and where staff and drivers sign in. */
@@ -15,7 +18,8 @@ export default function Landing() {
   const { t, lang, setLang } = useI18n()
   return (
     <div className="min-h-full">
-      <header className="border-b border-line">
+      <div className="sky">
+      <header>
         <div className={`${wrap} flex h-16 items-center gap-3`}>
           <span className="flex items-center gap-2 text-lg font-semibold tracking-tight">
             <span className="grid h-7 w-7 place-items-center rounded-lg bg-ink text-surface"><Truck size={16} aria-hidden /></span> CargoOne
@@ -30,21 +34,32 @@ export default function Landing() {
         </div>
       </header>
 
-      <main>
-        <section className={`${wrap} flex flex-col items-center gap-6 pb-12 pt-14 text-center sm:pt-24`}>
-          <span className="inline-flex items-center gap-2 rounded-full border border-line px-3 py-1 text-xs font-medium text-muted"><span className="h-1.5 w-1.5 rounded-full bg-ok" /> {t('land.badge')}</span>
+        <section className={`${wrap} flex flex-col items-center gap-6 pb-4 pt-12 text-center sm:pt-20`}>
+          <span className="inline-flex items-center gap-2 rounded-full border border-ink/10 bg-surface/70 px-3 py-1 text-xs font-medium text-ink"><span className="h-1.5 w-1.5 rounded-full bg-ok" /> {t('land.badge')}</span>
           <h1 className="max-w-4xl text-balance text-4xl font-semibold leading-[1.05] tracking-tight sm:text-6xl">{t('land.h1')}</h1>
-          <p className="max-w-xl text-lg leading-relaxed text-muted">{t('land.sub')}</p>
+          <p className="max-w-xl text-lg leading-relaxed text-ink/75">{t('land.sub')}</p>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <Link to="/request" className={solid}>{t('land.request')} <ArrowRight size={18} aria-hidden /></Link>
             <Link to="/login" className={outline}>{t('land.cta2')}</Link>
           </div>
-          <p className="text-sm text-muted">{t('land.note')}</p>
+          <p className="text-sm text-ink/60">{t('land.note')}</p>
+        </section>
+        <HeroScene />
+      </div>
+
+      <main>
+        <section className={`${wrap} py-10`} aria-label="CargoOne">
+          <ul className="grid grid-cols-2 gap-x-6 gap-y-5 md:grid-cols-4">
+            {FACTS.map(({ icon: Icon, key }) => (
+              <li key={key} className="flex items-center gap-3 text-sm font-medium">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-line text-ink"><Icon size={18} aria-hidden /></span>
+                {t(`land.${key}`)}
+              </li>
+            ))}
+          </ul>
         </section>
 
-        <section className={`${wrap} pb-20`}><HeroRoute /></section>
-
-        <section className={`${wrap} pb-24`} aria-label={t('land.pv.sample')}>
+        <section className={`${wrap} pb-24 pt-6`} aria-label={t('land.pv.sample')}>
           <div className="mx-auto max-w-4xl overflow-hidden rounded-2xl border border-line">
             <div className="flex flex-wrap items-center gap-3 border-b border-line bg-wash px-5 py-3.5">
               <span className="font-mono text-xs">REQ-1001</span>
