@@ -61,3 +61,10 @@ async def run_extraction(
         log.info("ai ok provider=%s latency_ms=%d confidence=%.2f", provider.name, latency, extraction.confidence)
         return Outcome(provider.name, extraction, latency, failures)
     raise AllProvidersFailed(failures)
+
+
+async def warm_up() -> None:
+    """At startup: let any provider that loads models (the local reader) do it now. Never raises."""
+    for provider in build_chain():
+        if (warm := getattr(provider, "warm", None)) is not None:
+            await warm()

@@ -1,6 +1,10 @@
+import asyncio
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.ai.registry import warm_up
 from app.config import get_settings
 from app.routers import (
     attention,
@@ -28,7 +32,15 @@ from app.routers import (
 )
 
 settings = get_settings()
-app = FastAPI(title="CargoOne API", version="0.1.0")
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    if "local" in {settings.ai_provider, *settings.ai_fallbacks.split(",")}:
+        warming = asyncio.create_task(warm_up())  # in the background: the API answers at once, the first photo is quicker
+        warming.add_done_callback(lambda t: t.exception())
+    yield
+
+
+app = FastAPI(title="CargoOne API", version="0.1.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware, allow_origins=[settings.web_origin], allow_methods=["*"], allow_headers=["*"],
     expose_headers=["Content-Disposition"]  # lets the web app read the download file name

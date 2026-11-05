@@ -13,6 +13,7 @@ import base64
 import difflib
 import io
 import json
+import logging
 import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
@@ -23,6 +24,8 @@ import httpx
 from PIL import Image, ImageOps
 
 from app.ai.base import Box, PodExtraction, ProviderError
+
+log = logging.getLogger("cargoone.ai")
 
 MAX_SIDE = 1600  # longest side handed to OCR; phone photos are already small (300 KB cap)
 
@@ -168,7 +171,7 @@ def ollama_vlm(url: str, model: str, timeout_s: float, transport: httpx.AsyncBas
     async def ask(image: bytes, lines: list[Line], expected: str) -> dict:
         listing = "\n".join(f"{ln.id}: {ln.text}" for ln in lines) or "(no text was found)"
         body = {
-            "model": model, "stream": False, "format": SCHEMA, "think": False, "options": {"temperature": 0},
+            "model": model, "stream": False, "format": SCHEMA, "think": False, "options": {"temperature": 0}, "keep_alive": "30m",
             "messages": [{"role": "user", "content": PROMPT.format(lines=listing, expected=expected),
                           "images": [base64.b64encode(jpeg(prepare(image))).decode()]}],
         }
@@ -207,7 +210,7 @@ def ollama_signature(url: str, model: str, timeout_s: float, transport: httpx.As
     """A second, narrow look for the receiver's pen mark. This model misses crude scribbles unless it thinks first, so this question
     runs with thinking on (and a generous length cap). It only runs when the first pass found none, so a clear signature costs nothing extra."""
     async def ask(image: bytes) -> dict:
-        body = {"model": model, "stream": False, "format": SIGN_SCHEMA, "think": True, "options": {"temperature": 0, "num_predict": 3500},
+        body = {"model": model, "stream": False, "format": SIGN_SCHEMA, "think": True, "options": {"temperature": 0, "num_predict": 3500}, "keep_alive": "30m",
                 "messages": [{"role": "user", "content": SIGN_QUESTION, "images": [base64.b64encode(jpeg(prepare(image))).decode()]}]}
         try:
             async with httpx.AsyncClient(timeout=timeout_s, transport=transport) as http:
@@ -337,6 +340,7 @@ class LocalProvider:
                  sign: Sign | None = None) -> None:
         self._ocr = ocr or PaddleReader(langs, ocr_models)
         self._vlm = vlm or ollama_vlm(url, model, timeout_s)
+        self._url, self._model = url, model
         self._sign = sign or (ollama_signature(url, model, timeout_s) if vlm is None else None)
 
     async def extract(self, image: bytes, mime: str, expected_lr_no: str) -> PodExtraction:
@@ -352,3 +356,14 @@ class LocalProvider:
             if second.get("signature_present") is True:
                 raw = {**raw, "signature_present": True, "signature_box": second.get("signature_box")}
         return merge(raw, lines, expected_lr_no)
+
+    async def warm(self) -> None:
+        """Load both models now, so the first real photo does not pay for it. Best effort: failure here changes nothing."""
+        blank = io.BytesIO()
+        Image.new("RGB", (320, 240), "white").save(blank, "JPEG")
+        try:
+            await asyncio.to_thread(self._ocr, blank.getvalue())
+            async with httpx.AsyncClient(timeout=120) as http:  # no prompt: Ollama just loads the model and keeps it for 30 minutes
+                await http.post(f"{self._url.rstrip('/')}/api/generate", json={"model": self._model, "keep_alive": "30m"})
+        except Exception as e:  # noqa: BLE001
+            log.warning("local AI warm-up skipped: %s", type(e).__name__)
