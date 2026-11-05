@@ -1,3 +1,5 @@
+import random
+import string
 import uuid
 from datetime import date, timedelta
 
@@ -12,6 +14,11 @@ from tests.test_pin_reset import office
 
 def digits(n: int = 9) -> str:
     return str(uuid.uuid4().int)[:n]
+
+
+def new_reg() -> str:
+    """A valid registration number that is unique across runs (the test database keeps old rows): ~6 million combinations."""
+    return f"MH20 {''.join(random.choices(string.ascii_uppercase, k=3))} {digits(4)}"
 
 
 def mobile() -> str:
@@ -89,7 +96,7 @@ async def test_hired_drivers_and_trucks_belong_to_a_vendor(client: AsyncClient) 
     ops = await office(client)
     v = (await client.post("/setup/vendors", headers=ops, json={"name": f"Vendor {digits()}", "phone": mobile(), "contact_name": "Mr Shah"})).json()
     assert v["trucks"] == 0 and v["drivers"] == 0
-    reg = f"MH20 HV {digits(4)}"
+    reg = new_reg()
     truck = await client.post("/setup/vehicles", headers=ops, json={"reg_no": reg, "vendor_id": v["id"], "vehicle_type": "Container 32 ft", "capacity_tonnes": "15"})
     assert truck.status_code == 201, truck.text
     assert truck.json()["is_hired"] and truck.json()["vendor"] == v["name"]
@@ -104,7 +111,7 @@ async def test_hired_drivers_and_trucks_belong_to_a_vendor(client: AsyncClient) 
 
 async def test_vehicle_rules(client: AsyncClient) -> None:
     ops = await office(client)
-    reg = f"MH20 VR {digits(4)}"
+    reg = new_reg()
     soon = (date.today() + timedelta(days=10)).isoformat()
     v = (await client.post("/setup/vehicles", headers=ops, json={"reg_no": reg, "insurance_expiry": soon})).json()
     assert v["papers"] == "due_soon" and v["is_hired"] is False

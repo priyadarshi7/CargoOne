@@ -19,7 +19,7 @@ async def driver_with_trip(client: AsyncClient):
 
     h, trip = await _driver_with_trip(client)
     async with SessionLocal() as s:
-        v = Vehicle(reg_no=f"MH20 EX {uuid.uuid4().int % 9000 + 1000}", is_hired=False)
+        v = Vehicle(reg_no=f"MH20 EX {uuid.uuid4().hex[:10].upper()}", is_hired=False)
         s.add(v)
         await s.flush()
         await s.execute(update(Trip).where(Trip.id == uuid.UUID(trip)).values(vehicle_id=v.id))

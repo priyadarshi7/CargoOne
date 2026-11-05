@@ -29,7 +29,7 @@ async def refs(client: AsyncClient, h: dict) -> dict:
 async def fresh_vehicle_and_driver() -> tuple[str, str]:
     tag = uuid.uuid4().hex[:6].upper()
     async with SessionLocal() as s:
-        v = Vehicle(reg_no=f"MH20 PL {int(tag, 16) % 9000 + 1000}", is_hired=False)
+        v = Vehicle(reg_no=f"MH20 PL {tag.upper()}", is_hired=False)
         d = User(name=f"Plan Driver {tag}", phone=f"7{str(uuid.uuid4().int)[:9]}", role=Role.driver, password_hash=hash_secret("4821"), language="en")
         s.add_all([v, d])
         await s.commit()

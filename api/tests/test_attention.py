@@ -39,7 +39,7 @@ async def test_a_delivered_trip_without_a_pod_shows_up_and_clears_when_it_arrive
 async def test_a_truck_with_papers_due_is_counted_and_the_list_is_soonest_first(client: AsyncClient) -> None:
     before = (await item(client, "papers") or {"count": 0})["count"]
     async with SessionLocal() as s:
-        s.add(Vehicle(reg_no=f"MH20 AT {uuid.uuid4().int % 9000 + 1000}", insurance_expiry=date.today() - timedelta(days=2)))
+        s.add(Vehicle(reg_no=f"MH20 AT {uuid.uuid4().hex[:10].upper()}", insurance_expiry=date.today() - timedelta(days=2)))
         await s.commit()
     papers = await item(client, "papers")
     assert papers["count"] == before + 1 and papers["to"].endswith("tab=trucks")
@@ -49,7 +49,7 @@ async def test_a_truck_with_papers_due_is_counted_and_the_list_is_soonest_first(
 async def test_inactive_trucks_are_not_nagged_about(client: AsyncClient) -> None:
     before = (await item(client, "papers") or {"count": 0})["count"]
     async with SessionLocal() as s:
-        s.add(Vehicle(reg_no=f"MH20 IX {uuid.uuid4().int % 9000 + 1000}", insurance_expiry=date.today() - timedelta(days=400), is_active=False))
+        s.add(Vehicle(reg_no=f"MH20 IX {uuid.uuid4().hex[:10].upper()}", insurance_expiry=date.today() - timedelta(days=400), is_active=False))
         await s.commit()
     assert (await item(client, "papers") or {"count": 0})["count"] == before  # a retired truck adds nothing
 
