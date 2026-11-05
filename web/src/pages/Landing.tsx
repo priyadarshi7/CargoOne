@@ -1,6 +1,7 @@
 import { ArrowRight, Check, FileCheck2, MessageCircle, Route, Truck, type LucideIcon } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import HeroScene from '../components/HeroScene'
+import { ThemeToggle } from '../components/ThemeToggle'
 import { LANGUAGES, useI18n, type Lang } from '../lib/i18n'
 
 const STEPS = ['s1', 's2', 's3'] as const
@@ -28,6 +29,7 @@ export default function Landing() {
             <select aria-label="Language" value={lang} onChange={(e) => setLang(e.target.value as Lang)} className="h-9 rounded-lg border border-line bg-surface px-2 text-sm">
               {LANGUAGES.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
             </select>
+            <ThemeToggle />
             <Link to="/login" className="hidden whitespace-nowrap rounded-lg px-3 py-2 text-muted hover:text-ink sm:inline-block">{t('land.signIn')}</Link>
             <Link to="/request" className="whitespace-nowrap rounded-lg bg-ink px-4 py-2 font-medium text-surface hover:opacity-90">{t('land.requestShort')}</Link>
           </div>

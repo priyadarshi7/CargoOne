@@ -16,6 +16,7 @@ from app.billing.periods import IST
 from app.config import get_settings
 from app.models import Message, Notification, OnboardingLink, Trip, User, Vehicle
 from app.notify.email import compose, get_email, mask_email
+from app.notify.push import push_user
 from app.notify.sms import mask_phone
 from app.notify.whatsapp import get_whatsapp, render
 
@@ -101,9 +102,14 @@ async def send_email(session: AsyncSession, to: str | None, language: str, templ
     return msg
 
 
-def _notify(session: AsyncSession, user: User, kind: str, body: str, *, link: str | None, trip: Trip | None = None) -> None:
+async def _notify(session: AsyncSession, user: User, kind: str, body: str, *, link: str | None, trip: Trip | None = None) -> None:
+    """The in-app message, and an alert to the driver's phone (Web Push) that opens it. The alert never blocks or breaks the action."""
     lang = user.language if user.language in ("en", "hi", "mr") else "en"
     session.add(Notification(user_id=user.id, kind=kind, title=TITLES[kind][lang], body=body[:600], link=link, trip_id=trip.id if trip else None))
+    try:
+        await push_user(session, user.id, TITLES[kind][lang], body, link)
+    except Exception:
+        log.exception("push alert failed")
 
 
 async def welcome_driver(session: AsyncSession, user: User) -> dict:
@@ -112,7 +118,7 @@ async def welcome_driver(session: AsyncSession, user: User) -> dict:
     token = url.rsplit("/", 1)[1]
     msg = await send_whatsapp(session, user, "welcome", {"name": user.name, "link": url}, secret=token)
     lang = user.language if user.language in ("en", "hi", "mr") else "en"
-    _notify(session, user, "welcome", WELCOME_BODY[lang], link="/driver")
+    await _notify(session, user, "welcome", WELCOME_BODY[lang], link="/driver")
     await session.commit()
     return {"url": url, "status": msg.status, "error": msg.error, "provider": msg.provider,
             "text": render("welcome", lang, {"name": user.name, "link": url}), "phone": user.phone}
@@ -129,7 +135,7 @@ async def trip_assigned(session: AsyncSession, trip: Trip, driver: User, vehicle
     values = {"name": driver.name, "trip_code": trip.trip_code, "lr": trip.lr_no, "route": route_text(trip), "vehicle": vehicle.reg_no if vehicle else "-",
               "start": when_text(trip.planned_start), "link": link}
     await send_whatsapp(session, driver, "trip_assigned", values, trip=trip, secret=secret)
-    _notify(session, driver, "trip_assigned", f"{trip.trip_code} · LR {trip.lr_no} · {route_text(trip)} · {values['vehicle']} · {values['start']}", link=f"/driver?trip={trip.id}", trip=trip)
+    await _notify(session, driver, "trip_assigned", f"{trip.trip_code} · LR {trip.lr_no} · {route_text(trip)} · {values['vehicle']} · {values['start']}", link=f"/driver?trip={trip.id}", trip=trip)
     await session.commit()
 
 
@@ -137,7 +143,7 @@ async def trip_update(session: AsyncSession, trip: Trip, driver: User, change: s
     s = get_settings()
     link = f"{s.app_base_url.rstrip('/')}/driver?trip={trip.id}"
     await send_whatsapp(session, driver, "trip_update", {"name": driver.name, "trip_code": trip.trip_code, "change": change, "link": link}, trip=trip)
-    _notify(session, driver, "trip_update", f"{trip.trip_code} {change}", link=f"/driver?trip={trip.id}", trip=trip)
+    await _notify(session, driver, "trip_update", f"{trip.trip_code} {change}", link=f"/driver?trip={trip.id}", trip=trip)
     await session.commit()
 
 

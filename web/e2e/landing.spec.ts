@@ -43,3 +43,17 @@ test('the landing page keeps the scene in dark mode', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   await shot(page, 'landing-dark')
 })
+
+test('the landing page has a colour switch that cycles auto, light, dark and remembers it', async ({ page }) => {
+  await page.goto('/')
+  const mode = () => page.evaluate(() => document.documentElement.dataset.theme)
+  await page.getByRole('button', { name: /^Theme:/ }).click() // auto -> light
+  await expect.poll(mode).toBe('light')
+  await page.getByRole('button', { name: /^Theme:/ }).click() // light -> dark
+  await expect.poll(mode).toBe('dark')
+  await page.goto('/login')
+  expect(await mode()).toBe('dark') // the choice follows the person to the next page
+  await page.getByRole('button', { name: /^Theme:/ }).click() // dark -> auto
+  await page.goto('/request')
+  await expect(page.getByRole('button', { name: 'Theme: system' })).toBeVisible()
+})

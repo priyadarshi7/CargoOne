@@ -1,6 +1,7 @@
 import { ArrowLeft, CircleCheck, Truck } from 'lucide-react'
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { ThemeToggle } from '../components/ThemeToggle'
 import { api, ApiError } from '../lib/api'
 import { LANGUAGES, useI18n, type Lang } from '../lib/i18n'
 
@@ -18,9 +19,12 @@ export function PublicFrame({ children, wide }: { children: ReactNode; wide?: bo
             <span className="grid h-7 w-7 place-items-center rounded-lg bg-ink text-surface"><Truck size={16} aria-hidden /></span> CargoOne
           </Link>
           <Link to="/" className="ml-2 hidden items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-muted hover:text-ink sm:inline-flex"><ArrowLeft size={15} aria-hidden /> {t('req.back')}</Link>
-          <select aria-label="Language" value={lang} onChange={(e) => setLang(e.target.value as Lang)} className="ml-auto h-9 rounded-lg border border-line bg-surface px-2 text-sm text-muted">
-            {LANGUAGES.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
-          </select>
+          <div className="ml-auto flex items-center gap-2">
+            <select aria-label="Language" value={lang} onChange={(e) => setLang(e.target.value as Lang)} className="h-9 rounded-lg border border-line bg-surface px-2 text-sm text-muted">
+              {LANGUAGES.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
+            </select>
+            <ThemeToggle />
+          </div>
         </div>
       </header>
       <main className={`mx-auto px-5 py-10 sm:px-8 sm:py-14 ${wide ? 'max-w-5xl' : 'max-w-2xl'}`}>{children}</main>

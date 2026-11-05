@@ -10,6 +10,7 @@ import Landing from './pages/Landing'
 import DriverExpense from './pages/DriverExpense'
 import DriverPin from './pages/DriverPin'
 import DriverHelp from './pages/DriverHelp'
+import DriverMessages from './pages/DriverMessages'
 import DriverHome from './pages/DriverHome'
 import Onboard from './pages/Onboard'
 import RequestStatus from './pages/RequestStatus'
@@ -77,6 +78,7 @@ export default function App() {
           <Route path="/v/:token" element={<ClientPod />} />
           <Route path="/t/:token" element={<TrackPublic />} />
           <Route path="/driver" element={<Guard roles={['driver']}><DriverHome /></Guard>} />
+          <Route path="/driver/messages" element={<Guard roles={['driver']}><DriverMessages /></Guard>} />
           <Route path="/driver/help" element={<Guard roles={['driver']}><DriverHelp /></Guard>} />
           <Route path="/driver/expense" element={<Guard roles={['driver']}><DriverExpense /></Guard>} />
           <Route path="/driver/pin" element={<Guard roles={['driver']}><DriverPin /></Guard>} />

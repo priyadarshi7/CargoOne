@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     whatsapp_template_request_received: str = ""
     whatsapp_template_request_update: str = ""
     onboarding_link_ttl_hours: int = 72
+    vapid_public_key: str = ""  # Web Push (alerts to a driver's phone). Both keys set = live; empty = recorded only. The private key is a secret: .env only
+    vapid_private_key: str = ""
+    vapid_subject: str = "mailto:admin@cargoone.dev"  # a contact the push services can reach
     email_provider: str = "mock"  # mock | smtp. "smtp" needs the host and a from address
     smtp_host: str = ""  # e.g. smtp.gmail.com
     smtp_port: int = 587

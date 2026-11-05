@@ -348,6 +348,20 @@ class Notification(Base):
     created_at: Mapped[datetime] = now()
 
 
+class PushSubscription(Base):
+    """One phone's permission to be alerted by Web Push. The endpoint is the address the browser's push service gave this phone."""
+
+    __tablename__ = "push_subscriptions"
+    id: Mapped[uuid.UUID] = pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    endpoint: Mapped[str] = mapped_column(String(600), unique=True)
+    p256dh: Mapped[str] = mapped_column(String(200))
+    auth: Mapped[str] = mapped_column(String(100))
+    user_agent: Mapped[str | None] = mapped_column(String(200))
+    created_at: Mapped[datetime] = now()
+    last_ok_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class Message(Base):
     """A WhatsApp message we tried to send: what, to whom, and what the provider answered. Secrets in links are cut out of `body`."""
 

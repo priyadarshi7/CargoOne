@@ -33,6 +33,8 @@ export default defineConfig({
         WHATSAPP_PROVIDER: 'mock', // never message a real phone from tests, whatever .env says
         WHATSAPP_TOKEN: '',
         EMAIL_PROVIDER: 'mock', // nor email a real address
+        VAPID_PUBLIC_KEY: '', // nor push-alert a real phone
+        VAPID_PRIVATE_KEY: '',
         SMTP_HOST: '',
         STORAGE_DIR: './storage_e2e',
         WEB_ORIGIN: `http://localhost:${WEB_PORT}`,

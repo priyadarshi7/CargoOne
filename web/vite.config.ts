@@ -37,6 +37,7 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/api\//],
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         cleanupOutdatedCaches: true,
+        importScripts: ['push-sw.js'], // alerts for a closed app (copied from public/)
         skipWaiting: true, // a new version takes over at once, so a phone never keeps showing an old build
         clientsClaim: true,
       },

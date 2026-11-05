@@ -5,6 +5,7 @@ import DriverInbox from '../components/DriverInbox'
 import DriverShell from '../components/DriverShell'
 import DriverTripDetails from '../components/DriverTripDetails'
 import InstallBanner from '../components/InstallBanner'
+import PushPrompt from '../components/PushPrompt'
 import { api, tokenStore, type DriverTrip, type PodStatus, type User } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useSyncedQueue } from '../lib/capture/sync'
@@ -82,6 +83,7 @@ export default function DriverHome() {
     <DriverShell>
       {stale && <p aria-live="polite" className="mb-4 rounded-xl bg-warn-soft px-4 py-3 text-base font-medium text-warn">{t('drv.stale')}</p>}
       {toast && <p aria-live="polite" className="mb-4 rounded-xl bg-ok-soft px-4 py-3 text-base font-medium text-ok">{toast}</p>}
+      <PushPrompt />
       <InstallBanner />
       <DriverInbox />
 

@@ -33,7 +33,7 @@ def _use_test_database() -> None:
 
 # Tests must never reach a real AI provider (cost, flakiness, and photos leaving the machine),
 # whatever the developer's .env says. Environment variables beat .env files.
-os.environ.update({"AI_PROVIDER": "mock", "AI_FALLBACKS": "", "GEMINI_API_KEY": "", "APP_ENV": "test", "WHATSAPP_PROVIDER": "mock", "WHATSAPP_TOKEN": "", "EMAIL_PROVIDER": "mock", "SMTP_HOST": ""})
+os.environ.update({"AI_PROVIDER": "mock", "AI_FALLBACKS": "", "GEMINI_API_KEY": "", "APP_ENV": "test", "WHATSAPP_PROVIDER": "mock", "WHATSAPP_TOKEN": "", "EMAIL_PROVIDER": "mock", "SMTP_HOST": "", "VAPID_PUBLIC_KEY": "", "VAPID_PRIVATE_KEY": ""})
 _use_test_database()  # must run before `app` is imported anywhere
 
 from collections.abc import AsyncIterator, Iterator

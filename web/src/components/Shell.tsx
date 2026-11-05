@@ -1,10 +1,10 @@
-import { BarChart3, ClipboardCheck, Home, Inbox, ListChecks, LogOut, Map, Menu, Monitor, Moon, Receipt, ReceiptText, Route, Settings, Sun, Truck, Upload, UserRound, X, type LucideIcon } from 'lucide-react'
+import { BarChart3, ClipboardCheck, Home, Inbox, ListChecks, LogOut, Map, Menu, Receipt, ReceiptText, Route, Settings, Truck, Upload, UserRound, X, type LucideIcon } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { api, type ReviewItem } from '../lib/api'
+import { ThemeToggle } from './ThemeToggle'
 import { useAuth } from '../lib/auth'
 import { LANGUAGES, useI18n } from '../lib/i18n'
-import { useTheme, type Theme } from '../lib/theme'
 
 /** Re-reads the count on every navigation, so the badge never goes stale after an approval. */
 function useReviewCount(enabled: boolean): number {
@@ -24,11 +24,8 @@ interface Group { title: string; items: Item[] }
 export function OfficeShell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth()
   const { t, lang, setLang } = useI18n()
-  const { theme, setTheme } = useTheme()
   const { pathname } = useLocation()
   const [open, setOpen] = useState(false)
-  const nextTheme: Record<Theme, Theme> = { system: 'light', light: 'dark', dark: 'system' }
-  const ThemeIcon = { system: Monitor, light: Sun, dark: Moon }[theme]
   const role = user?.role
   const canReview = role === 'billing' || role === 'ops' || role === 'admin'
   const canMap = role === 'ops' || role === 'md' || role === 'admin'
@@ -89,9 +86,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
             <select value={lang} onChange={(e) => setLang(e.target.value as typeof lang)} aria-label={t('shell.language')} className="h-9 rounded-lg border border-line bg-surface px-2 text-sm text-muted">
               {LANGUAGES.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
             </select>
-            <button onClick={() => setTheme(nextTheme[theme])} aria-label={`Theme: ${theme}`} title={`Theme: ${theme}`} className="grid h-9 w-9 place-items-center rounded-lg text-muted hover:bg-wash hover:text-ink">
-              <ThemeIcon size={18} aria-hidden />
-            </button>
+            <ThemeToggle />
             <button onClick={logout} className="flex h-9 items-center gap-2 rounded-lg px-2.5 text-muted hover:bg-wash hover:text-ink" aria-label="Sign out">
               <LogOut size={16} aria-hidden /> <span className="hidden sm:inline">{t('shell.signOut')}</span>
             </button>

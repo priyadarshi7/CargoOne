@@ -1,29 +1,41 @@
-import { Camera, CloudUpload, KeyRound, LogOut, Play, WifiOff, type LucideIcon } from 'lucide-react'
+import { BellOff, BellRing, Camera, CloudUpload, KeyRound, LogOut, Play, WifiOff, type LucideIcon } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import DriverShell from '../components/DriverShell'
+import { ThemeChoice } from '../components/ThemeToggle'
+import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useSyncedQueue } from '../lib/capture/sync'
 import { useI18n } from '../lib/i18n'
 import { flushOutbox, useOutbox } from '../lib/offline/outbox'
+import { usePush } from '../lib/push'
 
 const STEPS: { icon: LucideIcon; key: 'drv.how1' | 'drv.how2' | 'drv.how3' }[] = [
   { icon: Play, key: 'drv.how1' }, { icon: Camera, key: 'drv.how2' }, { icon: WifiOff, key: 'drv.how3' },
 ]
 
-/** Help for a driver: three pictures with one sentence each, send what is waiting, change the PIN, sign out. */
+/** Help for a driver: three pictured steps, alerts on or off with a test, screen colour, send what is waiting, change the PIN, sign out. */
 export default function DriverHelp() {
   const { logout } = useAuth()
   const { t } = useI18n()
   const photos = useSyncedQueue()
   const { waiting } = useOutbox()
+  const { state, enable, disable } = usePush()
   const [busy, setBusy] = useState(false)
+  const [note, setNote] = useState<string | null>(null)
   const pending = photos + waiting
 
   async function sync() {
     setBusy(true)
     await flushOutbox().catch(() => undefined)
     setBusy(false)
+  }
+  async function test() {
+    setNote(null)
+    try {
+      const r = await api<{ sent: number }>('/push/test', { method: 'POST' })
+      setNote(r.sent > 0 ? t('drv.alerts.testSent') : t('drv.alerts.testNone'))
+    } catch { setNote(t('drv.alerts.testNone')) }
   }
 
   const row = 'flex h-16 w-full items-center gap-3 rounded-2xl border border-line px-4 text-lg font-medium'
@@ -39,6 +51,27 @@ export default function DriverHelp() {
             </li>
           ))}
         </ol>
+      </section>
+
+      <section className="mt-8 space-y-3" aria-label={t('drv.help.alerts')}>
+        <h2 className="text-base font-semibold text-muted">{t('drv.help.alerts')}</h2>
+        {state === 'on' && (
+          <>
+            <p className="flex items-center gap-2 text-lg font-medium text-ok"><BellRing size={22} aria-hidden /> {t('drv.alerts.isOn')}</p>
+            <button onClick={() => void test()} className={row}><BellRing size={24} aria-hidden /> {t('drv.alerts.test')}</button>
+            <button onClick={() => void disable()} className={row}><BellOff size={24} aria-hidden /> {t('drv.alerts.off')}</button>
+          </>
+        )}
+        {state === 'off' && <button onClick={() => void enable()} className={`${row} bg-ink text-surface`}><BellRing size={24} aria-hidden /> {t('drv.alerts.on')}</button>}
+        {state === 'blocked' && <p className="rounded-2xl bg-warn-soft px-4 py-3 text-base font-medium text-warn">{t('drv.alerts.blocked')}</p>}
+        {state === 'unsupported' && <p className="rounded-2xl bg-wash px-4 py-3 text-base text-muted">{t('drv.alerts.unsupported')}</p>}
+        {state === 'no-server' && <p className="rounded-2xl bg-wash px-4 py-3 text-base text-muted">{t('drv.alerts.noServer')}</p>}
+        {note && <p aria-live="polite" className="text-base font-medium">{note}</p>}
+      </section>
+
+      <section className="mt-8 space-y-3" aria-label={t('drv.help.theme')}>
+        <h2 className="text-base font-semibold text-muted">{t('drv.help.theme')}</h2>
+        <ThemeChoice />
       </section>
 
       <section className="mt-8 space-y-3">

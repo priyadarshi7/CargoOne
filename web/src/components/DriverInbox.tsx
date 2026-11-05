@@ -27,7 +27,7 @@ export default function DriverInbox({ onOpen }: { onOpen?: () => void }) {
 
   const unread = data?.items.filter((i) => !i.read) ?? []
   if (!data || data.unread === 0) return null
-  async function clear() { await api('/notifications/read-all', { method: 'POST' }); load() }
+  async function clear() { await api('/notifications/read-all', { method: 'POST' }); load(); window.dispatchEvent(new Event('cargoone:messages-read')) }
   return (
     <section aria-label={x.title} className="mb-4 space-y-2 rounded-2xl border border-line bg-accent-soft p-4">
       <p className="flex items-center gap-2 font-semibold text-accent"><Bell size={18} aria-hidden /> {x.title} <span className="rounded-full bg-ink px-2 text-sm text-surface">{data.unread}</span></p>

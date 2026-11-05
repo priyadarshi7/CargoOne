@@ -1,6 +1,7 @@
 import { Eye, EyeOff, LayoutDashboard, Receipt, Smartphone, Truck, type LucideIcon } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { ThemeToggle } from '../components/ThemeToggle'
 import { ApiError } from '../lib/api'
 import { homeFor, useAuth } from '../lib/auth'
 import { LANGUAGES, useI18n, type Lang } from '../lib/i18n'
@@ -43,9 +44,12 @@ export default function Login() {
           <Link to="/" className="flex items-center gap-2.5 text-lg font-semibold tracking-tight">
             <span className="grid h-7 w-7 place-items-center rounded-lg bg-ink text-surface"><Truck size={16} aria-hidden /></span> CargoOne
           </Link>
-          <select aria-label="Language" value={lang} onChange={(e) => setLang(e.target.value as Lang)} className="h-9 rounded-lg border border-line bg-surface px-2 text-sm text-muted">
-            {LANGUAGES.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
-          </select>
+          <div className="flex items-center gap-2">
+            <select aria-label="Language" value={lang} onChange={(e) => setLang(e.target.value as Lang)} className="h-9 rounded-lg border border-line bg-surface px-2 text-sm text-muted">
+              {LANGUAGES.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
+            </select>
+            <ThemeToggle />
+          </div>
         </div>
 
         <form onSubmit={submit} className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-5 py-12">

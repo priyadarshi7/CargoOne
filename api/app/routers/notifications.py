@@ -1,4 +1,5 @@
 """A person's own notifications (the driver's inbox), and the office's log of WhatsApp messages."""
+import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Response, status
@@ -24,6 +25,14 @@ async def mine(user: Me, session: Session, limit: int = 20) -> dict:
     unread = await session.scalar(select(func.count()).select_from(Notification).where(Notification.user_id == user.id, Notification.read_at.is_(None))) or 0
     return {"unread": unread, "items": [{"id": str(n.id), "kind": n.kind, "title": n.title, "body": n.body, "link": n.link, "trip_id": str(n.trip_id) if n.trip_id else None,
                                          "read": n.read_at is not None, "created_at": n.created_at.isoformat()} for n in rows]}
+
+
+@router.post("/notifications/{notification_id}/read", status_code=status.HTTP_204_NO_CONTENT)
+async def read_one(notification_id: uuid.UUID, user: Me, session: Session) -> Response:
+    """Mark one of the caller's own messages as read (opening it from the Messages screen)."""
+    await session.execute(update(Notification).where(Notification.id == notification_id, Notification.user_id == user.id, Notification.read_at.is_(None)).values(read_at=func.now()))
+    await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/notifications/read-all", status_code=status.HTTP_204_NO_CONTENT)

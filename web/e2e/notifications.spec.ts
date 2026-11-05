@@ -76,6 +76,21 @@ test('a new driver gets an app link, sets their own PIN from it, and is told abo
   await expect(phone.getByRole('region', { name: /^TRP-/ })).toContainText('Cement bags')
   await expect(phone.getByRole('region', { name: /^TRP-/ })).toContainText('Demo Consignee')
   await shot(phone, 'driver-trip-details')
+
+  // the Messages tab keeps every message, shows what is unread, and opening one clears it
+  await phone.getByRole('link', { name: /Messages/ }).click()
+  await expect(phone.getByRole('heading', { name: 'Messages' })).toBeVisible()
+  const first = phone.getByRole('button', { name: /New trip assigned/ }).first()
+  await expect(first).toContainText(lr)
+  await first.click()
+  await expect(phone).toHaveURL(/\/driver\?trip=/)
+  await phone.getByRole('link', { name: /Messages/ }).click()
+  await expect(phone.getByRole('button', { name: /Mark all as read/ })).toHaveCount(0) // nothing unread any more
+  await shot(phone, 'driver-messages')
+
+  // Help: alerts cannot be turned on in this test browser (no service worker, notifications not allowed), and the screen says so plainly
+  await phone.getByRole('link', { name: 'Help' }).click()
+  await expect(phone.getByRole('region', { name: 'Alerts' })).toContainText(/cannot show alerts|blocked/)
   await ctx.close()
 
   // and the office can see exactly what was (not) sent
