@@ -1,6 +1,7 @@
 import { Bell, BellDot, Camera, CheckCheck, CircleCheck, CircleX, Truck, UserRoundCheck, type LucideIcon } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import DriverShell from '../components/DriverShell'
+import StaleNote from '../components/StaleNote'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
@@ -33,7 +34,7 @@ export default function DriverMessages() {
   const items = data?.items ?? []
   return (
     <DriverShell title={t('drv.msg.title')}>
-      {stale && <p aria-live="polite" className="mb-4 rounded-xl bg-warn-soft px-4 py-3 text-base font-medium text-warn">{t('drv.stale')}</p>}
+      {stale && <StaleNote />}
       {loaded && items.length === 0 && (
         <section className="grid place-items-center gap-3 rounded-3xl border border-line px-6 py-14 text-center">
           <span className="grid h-20 w-20 place-items-center rounded-full bg-wash text-muted"><Bell size={40} aria-hidden /></span>

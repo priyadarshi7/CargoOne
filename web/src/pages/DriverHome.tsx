@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import DriverInbox from '../components/DriverInbox'
 import DriverShell from '../components/DriverShell'
+import StaleNote from '../components/StaleNote'
 import DriverTripDetails from '../components/DriverTripDetails'
 import InstallBanner from '../components/InstallBanner'
 import PushPrompt from '../components/PushPrompt'
@@ -81,7 +82,7 @@ export default function DriverHome() {
 
   return (
     <DriverShell>
-      {stale && <p aria-live="polite" className="mb-4 rounded-xl bg-warn-soft px-4 py-3 text-base font-medium text-warn">{t('drv.stale')}</p>}
+      {stale && <StaleNote />}
       {toast && <p aria-live="polite" className="mb-4 rounded-xl bg-ok-soft px-4 py-3 text-base font-medium text-ok">{toast}</p>}
       <PushPrompt />
       <InstallBanner />

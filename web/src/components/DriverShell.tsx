@@ -4,7 +4,7 @@ import { NavLink } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { useSyncedQueue } from '../lib/capture/sync'
 import { LANGUAGES, useI18n } from '../lib/i18n'
-import { useOnline } from '../lib/offline/online'
+import { useOnline, useServerUp } from '../lib/offline/online'
 import { useUnread } from '../lib/unread'
 import { dismissFailed, useOutbox } from '../lib/offline/outbox'
 
@@ -23,6 +23,8 @@ export default function DriverShell({ children, title }: { children: ReactNode; 
   const { user } = useAuth()
   const { t, lang, setLang } = useI18n()
   const online = useOnline()
+  const serverUp = useServerUp()
+  const good = online && serverUp // internet and the server both answering
   const photos = useSyncedQueue()
   const { waiting, failed } = useOutbox()
   const pending = photos + waiting
@@ -39,9 +41,9 @@ export default function DriverShell({ children, title }: { children: ReactNode; 
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-ink text-surface"><Truck size={20} aria-hidden /></span>
           <div className="min-w-0 flex-1 leading-tight">
             <h1 className="truncate text-lg font-semibold">{title ?? user?.name}</h1>
-            <p className={`flex items-center gap-1.5 text-sm ${online ? 'text-muted' : 'font-medium text-warn'}`} aria-live="polite">
-              {online ? <Wifi size={14} aria-hidden /> : <CloudOff size={14} aria-hidden />}
-              {pending > 0 ? t('drv.waiting', { n: pending }) : online ? t('drv.online') : t('drv.offline')}
+            <p className={`flex items-center gap-1.5 text-sm ${good ? 'text-muted' : 'font-medium text-warn'}`} aria-live="polite">
+              {good ? <Wifi size={14} aria-hidden /> : <CloudOff size={14} aria-hidden />}
+              {pending > 0 ? t('drv.waiting', { n: pending }) : !online ? t('drv.offline') : !serverUp ? t('drv.noServer') : t('drv.online')}
             </p>
           </div>
           <div className="flex gap-1" role="group" aria-label={t('drv.help.lang')}>
