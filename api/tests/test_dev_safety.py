@@ -9,11 +9,11 @@ from app.seed import seed
 def test_default_or_short_jwt_secret_rejected_outside_dev() -> None:
     for env in ("staging", "production"):
         with pytest.raises(ValidationError):
-            Settings(app_env=env)
+            Settings(app_env=env, jwt_secret=DEV_JWT_SECRET, _env_file=None)
         with pytest.raises(ValidationError):
-            Settings(app_env=env, jwt_secret="short")
+            Settings(app_env=env, jwt_secret="short", _env_file=None)
         with pytest.raises(ValidationError):
-            Settings(app_env=env, jwt_secret=DEV_JWT_SECRET)
+            Settings(app_env=env, jwt_secret=DEV_JWT_SECRET, _env_file=None)
     assert Settings(app_env="production", jwt_secret="x" * 40).app_env == "production"
 
 

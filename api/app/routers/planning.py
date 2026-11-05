@@ -3,7 +3,7 @@
 Vehicle and driver clashes are detected (never silently allowed): the API answers 409 with the clashing trips, and the
 planner can re-send with `force` if the overlap is deliberate (for example a driver changing trucks mid-day)."""
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import Annotated
 
@@ -16,6 +16,7 @@ from app.config import get_settings
 from app.db import get_session
 from app.models import AuditLog, Branch, Client, PodStatus, Role, Trip, TripState, User, Vehicle
 from app.planning import overlaps, window
+from app.routers.setup import DOCS
 from app.security import require_roles
 
 router = APIRouter(prefix="/planning", tags=["planning"])
@@ -118,20 +119,30 @@ def _clash_error(clashes: list[Clash]) -> HTTPException:
 
 
 async def _check_people(session: AsyncSession, vehicle_id: uuid.UUID, driver_id: uuid.UUID | None) -> None:
-    if await session.get(Vehicle, vehicle_id) is None:
+    v = await session.get(Vehicle, vehicle_id)
+    if v is None:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Unknown vehicle")
+    today = date.today()
+    if v.availability != "available":
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, f"{v.reg_no} is not available ({v.availability}). Mark it available in Setup first.")
+    expired = [d.removesuffix("_expiry") for d in DOCS if getattr(v, d) and getattr(v, d) < today]
+    if expired:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, f"{v.reg_no} has an expired paper ({', '.join(expired)}). Renew it in Setup first.")
     if driver_id:
         d = await session.get(User, driver_id)
         if d is None or d.role != Role.driver:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Unknown driver")
+        if d.licence_expiry and d.licence_expiry < today:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, f"{d.name}'s driving licence has expired. Update it in Setup first.")
 
 
 @router.get("/refs", response_model=Refs)
 async def refs(_: Viewer, session: Session) -> Refs:
     return Refs(
         clients=[{"id": str(c.id), "name": c.name} for c in (await session.scalars(select(Client).where(Client.is_active).order_by(Client.name))).all()],
-        vehicles=[{"id": str(v.id), "reg_no": v.reg_no, "is_hired": v.is_hired} for v in (await session.scalars(select(Vehicle).where(Vehicle.is_active).order_by(Vehicle.reg_no))).all()],
-        drivers=[{"id": str(u.id), "name": u.name} for u in (await session.scalars(select(User).where(User.role == Role.driver, User.is_active).order_by(User.name))).all()],
+        vehicles=[{"id": str(v.id), "reg_no": v.reg_no, "is_hired": v.is_hired, "availability": v.availability, "capacity_tonnes": float(v.capacity_tonnes) if v.capacity_tonnes else None,
+                   "vehicle_type": v.vehicle_type} for v in (await session.scalars(select(Vehicle).where(Vehicle.is_active).order_by(Vehicle.reg_no))).all()],
+        drivers=[{"id": str(u.id), "name": u.name, "assigned_vehicle_id": str(u.assigned_vehicle_id) if u.assigned_vehicle_id else None} for u in (await session.scalars(select(User).where(User.role == Role.driver, User.is_active).order_by(User.name))).all()],
         branches=[{"id": str(b.id), "name": b.name} for b in (await session.scalars(select(Branch).order_by(Branch.name))).all()],
         default_origin=get_settings().default_origin,
     )

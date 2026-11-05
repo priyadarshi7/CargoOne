@@ -91,6 +91,14 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [ ] Performance budget for low-end Android (bundle size, LCP, memory)
 - [ ] Error monitoring + structured logging (free-tier tooling)
 
+## Fleet and driver onboarding (real-product gaps closed)
+- [x] **Truck record**: registration, type, capacity, ownership (company-owned or hired from a vendor), registered owner, RC number / registration date / chassis / engine, insurance policy number, **insurance, fitness, permit and PUC validity**, and **availability** (available / in maintenance / broken down, with a note).
+- [x] **Driver record**: name, phone, language, **driving licence number and expiry**, **employment type** (company / contract / hired through a vendor), **assigned truck**. Registering with an expired licence is refused.
+- [x] **Papers on file**: photo or PDF of the RC, insurance, fitness, permit, PUC (truck) and licence front/back (driver), uploaded with the new record or later from **Details**; one current file per kind, replacing deletes the old file; private, role-checked.
+- [x] Every field is shown on a **Details** view of the truck / driver, and in the tables (papers state, availability, licence state, assigned truck).
+- [x] Planning refuses a truck that is not available or has an expired paper, and a driver whose licence has expired; the ops dashboard's needs-attention panel lists PUC and licences due within 30 days.
+- [ ] Not done: reading the licence/RC photo automatically (AI), a fleet-availability calendar, and e-challan/Vahan lookups.
+
 ## Setup area (people, trucks, clients, hired vendors)
 - [x] **Setup** screen (ops head edits, billing reads): Drivers, Trucks, Clients, Hired vendors; Office staff tab for the admin only. Add / edit / deactivate; nothing is deleted, so old trips, invoices and the audit trail stay intact.
 - [x] Register a driver by mobile number (10-digit, +91 / spaces accepted); a random one-time 6-digit PIN is shown once for the office to read out; the driver must choose their own at first sign-in. Duplicate numbers refused.

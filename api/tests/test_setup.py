@@ -25,6 +25,16 @@ def mobile() -> str:
     return "9" + digits(9)
 
 
+def new_licence() -> str:
+    return f"MH20{digits(11)}"
+
+
+def D(**kw) -> dict:
+    """A valid driver registration; pass fields to override."""
+    body = {"name": "Test Driver", "phone": mobile(), "licence_no": new_licence(), "licence_expiry": (date.today() + timedelta(days=400)).isoformat()}
+    return body | kw
+
+
 @pytest.mark.parametrize(("raw", "want"), [("98765 43210", "9876543210"), ("+91 98765-43210", "9876543210"), ("09876543210", "9876543210")])
 def test_phones_are_normalised(raw: str, want: str) -> None:
     assert clean_phone(raw) == want
@@ -45,20 +55,20 @@ def test_registration_numbers_are_normalised() -> None:
 async def test_ops_registers_a_driver_who_signs_in_with_the_phone_and_a_one_time_pin(client: AsyncClient) -> None:
     ops = await office(client)
     phone = mobile()
-    res = await client.post("/drivers", headers=ops, json={"name": "New Driver", "phone": f"+91 {phone}", "language": "mr"})
+    res = await client.post("/drivers", headers=ops, json=D(name="New Driver", phone=f"+91 {phone}", language="mr"))
     assert res.status_code == 201, res.text
     body = res.json()
     assert body["driver"]["phone"] == phone and body["driver"]["must_change_pin"] and body["driver"]["is_active"]
     assert len(body["pin"]) == 6
     login = await attempt(client, phone, body["pin"])
     assert login.status_code == 200 and login.json()["user"]["must_change_secret"]
-    assert (await client.post("/drivers", headers=ops, json={"name": "Dup", "phone": phone})).status_code == 409
-    assert (await client.post("/drivers", headers=ops, json={"name": "Bad", "phone": "12345"})).status_code == 422
+    assert (await client.post("/drivers", headers=ops, json=D(name="Dup", phone=phone))).status_code == 409
+    assert (await client.post("/drivers", headers=ops, json=D(name="Bad", phone="12345"))).status_code == 422
 
 
 async def test_deactivating_a_driver_signs_them_out_and_hides_them_from_planning(client: AsyncClient) -> None:
     ops = await office(client)
-    created = (await client.post("/drivers", headers=ops, json={"name": "Leaver", "phone": mobile()})).json()
+    created = (await client.post("/drivers", headers=ops, json=D(name="Leaver"))).json()
     d, pin = created["driver"], created["pin"]
     token = (await attempt(client, d["phone"], pin)).json()["access_token"]
     assert d["id"] in {x["id"] for x in (await client.get("/planning/refs", headers=ops)).json()["drivers"]}
@@ -84,8 +94,8 @@ async def test_a_driver_on_a_live_trip_cannot_be_deactivated(client: AsyncClient
 
 async def test_changing_a_phone_checks_for_clashes_and_ends_old_sessions(client: AsyncClient) -> None:
     ops = await office(client)
-    a = (await client.post("/drivers", headers=ops, json={"name": "A Driver", "phone": mobile()})).json()["driver"]
-    b = (await client.post("/drivers", headers=ops, json={"name": "B Driver", "phone": mobile()})).json()["driver"]
+    a = (await client.post("/drivers", headers=ops, json=D(name="A Driver"))).json()["driver"]
+    b = (await client.post("/drivers", headers=ops, json=D(name="B Driver"))).json()["driver"]
     assert (await client.patch(f"/drivers/{a['id']}", headers=ops, json={"phone": b["phone"]})).status_code == 409
     new = mobile()
     ok = await client.patch(f"/drivers/{a['id']}", headers=ops, json={"phone": new, "name": "A Renamed"})
@@ -100,11 +110,11 @@ async def test_hired_drivers_and_trucks_belong_to_a_vendor(client: AsyncClient) 
     truck = await client.post("/setup/vehicles", headers=ops, json={"reg_no": reg, "vendor_id": v["id"], "vehicle_type": "Container 32 ft", "capacity_tonnes": "15"})
     assert truck.status_code == 201, truck.text
     assert truck.json()["is_hired"] and truck.json()["vendor"] == v["name"]
-    drv = await client.post("/drivers", headers=ops, json={"name": "Hired Driver", "phone": mobile(), "vendor_id": v["id"]})
+    drv = await client.post("/drivers", headers=ops, json=D(name="Hired Driver", employment_type="hired", vendor_id=v["id"]))
     assert drv.json()["driver"]["vendor"] == v["name"]
     again = next(x for x in (await client.get("/setup/vendors", headers=ops)).json() if x["id"] == v["id"])
     assert (again["trucks"], again["drivers"]) == (1, 1)
-    assert (await client.post("/drivers", headers=ops, json={"name": "X", "phone": mobile(), "vendor_id": str(uuid.uuid4())})).status_code == 422
+    assert (await client.post("/drivers", headers=ops, json=D(name="X", employment_type="hired", vendor_id=str(uuid.uuid4())))).status_code == 422
     own = await client.patch(f"/setup/vehicles/{truck.json()['id']}", headers=ops, json={"vendor_id": None})
     assert own.json()["is_hired"] is False and own.json()["vendor"] is None  # bought it back
 
@@ -156,7 +166,7 @@ async def test_who_may_do_what(client: AsyncClient, driver: dict) -> None:
     ops = await office(client)
     assert (await client.get("/setup/vehicles", headers=billing)).status_code == 200  # billing can read the lists
     assert (await client.post("/setup/vehicles", headers=billing, json={"reg_no": "MH20 ZZ 9999"})).status_code == 403  # but not change them
-    assert (await client.post("/drivers", headers=billing, json={"name": "No", "phone": mobile()})).status_code == 403
+    assert (await client.post("/drivers", headers=billing, json=D(name="No"))).status_code == 403
     assert (await client.get("/setup/vehicles", headers=md)).status_code == 403
     assert (await client.get("/setup/vehicles", headers=driver)).status_code == 403
     assert (await client.get("/setup/staff", headers=ops)).status_code == 403  # staff accounts are admin-only

@@ -2,6 +2,8 @@ import { expect, test } from '@playwright/test'
 import { login, shot } from './helpers'
 
 const uniq = () => String(Date.now()).slice(-8)
+const licence = (tag: string) => `MH20${tag}001`
+const nextYear = () => `${new Date().getFullYear() + 2}-06-30`
 
 test('ops registers a hired vendor, their truck and driver; the new driver signs in with the one-time PIN', async ({ page }) => {
   const tag = uniq()
@@ -23,7 +25,7 @@ test('ops registers a hired vendor, their truck and driver; the new driver signs
   await page.getByRole('tab', { name: 'Trucks' }).click()
   await page.getByRole('button', { name: 'Add a truck' }).click()
   await page.getByLabel('Registration number').fill(`mh20hv${tag.slice(-4)}`)
-  await page.getByLabel('Owner').selectOption({ label: `Hired · ${vendor}` })
+  await page.getByLabel(/^Owner/).selectOption({ label: `Hired · ${vendor}` })
   await page.getByLabel('Insurance valid till').fill('2020-01-01')
   await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click()
   const truckRow = page.locator('tr', { hasText: `MH20 HV ${tag.slice(-4)}` })
@@ -36,19 +38,38 @@ test('ops registers a hired vendor, their truck and driver; the new driver signs
   await page.getByRole('button', { name: 'Add a driver' }).click()
   await page.getByLabel('Name', { exact: true }).fill('Hired Test Driver')
   await page.getByLabel('Phone').fill(phone)
+  await page.getByLabel('Employment type').selectOption({ label: 'Hired through a vendor' })
   await page.getByLabel('Hired from').selectOption({ label: vendor })
+  await page.getByLabel('Driving licence number').fill(licence(tag))
+  await page.getByLabel('Licence valid till').fill(nextYear())
+  await page.getByLabel('Assigned truck').selectOption({ label: `MH20 HV ${tag.slice(-4)}` })
+  await page.getByLabel('Licence photo (front)').setInputFiles('e2e/fixtures/pod-blurry.jpg')
   await shot(page, 'setup-add-driver')
   await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click()
   const pin = (await page.getByLabel('One-time secret').textContent())!.trim()
   expect(pin).toMatch(/^\d{6}$/)
   await shot(page, 'setup-driver-pin')
   await page.getByRole('button', { name: 'Close' }).last().click()
-  await expect(page.locator('tr', { hasText: 'Hired Test Driver' })).toContainText(vendor)
+  const row = page.locator('tr', { hasText: 'Hired Test Driver' })
+  await expect(row).toContainText(vendor)
+  await expect(row).toContainText(`MH20 HV ${tag.slice(-4)}`)
+
+  // the details page shows every field and the licence photo that was uploaded with the form
+  await row.getByRole('button', { name: 'Details' }).click()
+  const details = page.getByRole('dialog')
+  await expect(details).toContainText(licence(tag))
+  await expect(details).toContainText('Hired through a vendor')
+  await expect(details.locator('li', { hasText: 'Licence photo (front)' })).toContainText('KB')
+  await expect(details.locator('li', { hasText: 'Licence photo (back)' })).toContainText('Not uploaded')
+  await shot(page, 'setup-driver-details')
+  await details.getByRole('button', { name: 'Close' }).last().click()
 
   // registering the same number again is refused in plain words
   await page.getByRole('button', { name: 'Add a driver' }).click()
   await page.getByLabel('Name', { exact: true }).fill('Copy')
   await page.getByLabel('Phone').fill(phone)
+  await page.getByLabel('Driving licence number').fill(licence(tag))
+  await page.getByLabel('Licence valid till').fill(nextYear())
   await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click()
   await expect(page.getByRole('alert')).toContainText('already belongs')
   await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click()
@@ -67,6 +88,8 @@ test('deactivating a driver removes them from planning; billing can look but not
   const phone = `97${uniq()}`
   await page.getByLabel('Name', { exact: true }).fill('Leaver Test')
   await page.getByLabel('Phone').fill(phone)
+  await page.getByLabel('Driving licence number').fill(licence(uniq()))
+  await page.getByLabel('Licence valid till').fill(nextYear())
   await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click()
   await expect(page.getByLabel('One-time secret')).toBeVisible()
   await page.getByRole('button', { name: 'Close' }).last().click()

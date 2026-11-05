@@ -54,11 +54,15 @@ async def attention(_: Viewer, session: Session) -> dict:
     soon = today + timedelta(days=PAPERS_WITHIN_DAYS)
     papers = []
     for v in (await session.scalars(select(Vehicle).where(Vehicle.is_active))).all():
-        due = [(label, d) for label, d in (("insurance", v.insurance_expiry), ("fitness", v.fitness_expiry), ("permit", v.permit_expiry)) if d and d <= soon]
+        due = [(label, d) for label, d in (("insurance", v.insurance_expiry), ("fitness", v.fitness_expiry), ("permit", v.permit_expiry), ("PUC", v.puc_expiry)) if d and d <= soon]
         if due:
             label, d = min(due, key=lambda x: x[1])
             papers.append({"reg_no": v.reg_no, "document": label, "date": d.isoformat(), "expired": d < today, "days": (d - today).days})
     papers.sort(key=lambda p: p["days"])
+    licences = sorted(
+        ({"name": u.name, "date": u.licence_expiry.isoformat(), "expired": u.licence_expiry < today, "days": (u.licence_expiry - today).days}
+         for u in (await session.scalars(select(User).where(User.role == Role.driver, User.is_active, User.licence_expiry.is_not(None), User.licence_expiry <= soon))).all()),
+        key=lambda p: p["days"])
 
     items = [
         {"key": "missing_pod", "count": miss_n, "oldest_days": _age_days(miss_oldest, now), "to": "/office", "severity": "high"},
@@ -66,6 +70,7 @@ async def attention(_: Viewer, session: Session) -> dict:
         {"key": "unbilled", "count": bill_n, "oldest_days": _age_days(bill_oldest, now), "to": "/office/billing", "severity": "medium"},
         {"key": "expenses_pending", "count": exp_n, "oldest_days": _age_days(exp_oldest, now), "to": "/office/expenses", "severity": "low"},
         {"key": "papers", "count": len(papers), "oldest_days": None, "to": "/office/setup?tab=trucks", "severity": "medium", "detail": papers[:5]},
+        {"key": "licences", "count": len(licences), "oldest_days": None, "to": "/office/setup?tab=drivers", "severity": "medium", "detail": licences[:5]},
     ]
     return {"items": [i for i in items if i["count"]], "total": sum(i["count"] for i in items), "as_of": now.isoformat()}
 

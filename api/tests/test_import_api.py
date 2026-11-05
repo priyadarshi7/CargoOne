@@ -5,7 +5,7 @@ from sqlalchemy import select
 
 from app.db import SessionLocal
 from app.devtools.synthetic_pod import SCENARIOS, render
-from app.models import AuditLog, Trip, Vehicle
+from app.models import AuditLog, Trip, User, Vehicle
 from tests.conftest import login
 from tests.test_pod_upload import post
 
@@ -59,7 +59,7 @@ async def test_reimport_updates_open_trips_but_never_trips_with_pod_activity(cli
     t = await trip_by_code(code)
     async with SessionLocal() as s:
         row = await s.get(Trip, t.id)
-        row.driver_id = (await s.scalar(select(Trip.driver_id).where(Trip.driver_id.is_not(None)).limit(1)))
+        row.driver_id = await s.scalar(select(User.id).where(User.phone == "9000000001"))
         await s.commit()
     assert (await post(client, driver, str(t.id), render(SCENARIOS["clean"], f"LR-{code}"))).status_code == 200
     skip = (await send(client, HEADER + f"{code},Company B,MH20 EL 4521,Nagpur,9999,LR-CHANGED,341000000001,,,\n", dry_run=False)).json()

@@ -115,38 +115,57 @@ async def update_vendor(vendor_id: uuid.UUID, body: VendorPatch, actor: Manager,
 
 # ---------------------------------------------------------------- vehicles
 
-class VehicleIn(BaseModel):
+class VehicleFields(BaseModel):
+    """What the fleet manager records for a truck (the RC, the four papers' validity, and whether it can run today)."""
+    vehicle_type: str | None = Field(default=None, max_length=40)
+    capacity_tonnes: Decimal | None = Field(default=None, gt=0, lt=100)
+    owner_name: str | None = Field(default=None, max_length=160)  # registered owner on the RC
+    rc_no: str | None = Field(default=None, max_length=30)
+    registration_date: date | None = None
+    chassis_no: str | None = Field(default=None, max_length=30)
+    engine_no: str | None = Field(default=None, max_length=30)
+    insurance_no: str | None = Field(default=None, max_length=40)
+    insurance_expiry: date | None = None
+    fitness_expiry: date | None = None
+    permit_expiry: date | None = None
+    puc_expiry: date | None = None
+    availability_note: str | None = Field(default=None, max_length=200)
+
+
+class VehicleIn(VehicleFields):
     reg_no: str
-    vehicle_type: str | None = Field(default=None, max_length=40)
-    capacity_tonnes: Decimal | None = Field(default=None, gt=0, lt=100)
-    insurance_expiry: date | None = None
-    fitness_expiry: date | None = None
-    permit_expiry: date | None = None
     vendor_id: uuid.UUID | None = None  # set = a hired truck from that vendor
+    availability: Literal["available", "maintenance", "breakdown"] = "available"
 
 
-class VehiclePatch(BaseModel):
+class VehiclePatch(VehicleFields):
     reg_no: str | None = None
-    vehicle_type: str | None = Field(default=None, max_length=40)
-    capacity_tonnes: Decimal | None = Field(default=None, gt=0, lt=100)
-    insurance_expiry: date | None = None
-    fitness_expiry: date | None = None
-    permit_expiry: date | None = None
     vendor_id: uuid.UUID | None = None
+    availability: Literal["available", "maintenance", "breakdown"] | None = None
     is_active: bool | None = None
 
 
-DOCS = ("insurance_expiry", "fitness_expiry", "permit_expiry")
+DOCS = ("insurance_expiry", "fitness_expiry", "permit_expiry", "puc_expiry")
+TEXT = ("vehicle_type", "capacity_tonnes", "owner_name", "rc_no", "registration_date", "chassis_no", "engine_no", "insurance_no", "availability_note", *DOCS)
+
+
+def paper_state(*dates: date | None) -> str | None:
+    """ok / due_soon (within 30 days) / expired for the soonest of the given expiry dates; None when none is recorded."""
+    soonest = min((d for d in dates if d), default=None)
+    if soonest is None:
+        return None
+    today = date.today()
+    return "expired" if soonest < today else "due_soon" if (soonest - today).days <= 30 else "ok"
 
 
 def _vehicle_out(v: Vehicle, vendor: str | None) -> dict:
-    today = date.today()
-    soonest = min((getattr(v, d) for d in DOCS if getattr(v, d)), default=None)
     return {
         "id": str(v.id), "reg_no": v.reg_no, "is_hired": v.is_hired, "vendor_id": str(v.vendor_id) if v.vendor_id else None, "vendor": vendor,
-        "vehicle_type": v.vehicle_type, "capacity_tonnes": float(v.capacity_tonnes) if v.capacity_tonnes is not None else None,
+        "owner_name": v.owner_name, "vehicle_type": v.vehicle_type, "capacity_tonnes": float(v.capacity_tonnes) if v.capacity_tonnes is not None else None,
+        "rc_no": v.rc_no, "chassis_no": v.chassis_no, "engine_no": v.engine_no, "insurance_no": v.insurance_no, "availability": v.availability,
+        "availability_note": v.availability_note, "registration_date": v.registration_date.isoformat() if v.registration_date else None,
         **{d: getattr(v, d).isoformat() if getattr(v, d) else None for d in DOCS}, "is_active": v.is_active,
-        "papers": None if soonest is None else ("expired" if soonest < today else "due_soon" if (soonest - today).days <= 30 else "ok"),
+        "papers": paper_state(*(getattr(v, d) for d in DOCS)),
     }
 
 
@@ -174,9 +193,8 @@ async def create_vehicle(body: VehicleIn, actor: Manager, session: Session) -> d
     reg = clean_reg(body.reg_no)
     await _reg_free(session, reg)
     await _vendor_check(session, body.vendor_id)
-    v = Vehicle(reg_no=reg, is_hired=body.vendor_id is not None, vendor_id=body.vendor_id, vehicle_type=body.vehicle_type or None,
-                capacity_tonnes=body.capacity_tonnes, insurance_expiry=body.insurance_expiry, fitness_expiry=body.fitness_expiry,
-                permit_expiry=body.permit_expiry)
+    v = Vehicle(reg_no=reg, is_hired=body.vendor_id is not None, vendor_id=body.vendor_id, availability=body.availability,
+                **{f: getattr(body, f) or None for f in TEXT})
     session.add(v)
     await _commit(session, "truck", flush=True)
     await _audit(session, actor, "vehicle.create", "vehicle", v.id, hired=v.is_hired)
@@ -194,9 +212,11 @@ async def update_vehicle(vehicle_id: uuid.UUID, body: VehiclePatch, actor: Manag
         reg = clean_reg(body.reg_no)
         await _reg_free(session, reg, except_id=v.id)
         v.reg_no = reg
-    for f in ("vehicle_type", "capacity_tonnes", *DOCS):
+    for f in TEXT:
         if f in sent:
             setattr(v, f, getattr(body, f) or None)
+    if body.availability is not None:
+        v.availability = body.availability
     if "vendor_id" in sent:  # explicit null makes it an own truck again
         await _vendor_check(session, body.vendor_id)
         v.vendor_id, v.is_hired = body.vendor_id, body.vendor_id is not None

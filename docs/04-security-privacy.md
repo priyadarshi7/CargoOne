@@ -9,6 +9,7 @@ This is an engineering record, not legal advice - the DPDP Act 2023 obligations 
 | Consignee name + phone | `trips.consignee_name/phone` | Nobody in the UI today (never returned by any API; tests assert this) |
 | POD photos (may show names, signatures, phones, stamps) | private storage, `pod_submissions.storage_key` | billing, ops, admin, md (read), the trip's own driver; every view is audit-logged |
 | Driver GPS at capture time | `pod_submissions.lat/lng` | billing/ops in the review screen |
+| Driving licence number, expiry and photo | `users.licence_*`, `documents` | ops/admin (photo); ops/billing (number, expiry) |
 | Driver / staff name, phone, email | `users` | the user; office roles (API) |
 | Hired driver's mobile (typed when sending a link) | **not stored**; masked (`******3210`) in audit log | - |
 | Audit trail | `audit_log` | ops/admin (API only) |
@@ -22,6 +23,7 @@ This is an engineering record, not legal advice - the DPDP Act 2023 obligations 
 - **Driver location (GPS)**: collected only after the driver agrees (timestamped, withdrawable in effect immediately), only while a trip is on the road, readable by ops and the MD (not billing), every view of a path audited, fixes deleted after 30 days (`purge_old_pings`, to be scheduled in deployment). Client tracking links show a ~100 m rounded position, never the driver, and stop showing once the load is delivered.
 - **Accounts lifecycle**: drivers are registered by phone with a random one-time PIN (shown once, never stored in clear or audited) that must be replaced at first sign-in; office staff accounts are created by the admin only, with a temporary password treated the same way. Deactivated users cannot sign in and their live sessions end (token version bump). Every create/update is audited with the fields changed, not the values.
 - **Tokenised SMS upload links**: 256-bit random, only the SHA-256 is stored, scoped to one trip + one purpose, expire (72 h), revoked when a new link is issued or by the office, rate-limited (guessing throttle on unknown tokens only, per-link photo cap), public page shows destination + vehicle only.
+- **Driver and truck papers**: licence and RC/insurance/fitness/permit/PUC photos or PDFs live in private storage behind role checks (truck papers: ops + billing; licences: ops/admin only), type taken from the file bytes not the name, 3 MB cap, replaced files are deleted, no public URL. Licence number and expiry are stored on the driver (personal data, office roles only).
 - **Audit log** for uploads, image views, review decisions, invoices/exports, link creation/revocation.
 - **Safety rails**: demo seed and demo data refuse to run outside dev/test; non-dev refuses to start with the default/short JWT secret; tests use their own database and never call a real AI.
 - **Secrets**: `.env` git-ignored. (A key was once printed into a development session transcript - rotated by owner; avoid `cat`/`sed` on `.env`.)

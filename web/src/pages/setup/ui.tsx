@@ -7,12 +7,12 @@ export const inputCls = 'w-full rounded-lg border border-line bg-surface px-3 py
 export const btnPrimary = 'rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-solid disabled:opacity-60'
 export const btnGhost = 'rounded-lg border border-line px-3 py-1.5 text-xs font-medium hover:border-accent hover:text-accent'
 
-export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+export function Modal({ title, onClose, children, wide }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
   const { t } = useI18n()
   const ref = useRef<HTMLDialogElement>(null)
   useEffect(() => { ref.current?.showModal() }, [])
   return (
-    <dialog ref={ref} onClose={onClose} aria-label={title} className="m-auto w-[min(28rem,92vw)] rounded-2xl border border-line bg-surface p-0 text-ink shadow-xl backdrop:bg-black/30">
+    <dialog ref={ref} onClose={onClose} aria-label={title} className={`m-auto max-h-[92vh] ${wide ? 'w-[min(42rem,94vw)]' : 'w-[min(28rem,92vw)]'} rounded-2xl border border-line bg-surface p-0 text-ink shadow-xl backdrop:bg-black/30`}>
       <div className="space-y-4 p-6">
         <div className="flex items-start justify-between gap-4">
           <h2 className="text-lg font-semibold">{title}</h2>
@@ -35,8 +35,8 @@ export function Field({ label, hint, children }: { label: string; hint?: string;
 }
 
 /** A form inside a Modal: runs `onSubmit`, shows the API's own sentence on failure, closes on success. */
-export function FormModal({ title, onClose, onSubmit, children, submitLabel }: {
-  title: string; onClose: () => void; onSubmit: () => Promise<void>; children: ReactNode; submitLabel?: string
+export function FormModal({ title, onClose, onSubmit, children, submitLabel, wide }: {
+  title: string; onClose: () => void; onSubmit: () => Promise<void>; children: ReactNode; submitLabel?: string; wide?: boolean
 }) {
   const { t } = useI18n()
   const [busy, setBusy] = useState(false)
@@ -48,7 +48,7 @@ export function FormModal({ title, onClose, onSubmit, children, submitLabel }: {
     try { await onSubmit() } catch (err) { setError(err instanceof ApiError ? err.message : t('setup.saveFail')); setBusy(false) }
   }
   return (
-    <Modal title={title} onClose={onClose}>
+    <Modal title={title} onClose={onClose} wide={wide}>
       <form onSubmit={(e) => void submit(e)} className="space-y-4">
         {children}
         {error && <p role="alert" className="text-sm text-bad">{error}</p>}
@@ -87,4 +87,18 @@ export function Table({ head, children, empty }: { head: string[]; children: Rea
 export function StatusPill({ active }: { active: boolean }) {
   const { t } = useI18n()
   return <span className={active ? 'text-ok' : 'text-muted'}>{active ? t('setup.active') : t('setup.inactive')}</span>
+}
+
+/** A read-only list of label/value pairs for a details view. Empty values show a dash. */
+export function Facts({ rows }: { rows: [string, ReactNode][] }) {
+  return (
+    <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+      {rows.map(([k, v]) => (
+        <div key={k} className="min-w-0">
+          <dt className="text-xs text-muted">{k}</dt>
+          <dd className="break-words font-medium">{v === null || v === undefined || v === '' ? '—' : v}</dd>
+        </div>
+      ))}
+    </dl>
+  )
 }

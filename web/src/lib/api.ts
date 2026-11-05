@@ -181,3 +181,14 @@ export async function postFile<T>(path: string, file: File): Promise<T> {
   }
   return res.json() as Promise<T>
 }
+
+/** Multipart POST with extra form fields (api() forces a JSON content type, which breaks file uploads). */
+export async function postForm<T>(path: string, form: FormData): Promise<T> {
+  const token = tokenStore.get()
+  const res = await fetch(`${BASE}${path}`, { method: 'POST', body: form, headers: token ? { Authorization: `Bearer ${token}` } : {} })
+  if (!res.ok) {
+    const detail = await res.json().then((j) => j.detail).catch(() => res.statusText)
+    throw new ApiError(res.status, messageOf(detail), detail)
+  }
+  return res.json() as Promise<T>
+}

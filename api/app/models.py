@@ -108,6 +108,10 @@ class User(Base):
     branch_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("branches.id"))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")  # false = left the company: cannot sign in, not offered for planning
     vendor_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("vendors.id"))  # set for a hired driver
+    licence_no: Mapped[str | None] = mapped_column(String(30))  # driver only
+    licence_expiry: Mapped[date | None] = mapped_column(Date)
+    employment_type: Mapped[str | None] = mapped_column(String(16))  # company | contract | hired (driver only)
+    assigned_vehicle_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("vehicles.id"))  # the truck this driver normally drives
     created_at: Mapped[datetime] = now()
 
 
@@ -146,7 +150,32 @@ class Vehicle(Base):
     insurance_expiry: Mapped[date | None] = mapped_column(Date)
     fitness_expiry: Mapped[date | None] = mapped_column(Date)
     permit_expiry: Mapped[date | None] = mapped_column(Date)
+    puc_expiry: Mapped[date | None] = mapped_column(Date)
+    owner_name: Mapped[str | None] = mapped_column(String(160))  # registered owner on the RC
+    rc_no: Mapped[str | None] = mapped_column(String(30))
+    registration_date: Mapped[date | None] = mapped_column(Date)
+    chassis_no: Mapped[str | None] = mapped_column(String(30))
+    engine_no: Mapped[str | None] = mapped_column(String(30))
+    insurance_no: Mapped[str | None] = mapped_column(String(40))
+    availability: Mapped[str] = mapped_column(String(16), default="available", server_default="available")  # available | maintenance | breakdown
+    availability_note: Mapped[str | None] = mapped_column(String(200))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+
+
+class Document(Base):
+    """A photo or PDF of a paper (driving licence, RC, insurance...). Personal data: private storage, role-checked access only."""
+
+    __tablename__ = "documents"
+    __table_args__ = (UniqueConstraint("owner_type", "owner_id", "kind", name="uq_document_slot"), Index("ix_documents_owner", "owner_type", "owner_id"))
+    id: Mapped[uuid.UUID] = pk()
+    owner_type: Mapped[str] = mapped_column(String(16))  # vehicle | driver
+    owner_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
+    kind: Mapped[str] = mapped_column(String(24))
+    storage_key: Mapped[str] = mapped_column(String(255))
+    mime: Mapped[str] = mapped_column(String(40))
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    uploaded_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = now()
 
 
 class Invoice(Base):

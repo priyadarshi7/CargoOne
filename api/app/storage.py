@@ -11,6 +11,7 @@ from app.config import get_settings
 class Storage(Protocol):
     async def put(self, key: str, data: bytes) -> None: ...
     async def get(self, key: str) -> bytes: ...
+    async def delete(self, key: str) -> None: ...
 
 
 class LocalStorage:
@@ -30,6 +31,9 @@ class LocalStorage:
 
     async def get(self, key: str) -> bytes:
         return self._path(key).read_bytes()
+
+    async def delete(self, key: str) -> None:
+        self._path(key).unlink(missing_ok=True)
 
 
 def get_storage() -> Storage:
