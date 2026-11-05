@@ -160,3 +160,39 @@ async def test_garbage_from_the_model_is_a_provider_error() -> None:
     bad = lambda r: httpx.Response(200, json={"message": {"content": "not json"}})
     with pytest.raises(ProviderError, match="unusable"):
         await ollama(bad)(png(), LINES, "LR-1")
+
+
+def test_the_ocr_engine_reads_one_photo_at_a_time() -> None:
+    """Starting or using the GPU engine from two threads at once crashed the whole process, so access is serialised."""
+    import threading
+    import time
+    from types import SimpleNamespace
+
+    import numpy as np
+
+    from app.ai.providers.local import RapidReader
+
+    inside = 0
+    most = 0
+    guard = threading.Lock()
+
+    def fake_engine(_img):
+        nonlocal inside, most
+        with guard:
+            inside += 1
+            most = max(most, inside)
+        time.sleep(0.05)
+        with guard:
+            inside -= 1
+        return SimpleNamespace(txts=("LR No: LR-1",), scores=(0.99,), boxes=np.array([[[10, 10], [90, 10], [90, 30], [10, 30]]]))
+
+    reader = RapidReader("en")
+    reader._engine = fake_engine
+    reader._get = lambda: fake_engine  # skip loading the real models
+    photo = png()
+    threads = [threading.Thread(target=reader, args=(photo,)) for _ in range(6)]
+    [t.start() for t in threads]
+    [t.join() for t in threads]
+    assert most == 1
+    lines = reader(photo)
+    assert lines[0].text == "LR No: LR-1" and 0 <= lines[0].x < 1 and lines[0].w > 0
