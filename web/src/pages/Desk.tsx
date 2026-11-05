@@ -70,7 +70,7 @@ function useHome(): { data: Home | null; failed: boolean } {
 }
 
 /** Ops head's home: what is moving, what is stuck, and the quick jumps to planning, requests and the fleet. */
-export function OpsDesk() {
+function OpsDesk() {
   const { t } = useI18n()
   const { data, failed } = useHome()
   const tiles: TileDef[] | null = data && [
@@ -94,7 +94,7 @@ export function OpsDesk() {
 }
 
 /** Billing executive's home: receipts waiting for a check, loads ready to invoice, expenses to approve. */
-export function BillingDesk() {
+function BillingDesk() {
   const { t } = useI18n()
   const { data, failed } = useHome()
   const tiles: TileDef[] | null = data && [
@@ -113,4 +113,9 @@ export function BillingDesk() {
       ]} />
     </>
   )
+}
+
+/** The office home: the billing desk for billing executives, the operations desk for everyone else. One default export so the screen loads as one piece. */
+export default function Desk({ billing }: { billing: boolean }) {
+  return billing ? <BillingDesk /> : <OpsDesk />
 }

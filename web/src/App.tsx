@@ -5,31 +5,33 @@ import type { Role } from './lib/api'
 import { AuthProvider, homeFor, useAuth } from './lib/auth'
 import { LangProvider } from './lib/i18n'
 import { ThemeProvider } from './lib/theme'
-import Billing from './pages/Billing'
 import Capture from './pages/Capture'
-import Dashboard from './pages/Dashboard'
-import { BillingDesk, OpsDesk } from './pages/Desk'
 import Landing from './pages/Landing'
 import DriverExpense from './pages/DriverExpense'
 import DriverPin from './pages/DriverPin'
-import Expenses from './pages/Expenses'
-import Setup from './pages/Setup'
+import DriverHelp from './pages/DriverHelp'
 import DriverHome from './pages/DriverHome'
-import ImportTrips from './pages/ImportTrips'
 import Onboard from './pages/Onboard'
 import RequestStatus from './pages/RequestStatus'
 import RequestTransport from './pages/RequestTransport'
-import Requests from './pages/Requests'
 import Login from './pages/Login'
-import OfficeTrips from './pages/OfficeTrips'
-import Planning from './pages/Planning'
-import ReviewDetail from './pages/ReviewDetail'
-import ReviewList from './pages/ReviewList'
-import Account from './pages/Account'
 import ClientPod from './pages/ClientPod'
 import SmsCapture from './pages/SmsCapture'
 import Progress from './pages/Progress'
 
+// Office screens are loaded only when an office person opens them: a driver's phone never downloads charts, tables or the map.
+const Billing = lazy(() => import('./pages/Billing'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Expenses = lazy(() => import('./pages/Expenses'))
+const Setup = lazy(() => import('./pages/Setup'))
+const ImportTrips = lazy(() => import('./pages/ImportTrips'))
+const Requests = lazy(() => import('./pages/Requests'))
+const OfficeTrips = lazy(() => import('./pages/OfficeTrips'))
+const Planning = lazy(() => import('./pages/Planning'))
+const ReviewDetail = lazy(() => import('./pages/ReviewDetail'))
+const ReviewList = lazy(() => import('./pages/ReviewList'))
+const Account = lazy(() => import('./pages/Account'))
+const Desk = lazy(() => import('./pages/Desk'))
 // The map library is heavy: load it only when a map page is opened
 const LiveMapPage = lazy(() => import('./pages/LiveMapPage'))
 const TrackPublic = lazy(() => import('./pages/TrackPublic'))
@@ -48,7 +50,7 @@ function Guard({ roles, children }: { roles: Role[]; children: ReactNode }) {
 /** Each office role gets its own home: ops (and admin) the operations desk, billing the billing desk, the MD the performance dashboard. */
 function OfficeHome() {
   const { user } = useAuth()
-  return <OfficeShell>{user?.role === 'md' ? <Dashboard /> : user?.role === 'billing' ? <BillingDesk /> : <OpsDesk />}</OfficeShell>
+  return <OfficeShell>{user?.role === 'md' ? <Dashboard /> : <Desk billing={user?.role === 'billing'} />}</OfficeShell>
 }
 
 function Root() {
@@ -75,6 +77,7 @@ export default function App() {
           <Route path="/v/:token" element={<ClientPod />} />
           <Route path="/t/:token" element={<TrackPublic />} />
           <Route path="/driver" element={<Guard roles={['driver']}><DriverHome /></Guard>} />
+          <Route path="/driver/help" element={<Guard roles={['driver']}><DriverHelp /></Guard>} />
           <Route path="/driver/expense" element={<Guard roles={['driver']}><DriverExpense /></Guard>} />
           <Route path="/driver/pin" element={<Guard roles={['driver']}><DriverPin /></Guard>} />
           <Route path="/driver/trip/:id" element={<Guard roles={['driver']}><Capture /></Guard>} />

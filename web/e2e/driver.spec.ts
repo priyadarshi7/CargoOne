@@ -26,6 +26,7 @@ test('driver photographs a POD and gets a green "done" screen', async ({ page })
 
 test('offline capture is saved on the phone and uploads when the network returns', async ({ page, context }) => {
   await login(page, '9000000001', '1234')
+  await page.getByRole('button', { name: 'English' }).click() // this demo driver's own language is Marathi
   await page.getByRole('link', { name: /POD/ }).click()
   await expect(page).toHaveURL(/\/driver\/trip\//)
 
@@ -35,11 +36,11 @@ test('offline capture is saved on the phone and uploads when the network returns
   await shot(page, 'driver-result-offline')
 
   await page.getByRole('link', { name: 'Back' }).click()
-  await expect(page.getByRole('status')).toBeVisible() // pending-upload counter shows the waiting photo
+  await expect(page.getByText(/waiting to send/)).toBeVisible() // pending-upload counter shows the waiting photo
 
   await context.setOffline(false) // browser fires "online"; the queue drains by itself
-  await expect(page.getByRole('status')).toHaveCount(0, { timeout: 20_000 })
-  await expect(page.getByTitle('Verified')).toHaveCount(3) // seeded TRP-66120 + the Pune trip + this offline one
+  await expect(page.getByText(/waiting to send/)).toHaveCount(0, { timeout: 20_000 })
+  await expect(page.getByTitle('Done')).toHaveCount(3) // seeded TRP-66120 + the Pune trip + this offline one
   await shot(page, 'driver-home-after-sync')
 })
 

@@ -39,6 +39,7 @@ test('office resets a forgotten driver PIN; the driver must choose a new one, th
   await page.getByLabel('New PIN again').fill('730194')
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(page).toHaveURL(/\/driver$/)
+  await page.getByRole('link', { name: 'Help' }).click()
   await page.getByRole('button', { name: 'Sign out' }).click()
 
   await login(page, '9000000077', '730194')

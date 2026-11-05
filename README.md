@@ -46,3 +46,7 @@ Office → **Import**: upload a CSV/Excel (download the template there). It is c
 ## Docs
 - [Product brief](docs/01-product-brief.md) · [Roadmap / to-do](docs/02-roadmap.md) · [Decisions](docs/03-decisions.md)
 - [Git workflow](docs/05-git-workflow.md) · [CLAUDE.md](CLAUDE.md) (working rules for AI-assisted development)
+
+## Showing the app on a phone (tunnel)
+
+`vite preview` serves the last build, so rebuild before showing changes: `cd web && pnpm demo` (build, then serve on port 4173), and point the tunnel at `http://localhost:4173`. Phones pick up a new build on the next open. For live editing use `pnpm dev` (port 5173) and tunnel that instead, but the offline behaviour only exists in the built app.

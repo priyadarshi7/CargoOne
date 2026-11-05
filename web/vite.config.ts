@@ -24,7 +24,7 @@ export default defineConfig({
         scope: '/',
         display: 'standalone',
         orientation: 'portrait',
-        theme_color: '#1e40af',
+        theme_color: '#0e0e10',
         background_color: '#ffffff',
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
@@ -37,6 +37,8 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/api\//],
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         cleanupOutdatedCaches: true,
+        skipWaiting: true, // a new version takes over at once, so a phone never keeps showing an old build
+        clientsClaim: true,
       },
     }),
   ],
