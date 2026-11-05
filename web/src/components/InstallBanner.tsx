@@ -35,7 +35,7 @@ export default function InstallBanner() {
       <p className="pr-8 font-semibold">{tx.title}</p>
       <p className="mt-1 text-sm text-muted">{tx.body}</p>
       {evt ? (
-        <button onClick={() => void install()} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-3 font-semibold text-on-solid"><Download size={18} aria-hidden /> {tx.btn}</button>
+        <button onClick={() => void install()} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-ink px-5 py-3 font-semibold text-surface"><Download size={18} aria-hidden /> {tx.btn}</button>
       ) : (
         <p className="mt-3 flex items-center gap-2 text-sm font-medium"><Share size={18} aria-hidden /> {tx.ios}</p>
       )}

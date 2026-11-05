@@ -4,7 +4,7 @@ import { ApiError } from '../../lib/api'
 import { useI18n } from '../../lib/i18n'
 
 export const inputCls = 'w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm outline-none focus:border-accent'
-export const btnPrimary = 'rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-solid disabled:opacity-60'
+export const btnPrimary = 'rounded-lg bg-ink px-4 py-2 text-sm font-medium text-surface disabled:opacity-60'
 export const btnGhost = 'rounded-lg border border-line px-3 py-1.5 text-xs font-medium hover:border-accent hover:text-accent'
 
 export function Modal({ title, onClose, children, wide }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {

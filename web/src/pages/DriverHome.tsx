@@ -77,7 +77,7 @@ export default function DriverHome() {
           <p className="flex items-center gap-2 font-semibold"><MapPin size={20} aria-hidden /> {loc.title}</p>
           <p className="text-sm text-muted">{loc.body}</p>
           <div className="flex gap-3">
-            <button onClick={() => void allow()} className="flex-1 rounded-xl bg-accent py-3 font-semibold text-on-solid">{loc.allow}</button>
+            <button onClick={() => void allow()} className="flex-1 rounded-xl bg-ink py-3 font-semibold text-surface">{loc.allow}</button>
             <button onClick={() => setLater(true)} className="flex-1 rounded-xl border border-line py-3 text-muted">{loc.later}</button>
           </div>
         </section>
@@ -99,7 +99,7 @@ export default function DriverHome() {
         </button>
       ) : next ? (
         <Link to={`/driver/trip/${next.id}`}
-          className="mt-6 grid h-48 w-full place-items-center rounded-3xl bg-accent text-on-solid active:scale-[0.98]">
+          className="mt-6 grid h-48 w-full place-items-center rounded-3xl bg-ink text-surface active:scale-[0.98]">
           <span className="flex flex-col items-center gap-3 text-xl font-semibold">
             <Camera size={64} aria-hidden /> POD
             <span className="text-base font-normal opacity-90">{next.destination}</span>

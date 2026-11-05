@@ -57,7 +57,7 @@ export default function RequestTransport() {
           <CircleCheck size={56} className="mx-auto text-ok" aria-hidden />
           <h1 className="text-2xl font-semibold">{t('req.thanks')}</h1>
           <p className="text-muted">{t('req.thanksBody', { ref: done.reference })}</p>
-          {path && <Link to={path} className="inline-block rounded-lg bg-accent px-5 py-3 font-medium text-on-solid">{t('req.track')}</Link>}
+          {path && <Link to={path} className="inline-block rounded-lg bg-ink px-5 py-3 font-medium text-surface">{t('req.track')}</Link>}
           <div><button onClick={() => { setDone(null); setF(blank) }} className="text-sm underline">{t('req.again')}</button></div>
         </div>
       </PublicFrame>
@@ -97,7 +97,7 @@ export default function RequestTransport() {
         </div>
         <label className="flex items-start gap-2 text-sm"><input type="checkbox" required className="mt-1" checked={f.consent} onChange={(e) => setF({ ...f, consent: e.target.checked })} /> <span>{t('req.consent')}</span></label>
         {error && <p role="alert" className="text-sm text-bad">{error}</p>}
-        <button disabled={busy} className="w-full rounded-lg bg-accent py-3 font-medium text-on-solid disabled:opacity-60">{busy ? t('req.sending') : t('req.submit')}</button>
+        <button disabled={busy} className="w-full rounded-lg bg-ink py-3 font-medium text-surface disabled:opacity-60">{busy ? t('req.sending') : t('req.submit')}</button>
       </form>
     </PublicFrame>
   )

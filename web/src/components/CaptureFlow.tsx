@@ -165,7 +165,7 @@ export function CaptureFlow({ tripId, linkToken, destination, lang, backTo }: Ca
     <Screen tone="bg-surface" top={back}>
       {picker}
       <p className="text-center text-3xl font-semibold">{destination}</p>
-      {trigger('grid h-72 w-full place-items-center rounded-[2rem] bg-accent text-on-solid active:scale-[0.98]', (
+      {trigger('grid h-72 w-full place-items-center rounded-[2rem] bg-ink text-surface active:scale-[0.98]', (
         <span className="flex flex-col items-center gap-4 text-2xl font-semibold">
           <Camera size={96} aria-hidden /> POD
         </span>

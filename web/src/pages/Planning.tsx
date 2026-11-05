@@ -16,7 +16,7 @@ const DAY = 86_400_000
 const DAYS = 15 // yesterday + two weeks
 const BAR: Record<TripState, string> = {
   planned: 'border border-dashed border-accent bg-accent-soft text-accent',
-  in_transit: 'bg-accent text-on-solid',
+  in_transit: 'bg-ink text-surface',
   delivered: 'bg-ok-soft text-ok',
   cancelled: 'bg-wash text-muted',
 }
@@ -82,7 +82,7 @@ export default function Planning() {
           <p className="text-sm text-muted">{t('plan.sub')}</p>
         </div>
         {canPlan && (
-          <button onClick={() => setDialog({ trip: null })} className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-solid">
+          <button onClick={() => setDialog({ trip: null })} className="inline-flex items-center gap-1.5 rounded-lg bg-ink px-4 py-2 text-sm font-medium text-surface">
             <Plus size={16} aria-hidden /> {t('plan.new')}
           </button>
         )}
@@ -225,7 +225,7 @@ function TripDialog({ trip, prefill, refs, canPlan, onClose, onSaved }: { trip: 
           <p className="text-sm text-muted">{t('lr.createdLr', { lr: created.lr_no })}</p>
           <div className="flex flex-wrap justify-end gap-3">
             <button type="button" onClick={() => void download(`/trips/${created.id}/lr.pdf`, `${created.trip_code}-LR.pdf`).catch(() => setError(t('lr.pdfFail')))} className="rounded-lg border border-line px-4 py-2 text-sm">{t('lr.download')}</button>
-            <button type="button" onClick={onSaved} className="rounded-lg bg-accent px-5 py-2 text-sm font-medium text-on-solid">{t('lr.done')}</button>
+            <button type="button" onClick={onSaved} className="rounded-lg bg-ink px-5 py-2 text-sm font-medium text-surface">{t('lr.done')}</button>
           </div>
           {error && <p role="alert" className="text-sm text-bad">{error}</p>}
         </div>
@@ -305,7 +305,7 @@ function TripDialog({ trip, prefill, refs, canPlan, onClose, onSaved }: { trip: 
             {!locked && (
               <div className="flex gap-2">
                 {clash && <button type="button" disabled={busy} onClick={(e) => void save(e as unknown as FormEvent, true)} className="rounded-lg border border-warn px-4 py-2 text-sm font-medium text-warn">{t('plan.bookAnyway')}</button>}
-                <button disabled={busy} className="rounded-lg bg-accent px-5 py-2 text-sm font-medium text-on-solid disabled:opacity-60">
+                <button disabled={busy} className="rounded-lg bg-ink px-5 py-2 text-sm font-medium text-surface disabled:opacity-60">
                   {editing ? (busy ? t('plan.saving') : t('plan.save')) : (busy ? t('plan.creating') : t('plan.create'))}
                 </button>
               </div>

@@ -3,8 +3,9 @@ import { login, shot } from './helpers'
 
 test('a visitor sees the landing page and can start a request', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('Full-truckload transport')
-  await expect(page.getByRole('heading', { name: 'How it works' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Move the load')
+  await expect(page.getByRole('heading', { name: 'Three steps, no phone tag.' })).toBeVisible()
+  await page.waitForTimeout(3500) // let the route finish drawing before the picture
   await shot(page, 'landing')
   await page.getByRole('main').getByRole('link', { name: 'Request transport' }).first().click()
   await expect(page).toHaveURL(/\/request$/)
@@ -14,7 +15,7 @@ test('a visitor sees the landing page and can start a request', async ({ page })
 test('the landing page offers sign in, and the language switch changes the text', async ({ page }) => {
   await page.goto('/')
   await page.getByLabel('Language').selectOption('hi')
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('पूरे ट्रक')
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('माल भेजिए')
   await page.getByLabel('Language').selectOption('en')
   await page.getByRole('link', { name: 'Staff and driver sign in' }).first().click()
   await expect(page).toHaveURL(/\/login$/)

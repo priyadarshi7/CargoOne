@@ -265,7 +265,7 @@ function Advances({ canGive }: { canGive: boolean }) {
             <input className={field} required inputMode="decimal" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value.replace(/[^\d.]/g, '') })} /></label>
           <label className="space-y-1 text-sm"><span className="text-muted">{t('exp.adv.note')}</span>
             <input className={field} maxLength={200} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></label>
-          <button className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-solid">{t('exp.adv.save')}</button>
+          <button className="rounded-lg bg-ink px-4 py-2 text-sm font-medium text-surface">{t('exp.adv.save')}</button>
         </form>
       )}
       {msg && <p role={msg.ok ? 'status' : 'alert'} className={`text-sm ${msg.ok ? 'text-ok' : 'text-bad'}`}>{msg.text}</p>}

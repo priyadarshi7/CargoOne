@@ -1,20 +1,21 @@
 @import "tailwindcss";
+@import "@fontsource-variable/geist"; /* self-hosted: no request to a font server, works offline */
 
 /* Design tokens: white space, one accent, three semantic colours. Nothing decorative. */
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Noto Sans Devanagari", sans-serif;
-  --color-ink: #0f172a;
-  --color-muted: #64748b;
-  --color-line: #e2e8f0;
-  --color-wash: #f8fafc;
-  --color-accent: #1e40af;
-  --color-accent-soft: #eff4ff;
-  --color-ok: #15803d;
-  --color-ok-soft: #ecfdf3;
-  --color-warn: #b45309;
-  --color-warn-soft: #fff7ed;
-  --color-bad: #b91c1c;
-  --color-bad-soft: #fef2f2;
+  --font-sans: "Geist Variable", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Noto Sans Devanagari", sans-serif;
+  --color-ink: #0e0e10;
+  --color-muted: #67676f;
+  --color-line: #e8e8ea;
+  --color-wash: #f7f7f6;
+  --color-accent: #2150e0;
+  --color-accent-soft: #edf1fd;
+  --color-ok: #17724a;
+  --color-ok-soft: #e7f4ec;
+  --color-warn: #8f5400;
+  --color-warn-soft: #fcf1dd;
+  --color-bad: #b52a2a;
+  --color-bad-soft: #fbeceb;
   --color-surface: #ffffff;
   --color-on-solid: #ffffff; /* text on solid accent/ok/warn/bad buttons */
 }
@@ -29,20 +30,20 @@
 /* Dark theme: its own steps, not an inversion. Solid buttons switch to dark text so contrast holds. */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --color-ink: #e6eaf2;
-  --color-muted: #94a3b8;
-  --color-line: #263250;
-  --color-wash: #131c33;
-  --color-surface: #0b1120;
-  --color-accent: #7ba3ff;
-  --color-accent-soft: #16244d;
-  --color-ok: #4ade80;
-  --color-ok-soft: #0f2a1d;
-  --color-warn: #f5a742;
-  --color-warn-soft: #33210d;
-  --color-bad: #f87171;
-  --color-bad-soft: #351517;
-  --color-on-solid: #0b1120;
+  --color-ink: #f3f3f4;
+  --color-muted: #9b9ba4;
+  --color-line: #26262a;
+  --color-wash: #121213;
+  --color-surface: #0c0c0d;
+  --color-accent: #8fa8ff;
+  --color-accent-soft: #181d30;
+  --color-ok: #62cf97;
+  --color-ok-soft: #12261c;
+  --color-warn: #e8b755;
+  --color-warn-soft: #2a2110;
+  --color-bad: #f58a86;
+  --color-bad-soft: #2d1615;
+  --color-on-solid: #0c0c0d;
   --ramp-0: #b4d3f8; --ramp-1: #6aa6ee; --ramp-2: #3b7fd4; --ramp-3: #2a5cae;
   --ramp-ink-0: #0b0b0b; --ramp-ink-1: #0b0b0b; --ramp-ink-2: #ffffff; --ramp-ink-3: #ffffff;
   --series: #6aa6ee;
@@ -103,3 +104,10 @@ dialog {
 :root[data-theme="dark"] .leaflet-container { background: #0b1120; }
 :root[data-theme="dark"] .leaflet-control-attribution { background: rgb(11 17 32 / 0.8); color: var(--color-muted); }
 :root[data-theme="dark"] .leaflet-control-attribution a { color: var(--color-accent); }
+
+/* Landing hero: the route line draws itself once, the chips drift slowly. Reduced-motion users get the finished picture (rule above). */
+@keyframes hero-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes hero-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+.hero-draw { stroke-dasharray: 1; stroke-dashoffset: 0; animation: hero-draw 2.6s cubic-bezier(.4, 0, .2, 1) 0.2s both; }
+.hero-float { animation: hero-float 6s ease-in-out infinite; }
+.hero-float-b { animation-delay: -3s; }

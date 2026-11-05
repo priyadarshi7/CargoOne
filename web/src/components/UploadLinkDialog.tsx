@@ -74,7 +74,7 @@ export function UploadLinkDialog({ trip, onClose }: { trip: Trip; onClose: () =>
               </div>
             </fieldset>
             {error && <p role="alert" className="text-sm text-bad">{error}</p>}
-            <button disabled={busy} onClick={() => void create()} className="w-full rounded-lg bg-accent py-2.5 font-medium text-on-solid disabled:opacity-60">
+            <button disabled={busy} onClick={() => void create()} className="w-full rounded-lg bg-ink py-2.5 font-medium text-surface disabled:opacity-60">
               {busy ? t('ul.creating') : phone.trim() ? t('ul.createSms') : t('ul.create')}
             </button>
           </>

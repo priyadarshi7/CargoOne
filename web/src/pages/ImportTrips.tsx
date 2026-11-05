@@ -132,7 +132,7 @@ export default function ImportTrips() {
 
           <div className="flex items-center gap-4">
             <button disabled={busy || importable === 0} onClick={() => void commit()}
-              className="rounded-lg bg-accent px-5 py-2.5 font-medium text-on-solid disabled:opacity-50">
+              className="rounded-lg bg-ink px-5 py-2.5 font-medium text-surface disabled:opacity-50">
               {importable === 0 ? t('imp.nothing') : importable === 1 ? t('imp.btn1') : t('imp.btn', { n: importable })}
             </button>
             {report.errors.length > 0 && importable > 0 && <span className="text-sm text-muted">{t('imp.skippedNote')}</span>}

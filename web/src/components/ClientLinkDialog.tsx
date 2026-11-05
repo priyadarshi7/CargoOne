@@ -70,7 +70,7 @@ export function ClientLinkDialog({ trip, onClose }: { trip: Trip; onClose: () =>
             </button>
           </div>
         ) : (
-          <button disabled={busy} onClick={() => void create()} className="w-full rounded-lg bg-accent py-2.5 font-medium text-on-solid disabled:opacity-60">
+          <button disabled={busy} onClick={() => void create()} className="w-full rounded-lg bg-ink py-2.5 font-medium text-surface disabled:opacity-60">
             {busy ? t('ul.creating') : active ? t('cl.createNew') : t('cl.create')}
           </button>
         )}

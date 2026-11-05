@@ -52,7 +52,7 @@ export default function DriverPin() {
       <input className={field} inputMode="numeric" type="password" autoComplete="new-password" placeholder={tx.again} aria-label={tx.again} value={again} onChange={digits(setAgain)} required />
       {!error && <p className="text-center text-sm text-muted">{tx.hint}</p>}
       {error && <p role="alert" className="text-center text-sm font-medium text-bad">{error}</p>}
-      <button disabled={busy} className="flex items-center justify-center gap-2 rounded-2xl bg-accent py-4 text-lg font-semibold text-on-solid disabled:opacity-60">
+      <button disabled={busy} className="flex items-center justify-center gap-2 rounded-2xl bg-ink py-4 text-lg font-semibold text-surface disabled:opacity-60">
         <Check aria-hidden /> {tx.save}
       </button>
     </form>

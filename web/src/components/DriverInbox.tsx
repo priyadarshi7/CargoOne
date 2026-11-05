@@ -30,7 +30,7 @@ export default function DriverInbox({ onOpen }: { onOpen?: () => void }) {
   async function clear() { await api('/notifications/read-all', { method: 'POST' }); load() }
   return (
     <section aria-label={x.title} className="mt-4 space-y-2 rounded-2xl border border-accent bg-accent-soft p-4">
-      <p className="flex items-center gap-2 font-semibold text-accent"><Bell size={18} aria-hidden /> {x.title} <span className="rounded-full bg-accent px-2 text-sm text-on-solid">{data.unread}</span></p>
+      <p className="flex items-center gap-2 font-semibold text-accent"><Bell size={18} aria-hidden /> {x.title} <span className="rounded-full bg-ink px-2 text-sm text-surface">{data.unread}</span></p>
       <ul className="space-y-2">
         {unread.map((n) => (
           <li key={n.id} className="text-sm">

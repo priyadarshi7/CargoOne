@@ -110,7 +110,7 @@ function Group({ group, onCreated, onStale }: { group: QueueGroup; onCreated: ()
         <div className="text-sm"><span className="text-muted">{tx('bill.count', { a: chosen.length, b: group.trips.length, unit: tx(group.trips.length === 1 ? 'bill.trip' : 'bill.trips') })} · </span><span className="font-semibold tabular-nums">{inr.format(sum)}</span></div>
         {error && <span role="alert" className="text-sm text-bad">{error}</span>}
         <button disabled={busy || chosen.length === 0} onClick={() => void create()}
-          className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-solid disabled:opacity-50">
+          className="rounded-lg bg-ink px-4 py-2 text-sm font-medium text-surface disabled:opacity-50">
           {busy ? tx('bill.creating') : tx('bill.create')}
         </button>
       </footer>

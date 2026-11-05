@@ -18,7 +18,7 @@ export const resolve = (t: Theme, deviceDark: boolean): 'light' | 'dark' => (t =
 function apply(t: Theme) {
   const mode = resolve(t, query().matches)
   document.documentElement.dataset.theme = mode
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', mode === 'dark' ? '#0b1120' : '#ffffff')
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', mode === 'dark' ? '#0c0c0d' : '#ffffff')
 }
 
 const Ctx = createContext<{ theme: Theme; setTheme: (t: Theme) => void }>({ theme: 'system', setTheme: () => undefined })

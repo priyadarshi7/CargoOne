@@ -61,7 +61,7 @@ export default function Onboard() {
             className="w-full rounded-xl border border-line bg-surface px-4 py-4 text-center text-2xl tracking-[0.5em]" />
         </label>
         {error && <p role="alert" className="text-sm text-bad">{error}</p>}
-        <button disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-4 text-lg font-semibold text-on-solid disabled:opacity-60"><KeyRound aria-hidden /> {x.save}</button>
+        <button disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-xl bg-ink py-4 text-lg font-semibold text-surface disabled:opacity-60"><KeyRound aria-hidden /> {x.save}</button>
       </form>
     </main>
   )

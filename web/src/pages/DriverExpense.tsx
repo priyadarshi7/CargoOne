@@ -85,7 +85,7 @@ export default function DriverExpense() {
         <div className="grid place-items-center gap-5 py-10 text-center">
           <span className="grid h-28 w-28 place-items-center rounded-full bg-ok-soft text-ok"><Check size={64} aria-hidden /></span>
           <p className="text-lg font-semibold" role="status">{tx.saved}</p>
-          <button onClick={() => setDone(false)} className="rounded-2xl bg-accent px-8 py-4 text-lg font-semibold text-on-solid">{tx.another}</button>
+          <button onClick={() => setDone(false)} className="rounded-2xl bg-ink px-8 py-4 text-lg font-semibold text-surface">{tx.another}</button>
         </div>
       ) : trip && (
         <form onSubmit={submit} className="space-y-5">
@@ -111,7 +111,7 @@ export default function DriverExpense() {
             <input type="file" accept="image/*" capture="environment" className="sr-only" aria-label={tx.photo} onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} />
           </label>
           {error && <p role="alert" className="text-center text-sm font-medium text-bad">{error}</p>}
-          <button disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-accent py-4 text-lg font-semibold text-on-solid disabled:opacity-60"><Check aria-hidden /> {busy ? tx.saving : tx.save}</button>
+          <button disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-ink py-4 text-lg font-semibold text-surface disabled:opacity-60"><Check aria-hidden /> {busy ? tx.saving : tx.save}</button>
         </form>
       )}
 

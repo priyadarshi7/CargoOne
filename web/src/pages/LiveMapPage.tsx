@@ -132,7 +132,7 @@ function TrackLinkDialog({ row, onClose }: { row: Live; onClose: () => void }) {
             <button onClick={() => void revoke()} className="text-sm text-bad underline underline-offset-2">{t('live.revoke')}</button>
           </>
         ) : (
-          <button onClick={() => void create()} className="w-full rounded-lg bg-accent py-2.5 font-medium text-on-solid">{t('live.create')}</button>
+          <button onClick={() => void create()} className="w-full rounded-lg bg-ink py-2.5 font-medium text-surface">{t('live.create')}</button>
         )}
         {error && <p role="alert" className="text-sm text-bad">{error}</p>}
       </div>
