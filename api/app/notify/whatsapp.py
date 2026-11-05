@@ -28,30 +28,32 @@ PARAMS: dict[str, tuple[str, ...]] = {
 }
 
 TEXT: dict[str, dict[str, str]] = {
+    # Meta approves "Utility" only for messages about something that already happened to the person, worded as a plain notice: no greeting
+    # words like "welcome", no selling, and never a variable at the very start or end or two variables side by side. Keep that in mind when editing.
     "welcome": {
-        "en": "Hello {name}, welcome to CargoOne. Set your PIN and install the driver app here: {link}",
-        "hi": "नमस्ते {name}, CargoOne में आपका स्वागत है। अपना PIN बनाने और ड्राइवर ऐप इंस्टॉल करने के लिए यहाँ खोलें: {link}",
-        "mr": "नमस्कार {name}, CargoOne मध्ये तुमचे स्वागत आहे. तुमचा PIN तयार करण्यासाठी आणि ड्रायव्हर अ‍ॅप इन्स्टॉल करण्यासाठी येथे उघडा: {link}",
+        "en": "Hello {name}, your CargoOne driver account has been created by your company. Use this link to set your own PIN and open the app: {link} The link works once and expires in 72 hours.",
+        "hi": "नमस्ते {name}, आपकी कंपनी ने आपका CargoOne ड्राइवर खाता बना दिया है। अपना PIN बनाने और ऐप खोलने के लिए यह लिंक इस्तेमाल करें: {link} यह लिंक एक ही बार चलेगा और 72 घंटे में ख़त्म हो जाएगा।",
+        "mr": "नमस्कार {name}, तुमच्या कंपनीने तुमचे CargoOne ड्रायव्हर खाते तयार केले आहे. तुमचा PIN तयार करण्यासाठी आणि अ‍ॅप उघडण्यासाठी ही लिंक वापरा: {link} ही लिंक एकदाच चालेल आणि 72 तासांत संपेल.",
     },
     "trip_assigned": {
-        "en": "Hello {name}, a new trip is assigned to you. Trip {trip_code}, LR {lr}. Route: {route}. Truck: {vehicle}. Start: {start}. Open the app to see the details and start the trip: {link}",
-        "hi": "नमस्ते {name}, आपको नई ट्रिप दी गई है। ट्रिप {trip_code}, LR {lr}। रूट: {route}। ट्रक: {vehicle}। शुरू: {start}। विवरण देखने और ट्रिप शुरू करने के लिए ऐप खोलें: {link}",
-        "mr": "नमस्कार {name}, तुम्हाला नवीन ट्रिप दिली आहे. ट्रिप {trip_code}, LR {lr}. मार्ग: {route}. ट्रक: {vehicle}. सुरू: {start}. तपशील पाहण्यासाठी आणि ट्रिप सुरू करण्यासाठी अ‍ॅप उघडा: {link}",
+        "en": "Hello {name}, a trip has been assigned to you. Trip {trip_code}, LR number {lr}. Route: {route}. Truck: {vehicle}. Start: {start}. Open the trip here: {link} Please check the details before you leave.",
+        "hi": "नमस्ते {name}, आपको एक ट्रिप दी गई है। ट्रिप {trip_code}, LR नंबर {lr}। रूट: {route}। ट्रक: {vehicle}। शुरू: {start}। ट्रिप यहाँ खोलें: {link} निकलने से पहले विवरण जाँच लें।",
+        "mr": "नमस्कार {name}, तुम्हाला एक ट्रिप दिली आहे. ट्रिप {trip_code}, LR क्रमांक {lr}. मार्ग: {route}. ट्रक: {vehicle}. सुरू: {start}. ट्रिप येथे उघडा: {link} निघण्यापूर्वी तपशील तपासा.",
     },
     "trip_update": {
-        "en": "Hello {name}, trip {trip_code} {change}. Details: {link}",
-        "hi": "नमस्ते {name}, ट्रिप {trip_code} {change}। विवरण: {link}",
-        "mr": "नमस्कार {name}, ट्रिप {trip_code} {change}. तपशील: {link}",
+        "en": "Hello {name}, there is an update for your trip {trip_code}: {change}. See the details here: {link} Please check them before you leave.",
+        "hi": "नमस्ते {name}, आपकी ट्रिप {trip_code} में बदलाव हुआ है: {change}। विवरण यहाँ देखें: {link} निकलने से पहले जाँच लें।",
+        "mr": "नमस्कार {name}, तुमच्या ट्रिप {trip_code} मध्ये बदल झाला आहे: {change}. तपशील येथे पहा: {link} निघण्यापूर्वी तपासा.",
     },
     "request_received": {
-        "en": "Hello {name}, we have received your transport request {reference}. You can follow it here: {link}",
-        "hi": "नमस्ते {name}, आपका ट्रांसपोर्ट अनुरोध {reference} हमें मिल गया है। यहाँ देख सकते हैं: {link}",
-        "mr": "नमस्कार {name}, तुमची वाहतूक विनंती {reference} आम्हाला मिळाली आहे. येथे पाहू शकता: {link}",
+        "en": "Hello {name}, we have received your transport request {reference}. You can follow its status here: {link} We will reply shortly.",
+        "hi": "नमस्ते {name}, आपका ट्रांसपोर्ट अनुरोध {reference} हमें मिल गया है। इसकी स्थिति यहाँ देखें: {link} हम जल्द जवाब देंगे।",
+        "mr": "नमस्कार {name}, तुमची वाहतूक विनंती {reference} आम्हाला मिळाली आहे. तिची स्थिती येथे पहा: {link} आम्ही लवकरच उत्तर देऊ.",
     },
     "request_update": {
-        "en": "Hello {name}, update on your transport request {reference}: {update}. Details: {link}",
-        "hi": "नमस्ते {name}, आपके ट्रांसपोर्ट अनुरोध {reference} की जानकारी: {update}। विवरण: {link}",
-        "mr": "नमस्कार {name}, तुमच्या वाहतूक विनंती {reference} बद्दल माहिती: {update}. तपशील: {link}",
+        "en": "Hello {name}, there is an update on your transport request {reference}: {update}. See the details here: {link} Thank you for your patience.",
+        "hi": "नमस्ते {name}, आपके ट्रांसपोर्ट अनुरोध {reference} की जानकारी: {update}। विवरण यहाँ देखें: {link} आपके धैर्य के लिए धन्यवाद।",
+        "mr": "नमस्कार {name}, तुमच्या वाहतूक विनंती {reference} बद्दल माहिती: {update}. तपशील येथे पहा: {link} तुमच्या संयमाबद्दल धन्यवाद.",
     },
 }
 

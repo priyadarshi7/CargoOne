@@ -8,6 +8,7 @@ from app.routers import (
     billing,
     client_view,
     dashboard,
+    devtools,
     documents,
     drivers,
     expenses,
@@ -51,6 +52,7 @@ async def health() -> dict[str, str]:
 app.include_router(setup.router)
 app.include_router(attention.router)
 app.include_router(documents.router)
+app.include_router(devtools.router)
 app.include_router(notifications.router)
 app.include_router(onboard.router)
 app.include_router(requests.public)

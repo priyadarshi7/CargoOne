@@ -21,6 +21,10 @@ WHATSAPP_PHONE_NUMBER_ID=<phone number id>
 
 If `WHATSAPP_PROVIDER=meta` is set but a credential is missing, the app logs a warning and stays in recording mode: it never pretends to send.
 
+## If Meta rejects a template or files it as Marketing
+
+Meta approves **Utility** only for plain notices about something that already happened to the person. The texts below are written for that: no "welcome" or selling words, and a sentence after every link because a variable may not be the very first or last thing in the body. If one is still rejected or reclassified, do not argue the category: keep it as submitted and change the words (shorter, more factual), then change the same words in `TEXT` in `api/app/notify/whatsapp.py` so the app sends exactly what Meta approved. Give Meta a realistic **sample value** for every variable when you create the template. Hindi and Marathi are submitted as separate translations of the same template name.
+
 ## The templates
 
 ### `cargoone_welcome`
@@ -30,19 +34,19 @@ Sent when a driver is registered (and when the office sends the link again). Cat
 **English (`en`)**
 
 ```
-Hello {{1}}, welcome to CargoOne. Set your PIN and install the driver app here: {{2}}
+Hello {{1}}, your CargoOne driver account has been created by your company. Use this link to set your own PIN and open the app: {{2}} The link works once and expires in 72 hours.
 ```
 
 **Hindi (`hi`)**
 
 ```
-नमस्ते {{1}}, CargoOne में आपका स्वागत है। अपना PIN बनाने और ड्राइवर ऐप इंस्टॉल करने के लिए यहाँ खोलें: {{2}}
+नमस्ते {{1}}, आपकी कंपनी ने आपका CargoOne ड्राइवर खाता बना दिया है। अपना PIN बनाने और ऐप खोलने के लिए यह लिंक इस्तेमाल करें: {{2}} यह लिंक एक ही बार चलेगा और 72 घंटे में ख़त्म हो जाएगा।
 ```
 
 **Marathi (`mr`)**
 
 ```
-नमस्कार {{1}}, CargoOne मध्ये तुमचे स्वागत आहे. तुमचा PIN तयार करण्यासाठी आणि ड्रायव्हर अ‍ॅप इन्स्टॉल करण्यासाठी येथे उघडा: {{2}}
+नमस्कार {{1}}, तुमच्या कंपनीने तुमचे CargoOne ड्रायव्हर खाते तयार केले आहे. तुमचा PIN तयार करण्यासाठी आणि अ‍ॅप उघडण्यासाठी ही लिंक वापरा: {{2}} ही लिंक एकदाच चालेल आणि 72 तासांत संपेल.
 ```
 
 Sample values for Meta's review: `Ramesh Patil` | `https://app.example.com/onboard/abc123`
@@ -54,19 +58,19 @@ Sent when a trip is given to a driver. Category: **Utility**. Variables in order
 **English (`en`)**
 
 ```
-Hello {{1}}, a new trip is assigned to you. Trip {{2}}, LR {{3}}. Route: {{4}}. Truck: {{5}}. Start: {{6}}. Open the app to see the details and start the trip: {{7}}
+Hello {{1}}, a trip has been assigned to you. Trip {{2}}, LR number {{3}}. Route: {{4}}. Truck: {{5}}. Start: {{6}}. Open the trip here: {{7}} Please check the details before you leave.
 ```
 
 **Hindi (`hi`)**
 
 ```
-नमस्ते {{1}}, आपको नई ट्रिप दी गई है। ट्रिप {{2}}, LR {{3}}। रूट: {{4}}। ट्रक: {{5}}। शुरू: {{6}}। विवरण देखने और ट्रिप शुरू करने के लिए ऐप खोलें: {{7}}
+नमस्ते {{1}}, आपको एक ट्रिप दी गई है। ट्रिप {{2}}, LR नंबर {{3}}। रूट: {{4}}। ट्रक: {{5}}। शुरू: {{6}}। ट्रिप यहाँ खोलें: {{7}} निकलने से पहले विवरण जाँच लें।
 ```
 
 **Marathi (`mr`)**
 
 ```
-नमस्कार {{1}}, तुम्हाला नवीन ट्रिप दिली आहे. ट्रिप {{2}}, LR {{3}}. मार्ग: {{4}}. ट्रक: {{5}}. सुरू: {{6}}. तपशील पाहण्यासाठी आणि ट्रिप सुरू करण्यासाठी अ‍ॅप उघडा: {{7}}
+नमस्कार {{1}}, तुम्हाला एक ट्रिप दिली आहे. ट्रिप {{2}}, LR क्रमांक {{3}}. मार्ग: {{4}}. ट्रक: {{5}}. सुरू: {{6}}. ट्रिप येथे उघडा: {{7}} निघण्यापूर्वी तपशील तपासा.
 ```
 
 Sample values for Meta's review: `Ramesh Patil` | `TRP-70012` | `LR/MH20/26-27/000123` | `Chhatrapati Sambhajinagar - Nagpur` | `MH20 EL 4521` | `12 Nov, 08:00` | `https://app.example.com/driver?trip=abc123`
@@ -78,19 +82,19 @@ Sent when the driver's trip is cancelled, moved to another driver, or its truck/
 **English (`en`)**
 
 ```
-Hello {{1}}, trip {{2}} {{3}}. Details: {{4}}
+Hello {{1}}, there is an update for your trip {{2}}: {{3}}. See the details here: {{4}} Please check them before you leave.
 ```
 
 **Hindi (`hi`)**
 
 ```
-नमस्ते {{1}}, ट्रिप {{2}} {{3}}। विवरण: {{4}}
+नमस्ते {{1}}, आपकी ट्रिप {{2}} में बदलाव हुआ है: {{3}}। विवरण यहाँ देखें: {{4}} निकलने से पहले जाँच लें।
 ```
 
 **Marathi (`mr`)**
 
 ```
-नमस्कार {{1}}, ट्रिप {{2}} {{3}}. तपशील: {{4}}
+नमस्कार {{1}}, तुमच्या ट्रिप {{2}} मध्ये बदल झाला आहे: {{3}}. तपशील येथे पहा: {{4}} निघण्यापूर्वी तपासा.
 ```
 
 Sample values for Meta's review: `Ramesh Patil` | `TRP-70012` | `has changed: truck is now MH20 GT 7718` | `https://app.example.com/driver?trip=abc123`
@@ -102,19 +106,19 @@ Sent to a company right after it submits the public transport request form. Cate
 **English (`en`)**
 
 ```
-Hello {{1}}, we have received your transport request {{2}}. You can follow it here: {{3}}
+Hello {{1}}, we have received your transport request {{2}}. You can follow its status here: {{3}} We will reply shortly.
 ```
 
 **Hindi (`hi`)**
 
 ```
-नमस्ते {{1}}, आपका ट्रांसपोर्ट अनुरोध {{2}} हमें मिल गया है। यहाँ देख सकते हैं: {{3}}
+नमस्ते {{1}}, आपका ट्रांसपोर्ट अनुरोध {{2}} हमें मिल गया है। इसकी स्थिति यहाँ देखें: {{3}} हम जल्द जवाब देंगे।
 ```
 
 **Marathi (`mr`)**
 
 ```
-नमस्कार {{1}}, तुमची वाहतूक विनंती {{2}} आम्हाला मिळाली आहे. येथे पाहू शकता: {{3}}
+नमस्कार {{1}}, तुमची वाहतूक विनंती {{2}} आम्हाला मिळाली आहे. तिची स्थिती येथे पहा: {{3}} आम्ही लवकरच उत्तर देऊ.
 ```
 
 Sample values for Meta's review: `Anil Mehta` | `REQ-1001` | `https://app.example.com/request/REQ-1001.abc123`
@@ -126,19 +130,19 @@ Sent to a company when its request is accepted, booked as a trip, or declined. C
 **English (`en`)**
 
 ```
-Hello {{1}}, update on your transport request {{2}}: {{3}}. Details: {{4}}
+Hello {{1}}, there is an update on your transport request {{2}}: {{3}}. See the details here: {{4}} Thank you for your patience.
 ```
 
 **Hindi (`hi`)**
 
 ```
-नमस्ते {{1}}, आपके ट्रांसपोर्ट अनुरोध {{2}} की जानकारी: {{3}}। विवरण: {{4}}
+नमस्ते {{1}}, आपके ट्रांसपोर्ट अनुरोध {{2}} की जानकारी: {{3}}। विवरण यहाँ देखें: {{4}} आपके धैर्य के लिए धन्यवाद।
 ```
 
 **Marathi (`mr`)**
 
 ```
-नमस्कार {{1}}, तुमच्या वाहतूक विनंती {{2}} बद्दल माहिती: {{3}}. तपशील: {{4}}
+नमस्कार {{1}}, तुमच्या वाहतूक विनंती {{2}} बद्दल माहिती: {{3}}. तपशील येथे पहा: {{4}} तुमच्या संयमाबद्दल धन्यवाद.
 ```
 
 Sample values for Meta's review: `Anil Mehta` | `REQ-1001` | `booked as trip TRP-70012, pickup 12 Nov, 08:00` | `https://app.example.com/request/REQ-1001.abc123`

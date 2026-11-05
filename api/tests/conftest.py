@@ -53,8 +53,9 @@ from app.storage import LocalStorage, get_storage
 async def seeded() -> None:
     """Requires migrated Postgres (`alembic upgrade head`). Seed is idempotent."""
     async with SessionLocal() as session:
-        # Earlier runs leave planned/cancelled trips behind; enough of them would push new ones off the planning board's page.
-        await session.execute(text("delete from trips where state in ('planned', 'cancelled') and pod_status = 'pending'"))
+        # Earlier runs leave trips behind; past ~1000 of them new ones fall off the planning board's page and tests that look for them fail.
+        for stmt in ("delete from expenses", "delete from advances", "delete from trips where trip_code not in ('TRP-66120', 'TRP-66134', 'TRP-66141')"):
+            await session.execute(text(stmt))
         await session.commit()
         await seed(session)
 
