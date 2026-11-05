@@ -13,7 +13,8 @@ test('review shows what the AI found as tagged boxes on the photo, linked with t
   await page.route(/\/api\/review\/[0-9a-f-]{36}$/, async (route) => {
     const res = await route.fetch()
     const body = await res.json()
-    await route.fulfill({ response: res, json: { ...body, ai: { ...body.ai, boxes: BOXES } } })
+    // present it as waiting for a decision: another test may already have approved this sample trip
+    await route.fulfill({ response: res, json: { ...body, pod_status: 'needs_review', ai: { ...body.ai, boxes: BOXES } } })
   })
   await login(page, 'billing@cargoone.dev')
   await expect(page.getByRole('heading', { name: 'Billing desk' })).toBeVisible()
@@ -50,4 +51,30 @@ test('review shows what the AI found as tagged boxes on the photo, linked with t
   // the reviewer can hide them
   await page.getByRole('button', { name: 'Show what the AI found' }).first().click()
   await expect(page.getByRole('button', { name: /^LR number: / })).toHaveCount(0)
+})
+
+test('a POD the AI verified by itself can still be opened read-only, with what it read and where', async ({ page }) => {
+  await page.route(/\/api\/review\/[0-9a-f-]{36}$/, async (route) => {
+    const res = await route.fetch()
+    const body = await res.json()
+    await route.fulfill({ response: res, json: { ...body, pod_status: 'verified', ai_provider: 'local', reasons: [], ai: { ...body.ai, boxes: BOXES, issues: ['stamp cut off'] } } })
+  })
+  await login(page, 'billing@cargoone.dev')
+  await expect(page.getByRole('heading', { name: 'Billing desk' })).toBeVisible()
+  const token = await page.evaluate(() => Object.values(localStorage).find((v) => typeof v === 'string' && v.split('.').length === 3) as string)
+  const trips = await (await page.request.get('/api/trips', { headers: { Authorization: `Bearer ${token}` } })).json()
+  const id = trips.find((t: { trip_code: string }) => t.trip_code === 'TRP-66141').id
+
+  // the trips page offers the view for a trip that has a photo
+  await page.getByRole('link', { name: 'Trips', exact: true }).first().click()
+  await expect(page.getByRole('link', { name: 'View' }).first()).toBeVisible()
+
+  await page.goto(`/office/review/${id}`)
+  await expect(page.getByText('Read-only: this photo is not waiting for a decision.')).toBeVisible()
+  await expect(page.getByText(/Read by the local AI reader/)).toBeVisible()
+  await expect(page.getByText('AI notes: stamp cut off')).toBeVisible()
+  await expect(page.getByRole('button', { name: /^Approve/ })).toHaveCount(0)
+  await expect(page.getByRole('textbox', { name: 'LR number' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'LR number: LR No: LR-88141' })).toBeVisible() // the boxes are there
+  await shot(page, 'pod-readonly')
 })

@@ -88,3 +88,19 @@ async def test_retake_then_cap_forces_approve_or_reject(client: AsyncClient, dri
 async def test_unknown_trip_404(client: AsyncClient) -> None:
     res = await client.get(f"/review/{uuid.uuid4()}", headers=await billing(client))
     assert res.status_code == 404
+
+
+async def test_any_pod_can_be_viewed_read_only_including_ones_the_ai_verified(client: AsyncClient, driver: dict) -> None:
+    trip_id, lr = await make_trip()
+    body = (await post(client, driver, trip_id, render(SCENARIOS["clean"], lr))).json()
+    assert body["decision"] == "verified"  # never reached the review queue
+    md = await login(client, "md@cargoone.dev", "cargoone-dev")
+    for who in (md, await billing(client)):
+        res = await client.get(f"/review/{trip_id}", headers=who)
+        assert res.status_code == 200, res.text
+        item = res.json()
+        assert item["pod_status"] == "verified" and item["ai_provider"] == "mock" and item["ai"]["lr_no"] == lr
+    # looking is allowed, deciding is not (not for the MD, and not for a POD that is no longer awaiting review)
+    assert (await client.post(f"/review/{trip_id}/decision", headers=md, json={"action": "approve"})).status_code == 403
+    assert (await client.post(f"/review/{trip_id}/decision", headers=await billing(client), json={"action": "approve"})).status_code == 409
+    assert (await client.get(f"/review/{trip_id}", headers=driver)).status_code == 403

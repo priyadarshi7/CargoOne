@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { StatusBadge } from '../components/StatusBadge'
+import { Link } from 'react-router-dom'
 import { ClientLinkDialog } from '../components/ClientLinkDialog'
 import { UploadLinkDialog } from '../components/UploadLinkDialog'
 import { api, download, type Trip } from '../lib/api'
@@ -9,6 +10,9 @@ import { useI18n } from '../lib/i18n'
 const inr = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })
 const day = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '—'
+
+/** Trips whose latest state means a photo was taken: the read-only POD view (what the AI read, with boxes) has something to show. */
+const HAS_PHOTO = new Set(['uploaded', 'needs_review', 'verified', 'billed', 'rejected', 'retake_requested'])
 
 export default function OfficeTrips() {
   const { user } = useAuth()
@@ -66,7 +70,11 @@ export default function OfficeTrips() {
                 <td className="px-4 py-3">{t.destination}</td>
                 <td className="px-4 py-3 tabular-nums">{inr.format(t.freight_amount)}</td>
                 <td className="px-4 py-3">{day(t.delivered_at)}</td>
-                <td className="px-4 py-3"><StatusBadge status={t.pod_status} /></td>
+                <td className="px-4 py-3">
+                  <span className="inline-flex items-center gap-2"><StatusBadge status={t.pod_status} />
+                    {HAS_PHOTO.has(t.pod_status) && <Link to={`/office/review/${t.id}`} className="text-xs font-medium underline hover:text-accent">{tx('trips.viewPod')}</Link>}
+                  </span>
+                </td>
                 {canSendLink && (
                   <td className="px-4 py-3">
                     {(t.pod_status === 'pending' || t.pod_status === 'retake_requested') && (

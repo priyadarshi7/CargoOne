@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { FIELD_LABEL, ImageViewer, type FoundBox } from '../components/ImageViewer'
 import { ReasonChips } from '../components/ReasonChips'
+import { StatusBadge } from '../components/StatusBadge'
 import { api, ApiError, type ReviewItem } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 
@@ -38,7 +39,7 @@ export default function ReviewDetail() {
   }, [tripId])
 
   const submit = useCallback(async (action: Action) => {
-    if (!item || !form || busy) return
+    if (!item || !form || busy || item.pod_status !== 'needs_review') return // a POD that is not waiting for a decision is look-only
     if (action === 'reject' && !confirmReject) return setConfirmReject(true)
     setBusy(true)
     setError(null)
@@ -76,20 +77,22 @@ export default function ReviewDetail() {
 
   if (!item || !form) return <p className={error ? 'text-bad' : 'text-muted'}>{error ?? t('common.loading')}</p>
 
-  const field = 'h-11 w-full rounded-lg border border-line bg-surface px-3.5 text-sm outline-none focus:border-ink'
+  const field = 'h-11 w-full rounded-lg border border-line bg-surface px-3.5 text-sm outline-none focus:border-ink disabled:bg-wash disabled:text-ink'
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm({ ...form, [k]: v })
   const boxes: FoundBox[] = Array.isArray(item.ai.boxes) ? (item.ai.boxes as FoundBox[]) : []
   const located = new Set(boxes.map((b) => b.field))
   // What the AI looked for; shown only when it drew boxes (the local reader). A missing one reads "not found".
   const seeking = boxes.length > 0 ? ['lr_no', 'delivery_date', 'quantity_received', 'remarks', 'stamp', 'signature'] : []
   const focus = (f: string) => ({ onFocus: () => setActive(f), onBlur: () => setActive(null), onMouseEnter: () => setActive(f), onMouseLeave: () => setActive(null) })
+  const readOnly = item.pod_status !== 'needs_review'
+  const issues = Array.isArray(item.ai.issues) ? (item.ai.issues as unknown[]).filter((x): x is string => typeof x === 'string') : []
   const lrEmpty = norm(form.lr_no) === ''
   const lrChanged = !lrEmpty && norm(form.lr_no) !== norm(item.lr_no) // same rule as the server
 
   return (
     <div className="space-y-6">
-      <Link to="/office/review" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink">
-        <ArrowLeft size={16} aria-hidden /> {t('review.title')}
+      <Link to={readOnly ? '/office/trips' : '/office/review'} className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink">
+        <ArrowLeft size={16} aria-hidden /> {readOnly ? t('nav.trips') : t('review.title')}
       </Link>
 
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
@@ -99,7 +102,9 @@ export default function ReviewDetail() {
           <div className="rounded-2xl border border-line p-5">
             <h1 className="text-2xl font-semibold tracking-tight">{item.trip_code}</h1>
             <p className="text-sm text-muted">{item.client} · {item.destination} · LR {item.lr_no}</p>
-            <div className="mt-3"><ReasonChips reasons={item.reasons} /></div>
+            <div className="mt-3 flex flex-wrap items-center gap-2"><StatusBadge status={item.pod_status as never} /><ReasonChips reasons={item.reasons} /></div>
+            <p className="mt-3 text-sm text-muted">{readOnly ? t('rd.readOnly') : ''} {t('rd.readBy', { name: t(`rd.p.${item.ai_provider ?? 'none'}` as 'rd.p.none') })}</p>
+            {issues.length > 0 && <p className="mt-1 text-sm text-warn">{t('rd.aiNotes')}: {issues.join(' · ')}</p>}
             <p className="mt-3 text-xs text-muted">
               {t('rd.attempt', { n: item.attempt })}
               {item.confidence !== null && ` · ${t('rd.confidence', { n: Math.round(item.confidence * 100) })}`}
@@ -109,7 +114,7 @@ export default function ReviewDetail() {
 
           {seeking.length > 0 && (
             <div className="rounded-2xl border border-line p-5">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted">{t('rd.boxes')}</p>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted">{t('rd.found')}</p>
               <ul className="mt-3 flex flex-wrap gap-2">
                 {seeking.map((f) => {
                   const found = located.has(f)
@@ -131,27 +136,27 @@ export default function ReviewDetail() {
           <div className="space-y-4 rounded-2xl border border-line p-5">
             <p className="text-xs font-medium uppercase tracking-wider text-muted">{t('rd.check')}</p>
             <label className="block space-y-1 text-sm"><span className="font-medium">{t('rd.lr')}</span>
-              <input {...focus('lr_no')} className={`${field} ${lrChanged ? 'border-warn' : ''}`} value={form.lr_no} onChange={(e) => set('lr_no', e.target.value)} />
+              <input {...focus('lr_no')} disabled={readOnly} className={`${field} ${lrChanged ? 'border-warn' : ''}`} value={form.lr_no} onChange={(e) => set('lr_no', e.target.value)} />
               {lrEmpty && <span className="text-xs text-warn">{t('rd.lrUnread', { lr: item.lr_no })}</span>}
               {lrChanged && <span className="text-xs text-warn">{t('rd.lrDiff', { lr: item.lr_no })}</span>}
             </label>
             <label className="block space-y-1 text-sm"><span className="font-medium">{t('rd.date')}</span>
-              <input type="date" {...focus('delivery_date')} className={field} value={form.delivery_date} onChange={(e) => set('delivery_date', e.target.value)} /></label>
+              <input type="date" {...focus('delivery_date')} disabled={readOnly} className={field} value={form.delivery_date} onChange={(e) => set('delivery_date', e.target.value)} /></label>
             <label className="block space-y-1 text-sm"><span className="font-medium">{t('rd.qty')}</span>
-              <input {...focus('quantity_received')} className={field} value={form.quantity_received} onChange={(e) => set('quantity_received', e.target.value)} /></label>
+              <input {...focus('quantity_received')} disabled={readOnly} className={field} value={form.quantity_received} onChange={(e) => set('quantity_received', e.target.value)} /></label>
             <label className="block space-y-1 text-sm"><span className="font-medium">{t('rd.remarks')}</span>
-              <input {...focus('remarks')} className={field} value={form.remarks} onChange={(e) => set('remarks', e.target.value)} /></label>
+              <input {...focus('remarks')} disabled={readOnly} className={field} value={form.remarks} onChange={(e) => set('remarks', e.target.value)} /></label>
             <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" className="h-5 w-5 accent-[var(--color-ink)]" checked={form.shortage_or_damage} onChange={(e) => set('shortage_or_damage', e.target.checked)} />
+              <input type="checkbox" className="h-5 w-5 accent-[var(--color-ink)]" checked={form.shortage_or_damage} disabled={readOnly} onChange={(e) => set('shortage_or_damage', e.target.checked)} />
               {t('rd.shortage')}
             </label>
-            <label className="block space-y-1 text-sm"><span className="font-medium">{t('rd.note')}</span>
-              <input className={field} value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} /></label>
+            {!readOnly && <label className="block space-y-1 text-sm"><span className="font-medium">{t('rd.note')}</span>
+              <input className={field} value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} /></label>}
           </div>
 
           {error && <p role="alert" className="text-sm text-bad">{error}</p>}
 
-          <div className="grid gap-2 sm:grid-cols-3">
+          {!readOnly && <><div className="grid gap-2 sm:grid-cols-3">
             <button disabled={busy} onClick={() => void submit('approve')}
               className="flex h-12 items-center justify-center gap-2 rounded-xl bg-ok px-4 font-medium text-on-solid hover:opacity-90 disabled:opacity-60">
               <Check size={18} aria-hidden /> {t('rd.approve')} <kbd className="rounded border border-current px-1.5 text-[11px] font-sans opacity-70">A</kbd>
@@ -166,7 +171,7 @@ export default function ReviewDetail() {
               <X size={18} aria-hidden /> {confirmReject ? t('rd.confirmReject') : t('rd.reject')} <kbd className="rounded border border-current px-1.5 text-[11px] font-sans opacity-70">X</kbd>
             </button>
           </div>
-          <p className="text-xs text-muted">{t('rd.footer', { n: item.retakes_left })}</p>
+          <p className="text-xs text-muted">{t('rd.footer', { n: item.retakes_left })}</p></>}
         </div>
       </div>
     </div>

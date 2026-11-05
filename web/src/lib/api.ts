@@ -100,6 +100,8 @@ export interface ReviewItem {
   lat: number | null
   lng: number | null
   retakes_left: number
+  pod_status: string // needs_review = decide; anything else = read-only view
+  ai_provider: string | null
 }
 
 /** Fetches a protected file (the POD image needs the Authorization header, so <img src> cannot be used). */

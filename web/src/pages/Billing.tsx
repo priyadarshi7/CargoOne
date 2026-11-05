@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { FileCode2, FileText, Sheet } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError, download, type Invoice, type QueueGroup } from '../lib/api'
@@ -96,7 +97,7 @@ function Group({ group, onCreated, onStale }: { group: QueueGroup; onCreated: ()
           {group.trips.map((x) => (
             <tr key={x.id} className="border-t border-line">
               <td className="w-10 py-3 pl-5"><input type="checkbox" checked={picked.has(x.id)} onChange={() => toggle(x.id)} aria-label={tx('bill.include', { code: x.trip_code })} /></td>
-              <td className="px-3 py-3 font-medium">{x.trip_code}<div className="text-xs font-normal text-muted">{x.lr_no} · EWB {x.eway_bill_no}</div></td>
+              <td className="px-3 py-3 font-medium">{x.trip_code}<div className="text-xs font-normal text-muted">{x.lr_no} · EWB {x.eway_bill_no} · <Link to={`/office/review/${x.id}`} className="font-medium underline hover:text-accent">{tx('trips.viewPod')}</Link></div></td>
               <td className="px-3 py-3">{x.destination}</td>
               <td className="px-3 py-3 text-muted">{x.delivered_at ? date(x.delivered_at) : '—'}</td>
               <td className="py-3 pr-5 text-right tabular-nums">{inr.format(x.freight_amount)}</td>
