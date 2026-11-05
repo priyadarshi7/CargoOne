@@ -4,7 +4,8 @@ import { failOnBrowserErrors, login, shot } from './helpers'
 test('ops head sees KPI tiles, missing-POD chart area and the chase list without errors', async ({ page }) => {
   const noErrors = failOnBrowserErrors(page)
   await login(page, 'ops@cargoone.dev')
-  await expect(page.getByRole('heading', { name: 'Operations' })).toBeVisible()
+  await page.getByRole('link', { name: 'Performance' }).click()
+  await expect(page.getByRole('heading', { name: 'Operations', exact: true })).toBeVisible()
   for (const t of ['PODs in system within 24 h', 'POD to invoice', 'Lost or disputed PODs', 'Cash freed by faster billing']) {
     await expect(page.getByText(t, { exact: true })).toBeVisible()
   }

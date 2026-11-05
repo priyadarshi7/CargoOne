@@ -76,7 +76,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <Attention />
+      {user?.role === 'md' && <Attention />}
 
       {d.includes_demo_data && (
         <p className="rounded-lg bg-warn-soft px-4 py-2.5 text-sm text-warn" role="note">

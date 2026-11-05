@@ -15,7 +15,7 @@ test('wrong password shows a clear error and stays on login', async ({ page }) =
 
 test('each role lands on its own home', async ({ page }) => {
   await login(page, 'ops@cargoone.dev')
-  await expect(page.getByRole('heading', { name: 'Operations' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Operations desk' })).toBeVisible()
   await page.getByRole('button', { name: 'Sign out' }).click()
 
   await login(page, 'md@cargoone.dev')
@@ -23,13 +23,14 @@ test('each role lands on its own home', async ({ page }) => {
   await page.getByRole('button', { name: 'Sign out' }).click()
 
   await login(page, 'billing@cargoone.dev')
-  await expect(page.getByRole('heading', { name: 'Review queue' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Billing desk' })).toBeVisible()
 })
 
 test('a billing executive cannot open the executive dashboard data', async ({ page }) => {
   await login(page, 'billing@cargoone.dev')
-  await expect(page.getByRole('heading', { name: 'Review queue' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Billing desk' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Dashboard' })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Performance' })).toHaveCount(0)
 })
 
 test('a driver is kept out of the office screens', async ({ page }) => {

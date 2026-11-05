@@ -9,7 +9,7 @@ test('follows the device by default, can be switched, and the choice is remember
   await login(page, 'ops@cargoone.dev')
   await expect.poll(() => theme(page)).toBe('dark') // device is dark, no saved choice
   await page.waitForLoadState('networkidle')
-  await expect(page.getByText('PODs in system within 24 h')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Operations desk' })).toBeVisible()
   await shot(page, 'dark-dashboard')
 
   await page.getByRole('button', { name: /^Theme:/ }).click() // system -> light

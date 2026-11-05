@@ -8,6 +8,8 @@ import { ThemeProvider } from './lib/theme'
 import Billing from './pages/Billing'
 import Capture from './pages/Capture'
 import Dashboard from './pages/Dashboard'
+import { BillingDesk, OpsDesk } from './pages/Desk'
+import Landing from './pages/Landing'
 import DriverExpense from './pages/DriverExpense'
 import DriverPin from './pages/DriverPin'
 import Expenses from './pages/Expenses'
@@ -43,17 +45,16 @@ function Guard({ roles, children }: { roles: Role[]; children: ReactNode }) {
   return <>{children}</>
 }
 
-/** Role-based landing: ops head and MD see the dashboard; billing executives go straight to their work queue. */
+/** Each office role gets its own home: ops (and admin) the operations desk, billing the billing desk, the MD the performance dashboard. */
 function OfficeHome() {
   const { user } = useAuth()
-  if (user?.role === 'billing') return <Navigate to="/office/review" replace />
-  return <OfficeShell><Dashboard /></OfficeShell>
+  return <OfficeShell>{user?.role === 'md' ? <Dashboard /> : user?.role === 'billing' ? <BillingDesk /> : <OpsDesk />}</OfficeShell>
 }
 
 function Root() {
   const { user, loading } = useAuth()
   if (loading) return null
-  return <Navigate to={user ? homeFor(user.role) : '/login'} replace />
+  return user ? <Navigate to={homeFor(user.role)} replace /> : <Landing />
 }
 
 export default function App() {
@@ -78,6 +79,7 @@ export default function App() {
           <Route path="/driver/pin" element={<Guard roles={['driver']}><DriverPin /></Guard>} />
           <Route path="/driver/trip/:id" element={<Guard roles={['driver']}><Capture /></Guard>} />
           <Route path="/office" element={<Guard roles={['ops', 'billing', 'md']}><OfficeHome /></Guard>} />
+          <Route path="/office/performance" element={<Guard roles={['ops', 'md']}><OfficeShell><Dashboard /></OfficeShell></Guard>} />
           <Route path="/office/trips" element={<Guard roles={['ops', 'billing', 'md']}><OfficeShell><OfficeTrips /></OfficeShell></Guard>} />
           <Route path="/office/account" element={<Guard roles={['ops', 'billing', 'md']}><OfficeShell><Account /></OfficeShell></Guard>} />
           <Route path="/office/setup" element={<Guard roles={['ops', 'billing']}><OfficeShell><Setup /></OfficeShell></Guard>} />

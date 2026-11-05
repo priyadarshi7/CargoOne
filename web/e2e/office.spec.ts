@@ -8,7 +8,9 @@ test('billing executive reviews a shortage POD, bills it and downloads PDF + Tal
   const noErrors = failOnBrowserErrors(page)
   await login(page, 'billing@cargoone.dev')
 
-  // 1. Review queue holds the shortage POD from the sample data
+  // 1. Billing lands on its own desk, then opens the review queue, which holds the shortage POD from the sample data
+  await expect(page.getByRole('heading', { name: 'Billing desk' })).toBeVisible()
+  await page.getByRole('link', { name: 'Check receipts' }).click()
   await expect(page.getByRole('heading', { name: 'Review queue' })).toBeVisible()
   const row = page.getByRole('link', { name: /TRP-66141/ })
   await expect(row).toContainText('Shortage / damage remark')
@@ -67,8 +69,8 @@ test('the trips list shows sample trips without consignee personal data', async 
 test('office screens switch to Hindi and Marathi and remember the choice', async ({ page }) => {
   await login(page, 'ops@cargoone.dev')
   await page.getByLabel('Language').selectOption('hi')
-  await expect(page.getByRole('link', { name: 'ट्रिप' })).toBeVisible()
-  await page.getByRole('link', { name: 'ट्रिप' }).click()
+  await expect(page.getByRole('navigation').getByRole('link', { name: 'ट्रिप', exact: true })).toBeVisible()
+  await page.getByRole('navigation').getByRole('link', { name: 'ट्रिप', exact: true }).click()
   await expect(page.getByRole('columnheader', { name: 'ग्राहक' })).toBeVisible()
   await expect(page.getByText('सत्यापित').first()).toBeVisible()
   await shot(page, 'office-trips-hindi')
@@ -76,7 +78,7 @@ test('office screens switch to Hindi and Marathi and remember the choice', async
   await page.reload()
   await expect(page.getByLabel('भाषा')).toHaveValue('hi') // remembered
   await page.getByLabel('भाषा').selectOption('mr')
-  await page.getByRole('link', { name: 'तपासणी' }).click()
+  await page.getByRole('navigation').getByRole('link', { name: 'तपासणी' }).click()
   await expect(page.getByRole('heading', { name: 'तपासणी यादी' })).toBeVisible()
   await shot(page, 'office-review-marathi')
 
@@ -96,7 +98,7 @@ test('billing, import, dashboard and review detail also switch language', async 
   await page.getByRole('link', { name: 'सेटअप' }).click()
   await expect(page.getByRole('heading', { name: 'सेटअप' })).toBeVisible()
   await page.getByLabel('भाषा').selectOption('mr')
-  await page.getByRole('link', { name: 'तपासणी' }).click()
+  await page.getByRole('navigation').getByRole('link', { name: 'तपासणी' }).click()
   await expect(page.getByRole('heading', { name: 'तपासणी यादी' })).toBeVisible()
   await shot(page, 'review-queue-marathi')
   await page.getByLabel('भाषा').selectOption('en')
@@ -105,6 +107,8 @@ test('billing, import, dashboard and review detail also switch language', async 
 test('the ops dashboard switches language', async ({ page }) => {
   await login(page, 'ops@cargoone.dev')
   await page.getByLabel('Language').selectOption('mr')
+  await expect(page.getByRole('heading', { name: 'ऑपरेशन्स डेस्क' })).toBeVisible() // the ops home desk is translated
+  await page.getByRole('navigation').getByRole('link', { name: 'कामगिरी' }).click()
   await expect(page.getByRole('heading', { name: 'कामकाज' })).toBeVisible()
   await expect(page.getByText('24 तासांत सिस्टममध्ये आलेल्या पावत्या')).toBeVisible()
   await shot(page, 'dashboard-marathi')

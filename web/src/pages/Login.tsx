@@ -34,9 +34,9 @@ export default function Login() {
   return (
     <div className="grid min-h-full place-items-center px-4">
       <form onSubmit={submit} className="w-full max-w-sm space-y-5">
-        <div className="flex items-center gap-2 text-xl font-semibold">
+        <Link to="/" className="flex items-center gap-2 text-xl font-semibold">
           <Truck className="text-accent" aria-hidden /> CargoOne
-        </div>
+        </Link>
         <label className="block space-y-1.5 text-sm">
           <span className="text-muted">{t('login.identifier')}</span>
           <input className={input} value={identifier} onChange={(e) => setIdentifier(e.target.value)}

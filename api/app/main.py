@@ -12,6 +12,7 @@ from app.routers import (
     documents,
     drivers,
     expenses,
+    home,
     imports,
     links,
     notifications,
@@ -51,6 +52,7 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 app.include_router(setup.router)
 app.include_router(attention.router)
+app.include_router(home.router)
 app.include_router(documents.router)
 app.include_router(devtools.router)
 app.include_router(notifications.router)

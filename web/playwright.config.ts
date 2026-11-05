@@ -14,7 +14,7 @@ export default defineConfig({
   use: { baseURL: `http://localhost:${WEB_PORT}`, trace: 'retain-on-failure', screenshot: 'only-on-failure' },
   projects: [
     { name: 'mobile-driver', testMatch: /driver\.spec\.ts/, use: { ...devices['Pixel 7'], permissions: ['geolocation'], geolocation: { latitude: 19.8762, longitude: 75.3433 } } },
-    { name: 'desktop-office', testMatch: /(auth|office|dashboard|sms|import|client|security|pin|theme|planning|tracking|expenses|setup|notifications|requests)\.spec\.ts/, use: { ...devices['Desktop Chrome'], viewport: { width: 1360, height: 900 } } },
+    { name: 'desktop-office', testMatch: /(auth|office|dashboard|sms|import|client|security|pin|theme|planning|tracking|expenses|setup|notifications|requests|landing|desks)\.spec\.ts/, use: { ...devices['Desktop Chrome'], viewport: { width: 1360, height: 900 } } },
   ],
   webServer: [
     {

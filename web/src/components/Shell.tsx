@@ -35,7 +35,8 @@ export function OfficeShell({ children }: { children: ReactNode }) {
             <Truck size={20} className="text-accent" aria-hidden /> CargoOne
           </Link>
           <nav className="flex min-w-0 flex-1 flex-wrap gap-0.5">
-            {user?.role !== 'billing' && <NavLink to="/office" end className={link}>{t('nav.dashboard')}</NavLink>}
+            <NavLink to="/office" end className={link}>{user?.role === 'md' ? t('nav.dashboard') : t('nav.today')}</NavLink>
+            {(user?.role === 'ops' || user?.role === 'admin') && <NavLink to="/office/performance" className={link}>{t('nav.performance')}</NavLink>}
             <NavLink to="/office/trips" className={link}>{t('nav.trips')}</NavLink>
             {canReview && (
               <NavLink to="/office/review" className={link}>
