@@ -21,7 +21,7 @@ const WANT_TUNNEL = process.argv.includes('--tunnel')
 const IS_WIN = process.platform === 'win32'
 const WEB_RX = WEB.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&') // the web folder, escaped for a regular expression
 
-const COLORS = { api: 36, build: 35, web: 34, ollama: 33, tunnel: 32, dev: 90 }
+const COLORS = { api: 36, build: 35, web: 34, ollama: 33, tunnel: 32, dev: 90, vite: 94 }
 const say = (who, text) => text.split(/\r?\n/).filter((l) => l.trim()).forEach((l) => console.log(`\x1b[${COLORS[who] ?? 0}m${who.padEnd(6)}\x1b[0m ${l}`))
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const run = (cmd, args, opts = {}) => spawnSync(cmd, args, { encoding: 'utf8', shell: IS_WIN, ...opts })
@@ -41,7 +41,7 @@ function clearStale(only = 'all') { // only='api': leave the phone build and web
     $procs = Get-CimInstance Win32_Process
     $alive = $procs.ProcessId
     $procs | Where-Object {
-      ($_.CommandLine -match 'uvicorn.*app.main:app' -or (${only === 'all' ? '$true' : '$false'} -and $_.CommandLine -match '${WEB_RX}.*vite.*\\b(preview|build)\\b') -or ($_.CommandLine -match 'spawn_main' -and $alive -notcontains $_.ParentProcessId))
+      ($_.CommandLine -match 'uvicorn.*app.main:app' -or (${only === 'all' ? '$true' : '$false'} -and $_.CommandLine -match '${WEB_RX}.*[\\\\/]vite[\\\\/.]') -or ($_.CommandLine -match 'spawn_main' -and $alive -notcontains $_.ParentProcessId))
       -and $_.ProcessId -ne ${process.pid} -and $_.ProcessId -ne $PID
     } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue; $_.ProcessId }`
   // -EncodedCommand: the script goes in as base64, so Windows shell quoting cannot mangle it
@@ -131,7 +131,8 @@ async function web() {
   const first = run('pnpm', ['exec', 'vite', 'build'], { cwd: WEB })
   say('build', first.status === 0 ? 'built' : `first build failed:\n${(first.stderr || first.stdout || '').slice(-800)}`)
   start('build', 'pnpm', ['exec', 'vite', 'build', '--watch'], { cwd: WEB })
-  start('web', 'pnpm', ['exec', 'vite', 'preview', '--port', '4173', '--strictPort'], { cwd: WEB })
+  start('web', 'pnpm', ['exec', 'vite', 'preview', '--port', '4173', '--strictPort'], { cwd: WEB }) // the phone build (what the tunnel shows)
+  start('vite', 'pnpm', ['exec', 'vite', '--port', '5173', '--strictPort'], { cwd: WEB }) // the desktop dev server: instant updates, no PWA
 }
 
 // ---------------------------------------------------------------- 5. tunnel (optional)
@@ -152,7 +153,7 @@ try {
   await web()
   if (WANT_TUNNEL) tunnel()
   const [a, w] = await Promise.all([up('http://localhost:8000/health'), up('http://localhost:4173/api/health')])
-  console.log(`\n  API    http://localhost:8000          ${a ? 'ok' : 'NOT UP'}\n  Phone  http://localhost:4173          ${w ? 'ok (reaches the API)' : 'NOT UP'}\n  Edit web/ or api/ code or app/.env: it updates by itself. Ctrl+C stops everything.\n`)
+  console.log(`\n  API    http://localhost:8000          ${a ? 'ok' : 'NOT UP'}\n  Desktop http://localhost:5173         instant updates while you edit\n  Phone  http://localhost:4173          ${w ? 'ok (reaches the API)' : 'NOT UP'}\n  Edit web/ or api/ code or app/.env: it updates by itself. Ctrl+C stops everything.\n`)
 } catch (e) {
   console.error(`\n${e.message}`)
   shutdown()
