@@ -1,7 +1,7 @@
 """Billing queue, draft invoices and exports (Tally XML, CSV, PDF with PODs).
 Creating an invoice only makes a DRAFT inside CargoOne. Nothing is ever sent to a client automatically."""
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Annotated
 
@@ -15,7 +15,10 @@ from app.billing.periods import IST, financial_year, period_of
 from app.billing.tally import build_csv, build_tally_xml
 from app.config import get_settings
 from app.db import get_session
-from app.models import AuditLog, Client, Invoice, PodStatus, PodSubmission, Role, Trip, User, Vehicle
+from app.events import record
+from app.models import AuditLog, Client, Invoice, Payment, PodStatus, PodSubmission, Role, Trip, User, Vehicle
+from app.notify.service import safely
+from app.notify.shipment import tell_parties
 from app.security import require_roles
 from app.storage import Storage, get_storage
 
@@ -55,6 +58,10 @@ class InvoiceOut(BaseModel):
     trip_count: int
     created_at: datetime
     exported_at: datetime | None
+    sent_at: datetime | None
+    paid_at: datetime | None
+    paid_amount: float
+    balance: float
 
 
 class CreateInvoice(BaseModel):
@@ -114,20 +121,22 @@ async def create_invoice(body: CreateInvoice, user: Biller, session: Session) ->
     return _out(inv, client.name, len(trips))
 
 
-def _out(inv: Invoice, client: str, n: int) -> InvoiceOut:
+def _out(inv: Invoice, client: str, n: int, paid: Decimal = Decimal(0)) -> InvoiceOut:
     return InvoiceOut(id=str(inv.id), invoice_no=inv.invoice_no, client=client, period_label=inv.period_label,
-                      total=float(inv.total), trip_count=n, created_at=inv.created_at, exported_at=inv.exported_at)
+                      total=float(inv.total), trip_count=n, created_at=inv.created_at, exported_at=inv.exported_at,
+                      sent_at=inv.sent_at, paid_at=inv.paid_at, paid_amount=float(paid), balance=float(inv.total - paid))
 
 
 @router.get("/invoices", response_model=list[InvoiceOut])
 async def list_invoices(_: Biller, session: Session) -> list[InvoiceOut]:
     counts = select(Trip.invoice_id, func.count().label("n")).group_by(Trip.invoice_id).subquery()
+    paid = select(Payment.invoice_id, func.sum(Payment.amount).label("paid")).group_by(Payment.invoice_id).subquery()
     rows = (await session.execute(
-        select(Invoice, Client.name, func.coalesce(counts.c.n, 0))
-        .join(Client, Client.id == Invoice.client_id).outerjoin(counts, counts.c.invoice_id == Invoice.id)
+        select(Invoice, Client.name, func.coalesce(counts.c.n, 0), func.coalesce(paid.c.paid, 0))
+        .join(Client, Client.id == Invoice.client_id).outerjoin(counts, counts.c.invoice_id == Invoice.id).outerjoin(paid, paid.c.invoice_id == Invoice.id)
         .order_by(Invoice.created_at.desc()).limit(200)
     )).all()
-    return [_out(i, c, n) for i, c, n in rows]
+    return [_out(i, c, n, p) for i, c, n, p in rows]
 
 
 async def _load(session: AsyncSession, invoice_id: uuid.UUID):
@@ -198,3 +207,109 @@ async def export_pdf(invoice_id: uuid.UUID, user: Biller, session: Session,
     session.add(AuditLog(actor_id=user.id, action="invoice.export.pdf", entity="invoice", entity_id=str(inv.id)))
     await session.commit()
     return _download(pdf, "application/pdf", f"{inv.invoice_no}.pdf")
+
+
+# ---------------------------------------------------------------- sent, paid, closed
+
+
+class PaymentIn(BaseModel):
+    amount: Decimal = Field(gt=0, le=100_000_000, decimal_places=2)
+    paid_on: date
+    reference: str | None = Field(default=None, max_length=80)  # UTR or cheque number
+
+
+class VoidIn(BaseModel):
+    reason: str = Field(min_length=3, max_length=200)
+
+
+async def _paid_total(session: AsyncSession, invoice_id: uuid.UUID) -> Decimal:
+    return await session.scalar(select(func.coalesce(func.sum(Payment.amount), 0)).where(Payment.invoice_id == invoice_id)) or Decimal(0)
+
+
+async def _invoice_trips(session: AsyncSession, invoice_id: uuid.UUID) -> list[Trip]:
+    return list((await session.scalars(select(Trip).where(Trip.invoice_id == invoice_id).order_by(Trip.trip_code))).all())
+
+
+@router.post("/invoices/{invoice_id}/sent", response_model=InvoiceOut)
+async def mark_sent(invoice_id: uuid.UUID, user: Biller, session: Session) -> InvoiceOut:
+    """A person confirms the invoice has gone to the client (the system never sends it by itself). The client's shipment page then shows it."""
+    inv = await session.get(Invoice, invoice_id, with_for_update=True)
+    if inv is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Invoice not found")
+    client = await session.get(Client, inv.client_id)
+    trips = await _invoice_trips(session, inv.id)
+    if inv.sent_at is None:
+        inv.sent_at, inv.sent_by = datetime.now(UTC), user.id
+        for t in trips:
+            record(session, t, "invoiced", actor=user.id, public=True, meta={"invoice": inv.invoice_no})
+        session.add(AuditLog(actor_id=user.id, action="invoice.sent", entity="invoice", entity_id=str(inv.id), meta={"invoice_no": inv.invoice_no}))
+        await session.commit()
+        if trips:  # one note per invoice, however many trips it covers
+            await safely(session, tell_parties(session, trips[0], "invoiced", invoice=inv.invoice_no, amount=f"{inv.total:,.0f}"))
+    return _out(inv, client.name, len(trips), await _paid_total(session, inv.id))
+
+
+@router.get("/invoices/{invoice_id}/payments")
+async def list_payments(invoice_id: uuid.UUID, _: Biller, session: Session) -> list[dict]:
+    rows = (await session.scalars(select(Payment).where(Payment.invoice_id == invoice_id).order_by(Payment.paid_on, Payment.created_at))).all()
+    return [{"id": str(p.id), "amount": float(p.amount), "paid_on": p.paid_on.isoformat(), "reference": p.reference} for p in rows]
+
+
+@router.post("/invoices/{invoice_id}/payments", response_model=InvoiceOut, status_code=status.HTTP_201_CREATED)
+async def add_payment(invoice_id: uuid.UUID, body: PaymentIn, user: Biller, session: Session) -> InvoiceOut:
+    """Money received. When the payments add up to the total the invoice is paid and its trips are closed."""
+    inv = await session.get(Invoice, invoice_id, with_for_update=True)
+    if inv is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Invoice not found")
+    if inv.sent_at is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Mark the invoice as sent before recording a payment")
+    if inv.paid_at is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "This invoice is already paid in full")
+    today = datetime.now(IST).date()
+    if body.paid_on > today:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "The payment date cannot be in the future")
+    if body.paid_on < inv.created_at.astimezone(IST).date():
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "The payment date is before the invoice was made")
+    paid = await _paid_total(session, inv.id)
+    if paid + body.amount > inv.total:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, f"That is more than the balance of Rs {inv.total - paid:,.2f}")
+    session.add(Payment(invoice_id=inv.id, amount=body.amount, paid_on=body.paid_on, reference=(body.reference or "").strip() or None, recorded_by=user.id))
+    paid += body.amount
+    trips = await _invoice_trips(session, inv.id)
+    now = datetime.now(UTC)
+    full = paid >= inv.total
+    if full:
+        inv.paid_at = now
+        for t in trips:
+            t.closed_at = now
+            record(session, t, "paid", actor=user.id, public=True, meta={"invoice": inv.invoice_no})
+            record(session, t, "closed", actor=user.id)
+    session.add(AuditLog(actor_id=user.id, action="invoice.payment", entity="invoice", entity_id=str(inv.id),
+                         meta={"amount": str(body.amount), "paid_on": body.paid_on.isoformat(), "reference": body.reference, "closed": full}))
+    await session.commit()
+    if full and trips:
+        await safely(session, tell_parties(session, trips[0], "paid", invoice=inv.invoice_no))
+    client = await session.get(Client, inv.client_id)
+    return _out(inv, client.name, len(trips), paid)
+
+
+@router.post("/invoices/{invoice_id}/payments/{payment_id}/void", response_model=InvoiceOut)
+async def void_payment(invoice_id: uuid.UUID, payment_id: uuid.UUID, body: VoidIn, user: Annotated[User, Depends(require_roles(Role.admin))], session: Session) -> InvoiceOut:
+    """Only an admin can undo a recorded payment, and must say why. A paid invoice goes back to unpaid and its trips are reopened."""
+    inv = await session.get(Invoice, invoice_id, with_for_update=True)
+    pay = await session.get(Payment, payment_id)
+    if inv is None or pay is None or pay.invoice_id != inv.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Payment not found")
+    meta = {"amount": str(pay.amount), "paid_on": pay.paid_on.isoformat(), "reference": pay.reference, "reason": body.reason.strip()}
+    await session.delete(pay)
+    await session.flush()
+    trips = await _invoice_trips(session, inv.id)
+    if inv.paid_at is not None:
+        inv.paid_at = None
+        for t in trips:
+            t.closed_at = None
+            record(session, t, "reopened", actor=user.id, note=body.reason, meta={"invoice": inv.invoice_no})
+    session.add(AuditLog(actor_id=user.id, action="invoice.payment_voided", entity="invoice", entity_id=str(inv.id), meta=meta))
+    await session.commit()
+    client = await session.get(Client, inv.client_id)
+    return _out(inv, client.name, len(trips), await _paid_total(session, inv.id))

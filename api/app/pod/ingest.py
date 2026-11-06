@@ -120,6 +120,7 @@ async def ingest_pod(
         trip.retake_count += 1
     if decision == Decision.verified:
         trip.verified_at = datetime.now(UTC)
+        record(session, trip, "verified", public=True, meta={"by": "ai"})
     session.add(AuditLog(actor_id=actor_id, action="pod.upload", entity="trip", entity_id=str(trip.id),
                          meta={"attempt": attempt, "decision": decision.value, "source": source}))
     if trip.delivery_confirmed_at is None:

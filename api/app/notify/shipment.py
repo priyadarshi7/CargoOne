@@ -17,7 +17,7 @@ UPDATES: dict[str, dict[str, str]] = {
     "late": {"en": "arrival is now expected around {eta}", "hi": "अब पहुँचने का अनुमान {eta} के आसपास है", "mr": "आता पोहोचण्याचा अंदाज {eta} च्या सुमारास आहे"},
     "delivered": {"en": "your goods have been delivered", "hi": "आपका माल पहुँच गया है", "mr": "तुमचा माल पोहोचला आहे"},
     "verified": {"en": "the proof of delivery has been checked and is ready to view", "hi": "डिलीवरी का सबूत जाँच लिया गया है और देखने के लिए तैयार है", "mr": "डिलिव्हरीचा पुरावा तपासला आहे आणि पाहण्यासाठी तयार आहे"},
-    "invoiced": {"en": "invoice {invoice} for Rs {amount} has been sent to you", "hi": "बिल {invoice} (Rs {amount}) आपको भेज दिया गया है", "mr": "बिल {invoice} (Rs {amount}) तुम्हाला पाठवले आहे"},
+    "invoiced": {"en": "invoice {invoice} for Rs {amount} has been issued for this shipment", "hi": "इस खेप के लिए बिल {invoice} (Rs {amount}) जारी हो गया है", "mr": "या खेपेसाठी बिल {invoice} (Rs {amount}) जारी झाले आहे"},
     "paid": {"en": "payment received for invoice {invoice}. Thank you", "hi": "बिल {invoice} का भुगतान मिल गया। धन्यवाद", "mr": "बिल {invoice} चे पैसे मिळाले. धन्यवाद"},
     "link": {"en": "you can follow your shipment on this page", "hi": "आप अपनी खेप इस पेज पर देख सकते हैं", "mr": "तुम्ही तुमची खेप या पेजवर पाहू शकता"},
     "cancelled": {"en": "this trip has been cancelled", "hi": "यह ट्रिप रद्द कर दी गई है", "mr": "ही ट्रिप रद्द करण्यात आली आहे"},

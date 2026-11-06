@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { FileCode2, FileText, Sheet } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
+import { PaymentsDialog } from '../components/PaymentsDialog'
 import { api, ApiError, download, type Invoice, type QueueGroup } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 
@@ -120,6 +121,11 @@ function Group({ group, onCreated, onStale }: { group: QueueGroup; onCreated: ()
 function Invoices({ invoices, onExported }: { invoices: Invoice[]; onExported: () => Promise<void> }) {
   const { t, date } = useI18n()
   const [error, setError] = useState<string | null>(null)
+  const [paying, setPaying] = useState<Invoice | null>(null)
+  const markSent = async (inv: Invoice) => {
+    setError(null)
+    try { await api(`/billing/invoices/${inv.id}/sent`, { method: 'POST' }); await onExported() } catch { setError(t('sh.failed')) }
+  }
   const get = async (inv: Invoice, kind: 'pdf' | 'tally' | 'csv') => {
     setError(null)
     try {
@@ -135,9 +141,9 @@ function Invoices({ invoices, onExported }: { invoices: Invoice[]; onExported: (
     <div className="space-y-3">
       {error && <p role="alert" className="text-sm text-bad">{error}</p>}
       <div className="overflow-x-auto rounded-2xl border border-line">
-        <table className="w-full min-w-[760px] text-left text-sm">
+        <table className="w-full min-w-[860px] text-left text-sm">
           <thead className="bg-wash text-muted">
-            <tr>{(['bill.invoice', 'bill.client', 'bill.period', 'bill.tripsCol', 'bill.total', 'bill.exported', 'bill.download'] as const).map((h) => <th key={h} className="px-4 py-3 font-medium">{t(h)}</th>)}</tr>
+            <tr>{(['bill.invoice', 'bill.client', 'bill.period', 'bill.tripsCol', 'bill.total', 'bill.status', 'bill.exported', 'bill.download'] as const).map((h) => <th key={h} className="px-4 py-3 font-medium">{t(h)}</th>)}</tr>
           </thead>
           <tbody>
             {invoices.map((i) => (
@@ -147,6 +153,16 @@ function Invoices({ invoices, onExported }: { invoices: Invoice[]; onExported: (
                 <td className="px-4 py-3 text-muted">{i.period_label ?? '—'}</td>
                 <td className="px-4 py-3 tabular-nums">{i.trip_count}</td>
                 <td className="px-4 py-3 tabular-nums">{inr.format(i.total)}</td>
+                <td className="px-4 py-3">
+                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${i.paid_at ? 'bg-ok-soft text-ok' : i.paid_amount > 0 ? 'bg-warn-soft text-warn' : i.sent_at ? 'bg-accent-soft text-accent' : 'bg-wash text-muted'}`}>
+                    {t(i.paid_at ? 'bill.st.paid' : i.paid_amount > 0 ? 'bill.st.part' : i.sent_at ? 'bill.st.sent' : 'bill.st.draft')}
+                  </span>
+                  <div className="mt-1.5">
+                    {!i.sent_at
+                      ? <button className="text-xs font-medium underline hover:text-accent" title={t('bill.markSentHelp')} onClick={() => void markSent(i)}>{t('bill.markSent')}</button>
+                      : <button className="text-xs font-medium underline hover:text-accent" onClick={() => setPaying(i)}>{t('bill.pay')}</button>}
+                  </div>
+                </td>
                 <td className="px-4 py-3">{i.exported_at ? <span className="text-ok">{date(i.exported_at)}</span> : <span className="text-muted">{t('bill.notYet')}</span>}</td>
                 <td className="px-4 py-3">
                   <div className="flex gap-2">
@@ -161,6 +177,7 @@ function Invoices({ invoices, onExported }: { invoices: Invoice[]; onExported: (
         </table>
       </div>
       <p className="text-xs text-muted">{t('bill.note')}</p>
+      {paying && <PaymentsDialog invoice={paying} onClose={() => setPaying(null)} onChanged={() => void onExported()} />}
     </div>
   )
 }

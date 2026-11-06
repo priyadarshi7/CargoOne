@@ -15,8 +15,10 @@ from sqlalchemy.orm import aliased
 from app.billing.periods import IST
 from app.config import get_settings
 from app.db import get_session
+from app.events import record
 from app.models import AuditLog, Client, PodStatus, PodSubmission, Role, Trip, User
 from app.notify.service import pod_retake_asked, safely
+from app.notify.shipment import tell_parties
 from app.security import require_roles
 
 router = APIRouter(prefix="/review", tags=["review"])
@@ -141,6 +143,7 @@ async def decide_review(trip_id: uuid.UUID, body: ReviewDecision, user: Reviewer
         if trip.delivered_at is None:
             trip.delivered_at = datetime.fromisoformat(str(final["delivery_date"])).replace(tzinfo=UTC)
         sub.decision = PodStatus.verified
+        record(session, trip, "verified", actor=user.id, public=True)
     elif body.action == "request_retake":
         if trip.retake_count >= get_settings().max_retakes:
             raise HTTPException(status.HTTP_409_CONFLICT, "Retake limit reached: approve or reject instead")
@@ -158,4 +161,6 @@ async def decide_review(trip_id: uuid.UUID, body: ReviewDecision, user: Reviewer
     await session.commit()
     if body.action == "request_retake":
         await safely(session, pod_retake_asked(session, trip))
+    if body.action == "approve":
+        await safely(session, tell_parties(session, trip, "verified"))
     return _item(trip, client, sub)

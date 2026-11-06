@@ -55,6 +55,27 @@ test('billing executive reviews a shortage POD, bills it and downloads PDF + Tal
   expect(xml).toContain('41200.00')
 
   await expect(invoiceRow).not.toContainText('Not yet') // exported date is now stamped
+
+  // 6. A person marks it sent; payments are recorded; the last one closes the trips
+  await expect(invoiceRow).toContainText('Draft')
+  await invoiceRow.getByRole('button', { name: 'Mark as sent' }).click()
+  await expect(invoiceRow).toContainText('Sent')
+  await invoiceRow.getByRole('button', { name: 'Payments' }).click()
+  const pay = page.getByRole('dialog', { name: /Payments for CO\// })
+  await expect(pay.getByText('No payment recorded yet.')).toBeVisible()
+  const balance = Number((await pay.getByText(/^Balance Rs/).textContent())!.replace(/[^\d.]/g, ''))
+  await pay.getByLabel('Amount received (Rs)').fill(String(balance + 1))
+  await pay.getByRole('button', { name: 'Record payment' }).click()
+  await expect(pay.getByRole('alert')).toContainText('more than the balance')
+  await pay.getByLabel('Amount received (Rs)').fill(String(Math.floor(balance / 2)))
+  await pay.getByLabel('Reference (UTR or cheque number)').fill('UTR-E2E-1')
+  await pay.getByRole('button', { name: 'Record payment' }).click()
+  await expect(pay.getByText('UTR-E2E-1')).toBeVisible()
+  await pay.getByLabel('Amount received (Rs)').fill(String(balance - Math.floor(balance / 2)))
+  await pay.getByRole('button', { name: 'Record payment' }).click()
+  await expect(pay.getByRole('status')).toContainText('trips are closed')
+  await pay.getByRole('button', { name: 'Close' }).click()
+  await expect(invoiceRow).toContainText('Paid')
   await noErrors()
 })
 

@@ -268,6 +268,8 @@ async def _planned_trip(session: AsyncSession, trip_id: uuid.UUID) -> Trip:
     trip = await session.get(Trip, trip_id)
     if trip is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Trip not found")
+    if trip.closed_at is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "This trip is closed (invoiced and paid). An admin must reopen it first.")
     return trip
 
 

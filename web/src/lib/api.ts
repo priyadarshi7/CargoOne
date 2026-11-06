@@ -147,6 +147,10 @@ export interface Invoice {
   trip_count: number
   created_at: string
   exported_at: string | null
+  sent_at: string | null
+  paid_at: string | null
+  paid_amount: number
+  balance: number
 }
 
 /** Downloads a protected file (needs the Authorization header, so a plain link would not work). */
