@@ -185,12 +185,13 @@ function TripDialog({ trip, prefill, refs, canPlan, onClose, onSaved }: { trip: 
   const [f, setF] = useState({
     client_id: prefill?.client_id ?? refs.clients[0]?.id ?? '', vehicle_id: trip?.vehicle_id ?? refs.vehicles[0]?.id ?? '', driver_id: trip?.driver_id ?? '',
     origin: prefill?.origin ?? refs.default_origin, destination: prefill?.destination ?? trip?.destination ?? '', origin_lat: (prefill?.origin_lat ?? null) as number | null, origin_lng: (prefill?.origin_lng ?? null) as number | null, destination_lat: (prefill?.destination_lat ?? null) as number | null, destination_lng: (prefill?.destination_lng ?? null) as number | null, freight_amount: '', eway_bill_no: '', material: prefill?.material ?? '', weight_tonnes: prefill?.weight_tonnes?.toString() ?? '', packages: '', consignee_name: '', consignee_phone: '',
-    start: prefill ? prefillStart(prefill.pickup_date) : toLocalInput(trip?.planned_start ?? null), end: toLocalInput(trip?.planned_end ?? null),
+    start: prefill ? prefillStart(prefill.pickup_date) : toLocalInput(trip?.planned_start ?? null), end: toLocalInput(trip?.planned_end ?? null), eway_until: '', reason: '',
   })
   const [error, setError] = useState<string | null>(null)
   const [clash, setClash] = useState(false)
   const [busy, setBusy] = useState(false)
   const [confirmCancel, setConfirmCancel] = useState(false)
+  const [cancelReason, setCancelReason] = useState('')
   const [created, setCreated] = useState<{ trip_code: string; lr_no: string; id: string } | null>(null)
   const set = (k: keyof typeof f, v: string) => { setF({ ...f, [k]: v }); setClash(false) }
   const pickDriver = (id: string) => {
@@ -207,12 +208,12 @@ function TripDialog({ trip, prefill, refs, canPlan, onClose, onSaved }: { trip: 
     const times = { planned_start: fromLocalInput(f.start), planned_end: fromLocalInput(f.end) }
     try {
       if (editing) {
-        await api(`/planning/trips/${trip.id}`, { method: 'PATCH', body: JSON.stringify({ vehicle_id: f.vehicle_id, driver_id: f.driver_id || null, ...times, force }) })
+        await api(`/planning/trips/${trip.id}`, { method: 'PATCH', body: JSON.stringify({ vehicle_id: f.vehicle_id, driver_id: f.driver_id || null, ...times, reason: f.reason || null, force }) })
       } else {
         const made = await api<{ id: string; trip_code: string; lr_no: string }>('/planning/trips', { method: 'POST', body: JSON.stringify({
           client_id: f.client_id, vehicle_id: f.vehicle_id, driver_id: f.driver_id || null, origin: f.origin || null, destination: f.destination, origin_lat: f.origin_lat, origin_lng: f.origin_lng, destination_lat: f.destination_lat, destination_lng: f.destination_lng,
           freight_amount: f.freight_amount, eway_bill_no: f.eway_bill_no, material: f.material || null, weight_tonnes: f.weight_tonnes || null,
-          packages: f.packages || null, request_id: prefill?.id ?? null, consignee_name: f.consignee_name || null, consignee_phone: f.consignee_phone || null, ...times, force }) })
+          packages: f.packages || null, request_id: prefill?.id ?? null, consignee_name: f.consignee_name || null, consignee_phone: f.consignee_phone || null, ...times, eway_valid_until: fromLocalInput(f.eway_until), force }) })
         setCreated(made)
         return
       }
@@ -227,7 +228,7 @@ function TripDialog({ trip, prefill, refs, canPlan, onClose, onSaved }: { trip: 
 
   async function cancel() {
     setBusy(true)
-    try { await api(`/planning/trips/${trip!.id}/cancel`, { method: 'POST' }); onSaved() }
+    try { await api(`/planning/trips/${trip!.id}/cancel`, { method: 'POST', body: JSON.stringify({ reason: cancelReason }) }); onSaved() }
     catch (err) { setError(err instanceof ApiError ? err.message : t('plan.failed')); setConfirmCancel(false); setBusy(false) }
   }
 
@@ -274,15 +275,19 @@ function TripDialog({ trip, prefill, refs, canPlan, onClose, onSaved }: { trip: 
           {label(t('plan.driver'), <select className={field} disabled={locked} value={f.driver_id} onChange={(e) => pickDriver(e.target.value)}><option value="">{t('plan.noDriver')}</option>{refs.drivers.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select>)}
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          {label(t('plan.start'), <input type="datetime-local" className={field} disabled={locked} min={editing && f.start === toLocalInput(trip?.planned_start ?? null) ? undefined : nowInput()} max={toLocalInput(new Date(Date.now() + 365 * 86_400_000).toISOString())} value={f.start} onChange={(e) => set('start', e.target.value)} />)}
+          {label(t('plan.start'), <input type="datetime-local" className={field} required disabled={locked} min={editing && f.start === toLocalInput(trip?.planned_start ?? null) ? undefined : nowInput()} max={toLocalInput(new Date(Date.now() + 365 * 86_400_000).toISOString())} value={f.start} onChange={(e) => set('start', e.target.value)} />)}
           {label(t('plan.end'), <input type="datetime-local" className={field} disabled={locked} min={f.start || undefined} value={f.end} onChange={(e) => set('end', e.target.value)} />)}
         </div>
+        {editing && !locked && (f.vehicle_id !== trip.vehicle_id || (f.driver_id || null) !== trip.driver_id || f.start !== toLocalInput(trip.planned_start) || f.end !== toLocalInput(trip.planned_end)) && (
+          label(t('plan.reason'), <input className={field} required maxLength={300} placeholder={t('plan.reasonPh')} value={f.reason} onChange={(e) => set('reason', e.target.value)} />)
+        )}
         {!editing && sec(t('plan.sec.freight'))}
         {!editing && (
           <div className="grid gap-4 sm:grid-cols-3">
             {label(t('plan.freight'), <input className={field} required inputMode="decimal" value={f.freight_amount} onChange={(e) => set('freight_amount', e.target.value)} />)}
             {label(t('plan.eway'), <input className={field} required inputMode="numeric" maxLength={12} value={f.eway_bill_no} onChange={(e) => set('eway_bill_no', e.target.value.replace(/\D/g, ''))} />)}
-            <p className="self-end pb-2 text-xs text-muted sm:col-span-1">{t('lr.auto')}</p>
+            {label(t('plan.ewayUntil'), <input type="datetime-local" className={field} required min={f.start || nowInput()} value={f.eway_until} onChange={(e) => set('eway_until', e.target.value)} />)}
+            <p className="text-xs text-muted sm:col-span-3">{t('lr.auto')}</p>
           </div>
         )}
         {!editing && (
@@ -316,10 +321,13 @@ function TripDialog({ trip, prefill, refs, canPlan, onClose, onSaved }: { trip: 
         )}
 
         {confirmCancel ? (
-          <div className="flex flex-wrap items-center gap-3 rounded-lg bg-bad-soft px-3 py-3 text-sm text-bad">
-            <span className="flex-1">{t('plan.confirmCancel', { code: trip!.trip_code })}</span>
-            <button type="button" onClick={() => setConfirmCancel(false)} className="rounded-lg border border-bad px-3 py-1.5">{t('plan.keep')}</button>
-            <button type="button" disabled={busy} onClick={() => void cancel()} className="rounded-lg bg-bad px-3 py-1.5 text-on-solid">{t('plan.cancelTrip')}</button>
+          <div className="space-y-3 rounded-lg bg-bad-soft px-3 py-3 text-sm text-bad">
+            <p>{t('plan.confirmCancel', { code: trip!.trip_code })}</p>
+            <input aria-label={t('plan.cancelReason')} placeholder={t('plan.cancelReason')} maxLength={300} value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} className="h-11 w-full rounded-lg border border-bad bg-surface px-3.5 text-sm text-ink outline-none" />
+            <div className="flex flex-wrap justify-end gap-3">
+              <button type="button" onClick={() => setConfirmCancel(false)} className="rounded-lg border border-bad px-3 py-1.5">{t('plan.keep')}</button>
+              <button type="button" disabled={busy || cancelReason.trim().length < 3} onClick={() => void cancel()} className="rounded-lg bg-bad px-3 py-1.5 text-on-solid disabled:opacity-50">{t('plan.cancelTrip')}</button>
+            </div>
           </div>
         ) : (
           <div className="flex flex-wrap items-center justify-between gap-3">

@@ -27,6 +27,7 @@ const LOC: Record<'en' | 'hi' | 'mr', Record<'title' | 'body' | 'allow' | 'later
   mr: { title: 'प्रवासादरम्यान तुमचे लोकेशन शेअर करायचे?', body: 'कार्यालयाला फक्त प्रवास सुरू असताना तुमच्या गाडीची जागा दिसेल. तुम्ही केव्हाही बंद करू शकता.', allow: 'परवानगी द्या', later: 'आत्ता नाही', on: 'लोकेशन चालू' },
 }
 const SPEECH = { en: 'en-IN', hi: 'hi-IN', mr: 'mr-IN' } as const
+const EARLY_H = 3 // the server refuses a start earlier than this before the planned time
 const big = 'flex w-full items-center justify-center gap-3 rounded-2xl text-xl font-semibold active:scale-[0.98]'
 
 /** Driver home. One trip, one big button. Everything works with no network: the trip list is the phone's saved copy, starting a trip
@@ -128,9 +129,20 @@ export default function DriverHome() {
           </div>
 
           {next.state === 'planned' ? (
-            <button onClick={() => void start(next.id)} disabled={starting} className={`${big} h-24 bg-ok text-on-solid disabled:opacity-60`}>
-              <Play size={36} aria-hidden /> {starting ? t('drv.starting') : t('drv.start')}
-            </button>
+            <>
+              {(() => {
+                const from = next.planned_start ? new Date(new Date(next.planned_start).getTime() - EARLY_H * 3_600_000) : null
+                const tooEarly = from !== null && Date.now() < from.getTime()
+                return (
+                  <>
+                    <button onClick={() => void start(next.id)} disabled={starting || tooEarly} className={`${big} h-24 bg-ok text-on-solid disabled:opacity-60`}>
+                      <Play size={36} aria-hidden /> {starting ? t('drv.starting') : t('drv.start')}
+                    </button>
+                    {tooEarly && from && <p role="status" className="text-center text-base text-muted">{t('drv.startFrom', { time: from.toLocaleString(lang === 'en' ? 'en-IN' : lang === 'hi' ? 'hi-IN' : 'mr-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) })}</p>}
+                  </>
+                )
+              })()}
+            </>
           ) : (
             <Link to={`/driver/trip/${next.id}`} className={`${big} h-24 bg-ink text-surface`}>
               <Camera size={36} aria-hidden /> <span className="text-left leading-tight">{t('drv.photo')}<span className="block text-sm font-normal opacity-80">{t('drv.photoB')}</span></span>

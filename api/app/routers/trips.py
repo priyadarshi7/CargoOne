@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -7,8 +7,10 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.billing.periods import IST
 from app.config import get_settings
 from app.db import get_session
+from app.events import record
 from app.lrdoc import LrData, build_lr_pdf
 from app.models import AuditLog, Branch, Client, Role, Trip, TripState, User, Vehicle
 from app.security import require_roles
@@ -130,8 +132,16 @@ async def start_trip(
     if trip is None or (user.role == Role.driver and trip.driver_id != user.id):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Trip not found")
     if trip.state == TripState.planned:
-        trip.state, trip.started_at = TripState.in_transit, datetime.now(UTC)
+        now = datetime.now(UTC)
+        early = get_settings().start_early_hours
+        if user.role == Role.driver and trip.planned_start and now < trip.planned_start - timedelta(hours=early):
+            raise HTTPException(status.HTTP_409_CONFLICT, f"This trip is planned for {trip.planned_start.astimezone(IST):%d %b, %H:%M}. You can start it up to {early} hours before.")
+        busy = await session.execute(select(Trip.trip_code).where(Trip.state == TripState.in_transit, Trip.id != trip.id, (Trip.vehicle_id == trip.vehicle_id) | (Trip.driver_id == trip.driver_id if trip.driver_id else False)).limit(1))
+        if (other := busy.scalar()) is not None:
+            raise HTTPException(status.HTTP_409_CONFLICT, f"The truck or driver is still on {other}. Finish that trip first.")
+        trip.state, trip.started_at = TripState.in_transit, now
         session.add(AuditLog(actor_id=user.id, action="trip.start", entity="trip", entity_id=trip.trip_code))
+        record(session, trip, "started", actor=user.id, public=True)
         await session.commit()
     elif trip.state != TripState.in_transit:
         raise HTTPException(status.HTTP_409_CONFLICT, f"This trip is {trip.state.value}; it cannot be started")

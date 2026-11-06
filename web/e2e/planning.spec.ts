@@ -7,6 +7,9 @@ const when = (days: number, hour: number) => {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16)
 }
 
+const soon = (minutes: number) => { const d = new Date(Date.now() + minutes * 60_000); return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16) }
+const ewb = () => String(Math.floor(Math.random() * 9e11) + 1e11) // one e-way bill covers one trip: every trip here gets its own
+
 async function fill(page: Page, o: { dest: string; lr: string; vehicle: string; driver: string; start: string; end: string }) {
   const d = page.getByRole('dialog', { name: 'New trip' })
   await d.getByLabel('To', { exact: true }).fill(o.dest)
@@ -15,7 +18,8 @@ async function fill(page: Page, o: { dest: string; lr: string; vehicle: string; 
   await d.getByLabel('Start').fill(o.start)
   await d.getByLabel('End (optional)').fill(o.end)
   await d.getByLabel('Freight (₹)').fill('24500')
-  await d.getByLabel('E-way bill (12 digits)').fill('341000000777')
+  await d.getByLabel('E-way bill (12 digits)').fill(ewb())
+  await d.getByLabel('E-way bill valid until').fill(when(40, 8))
   return d
 }
 
@@ -26,7 +30,7 @@ test('ops plans a trip, a clash is flagged, then the driver starts it from the p
   await expect(page.getByRole('heading', { name: 'Trip planning' })).toBeVisible()
 
   await page.getByRole('button', { name: 'New trip' }).click()
-  let d = await fill(page, { dest: 'Akola', lr: 'LR-PLAN-1', vehicle: 'MH20 GT 7718', driver: 'Plan Test Driver', start: when(2, 8), end: when(2, 20) })
+  let d = await fill(page, { dest: 'Akola', lr: 'LR-PLAN-1', vehicle: 'MH20 GT 7718', driver: 'Plan Test Driver', start: soon(60), end: soon(660) })
   await d.getByRole('button', { name: 'Create trip' }).click()
   await expect(d.getByLabel('LR number')).toHaveText(/^LR\/[A-Z0-9]+\/\d{2}-\d{2}\/\d{6}$/) // issued automatically, never typed
   await shot(page, 'planning-lr-created')
@@ -36,7 +40,7 @@ test('ops plans a trip, a clash is flagged, then the driver starts it from the p
 
   // the same driver and truck at an overlapping time -> flagged, with an explicit way to override
   await page.getByRole('button', { name: 'New trip' }).click()
-  d = await fill(page, { dest: 'Jalgaon', lr: 'LR-PLAN-2', vehicle: 'MH20 GT 7718', driver: 'Plan Test Driver', start: when(2, 10), end: when(2, 18) })
+  d = await fill(page, { dest: 'Jalgaon', lr: 'LR-PLAN-2', vehicle: 'MH20 GT 7718', driver: 'Plan Test Driver', start: soon(120), end: soon(300) })
   await d.getByRole('button', { name: 'Create trip' }).click()
   await expect(d.getByRole('alert')).toContainText('already booked')
   await shot(page, 'planning-clash')
@@ -48,15 +52,18 @@ test('ops plans a trip, a clash is flagged, then the driver starts it from the p
   await d.getByRole('button', { name: 'Done' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
 
-  // a trip with no time yet is listed underneath, and can be cancelled
+  // a trip can be cancelled, but only with a reason
   await page.getByRole('button', { name: 'New trip' }).click()
-  d = await fill(page, { dest: 'Dhule', lr: 'LR-PLAN-3', vehicle: 'MH20 EL 4521', driver: 'No driver yet', start: '', end: '' })
+  d = await fill(page, { dest: 'Dhule', lr: 'LR-PLAN-3', vehicle: 'MH20 EL 4521', driver: 'No driver yet', start: when(6, 8), end: when(6, 18) })
   await d.getByRole('button', { name: 'Create trip' }).click()
+  const code = (await d.getByRole('heading', { name: /TRP-/ }).textContent())!.match(/TRP-\d+/)![0]
   await d.getByRole('button', { name: 'Done' }).click()
-  const unscheduled = page.getByRole('region').or(page.locator('section')).filter({ hasText: 'On the road or without a time' })
-  await unscheduled.getByRole('button', { name: /^Trip TRP-7\d+$/ }).last().click()
+  await page.getByRole('button', { name: `Trip ${code}` }).click()
   await page.getByRole('button', { name: 'Cancel this trip' }).click()
-  await page.getByRole('button', { name: 'Cancel this trip' }).last().click()
+  const cancelNow = page.getByRole('button', { name: 'Cancel this trip' }).last()
+  await expect(cancelNow).toBeDisabled() // no reason yet
+  await page.getByLabel('Why is this trip being cancelled?').fill('Client postponed the load')
+  await cancelNow.click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
 
   // --- the driver

@@ -124,17 +124,17 @@ async def test_replanning_and_cancelling_tell_the_right_drivers(client: AsyncCli
     await client.post("/notifications/read-all", headers=ha)
     await client.post("/notifications/read-all", headers=hb)
 
-    moved = await client.patch(f"/planning/trips/{trip['id']}", headers=ops, json={"driver_id": b["driver"]["id"]})
+    moved = await client.patch(f"/planning/trips/{trip['id']}", headers=ops, json={"driver_id": b["driver"]["id"], "reason": "Swap"})
     assert moved.status_code == 200, moved.text
     assert "another driver" in (await inbox(client, ha))["items"][0]["body"]
     assert (await inbox(client, hb))["items"][0]["kind"] == "trip_assigned"
 
     await client.post("/notifications/read-all", headers=hb)
     v2, _ = await fresh_vehicle_and_driver()
-    await client.patch(f"/planning/trips/{trip['id']}", headers=ops, json={"vehicle_id": v2})
+    await client.patch(f"/planning/trips/{trip['id']}", headers=ops, json={"vehicle_id": v2, "reason": "Breakdown"})
     assert "truck is now" in (await inbox(client, hb))["items"][0]["body"]
 
-    assert (await client.post(f"/planning/trips/{trip['id']}/cancel", headers=ops)).status_code == 200
+    assert (await client.post(f"/planning/trips/{trip['id']}/cancel", headers=ops, json={"reason": "Load not ready"})).status_code == 200
     assert "cancelled" in (await inbox(client, hb))["items"][0]["body"]
 
 

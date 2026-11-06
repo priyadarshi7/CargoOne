@@ -36,6 +36,7 @@ class Role(str, enum.Enum):
     ops = "ops"
     md = "md"
     admin = "admin"
+    client = "client"  # a shipper's own login: sees only their own shipments and requests
 
 
 class PodStatus(str, enum.Enum):
@@ -109,6 +110,7 @@ class User(Base):
     branch_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("branches.id"))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")  # false = left the company: cannot sign in, not offered for planning
     vendor_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("vendors.id"))  # set for a hired driver
+    client_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("clients.id"))  # set for a client's own login (role client)
     licence_no: Mapped[str | None] = mapped_column(String(30))  # driver only
     licence_expiry: Mapped[date | None] = mapped_column(Date)
     employment_type: Mapped[str | None] = mapped_column(String(16))  # company | contract | hired (driver only)
@@ -138,6 +140,7 @@ class Client(Base):
     contact_name: Mapped[str | None] = mapped_column(String(120))
     contact_phone: Mapped[str | None] = mapped_column(String(20))
     gstin: Mapped[str | None] = mapped_column(String(15))
+    language: Mapped[str] = mapped_column(String(2), default="en", server_default="en")  # what their shipment messages are written in
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
 
 
@@ -188,6 +191,21 @@ class Invoice(Base):
     total: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     period_label: Mapped[str | None] = mapped_column(String(80))
     exported_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # a person marked it as sent to the client: never automatic
+    sent_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # set once the payments recorded cover the total
+    created_at: Mapped[datetime] = now()
+
+
+class Payment(Base):
+    """Money received against an invoice. An invoice is paid when these add up to its total."""
+    __tablename__ = "payments"
+    id: Mapped[uuid.UUID] = pk()
+    invoice_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("invoices.id", ondelete="CASCADE"), index=True)
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    paid_on: Mapped[date] = mapped_column(Date)
+    reference: Mapped[str | None] = mapped_column(String(80))  # UTR / cheque number
+    recorded_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     created_at: Mapped[datetime] = now()
 
 
@@ -230,9 +248,37 @@ class Trip(Base):
     planned_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     planned_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    eway_valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # printed on the e-way bill: the load must arrive before it
+    cancel_reason: Mapped[str | None] = mapped_column(String(300))
+    acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # the driver opened and accepted the job
+    loaded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    loading_photo_key: Mapped[str | None] = mapped_column(String(255))  # the loaded truck and LR, as the driver left the pickup
+    delivery_code: Mapped[str | None] = mapped_column(String(4))  # the receiver reads this out to the driver: proof of who received
+    delivery_code_tries: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    delivery_code_locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    delivery_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    delivery_override: Mapped[str | None] = mapped_column(String(200))  # why the office confirmed delivery without the receiver's code
+    delivery_issue: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")  # shortage or damage noted at the door
+    delivery_note: Mapped[str | None] = mapped_column(String(300))
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # delivered, proven, invoiced and paid: nothing changes after this
+    link_epoch: Mapped[int] = mapped_column(Integer, default=0, server_default="0")  # bumped to retire every shipment link of this trip
+    late_alert_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = now()
 
     submissions: Mapped[list["PodSubmission"]] = relationship(back_populates="trip")
+
+
+class TripEvent(Base):
+    """What happened to a trip, in order. The shipment page shows the `public` ones; the rest is the office's audit trail."""
+    __tablename__ = "trip_events"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    trip_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[str] = mapped_column(String(24))
+    at: Mapped[datetime] = now()
+    actor_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    note: Mapped[str | None] = mapped_column(String(300))
+    public: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    meta: Mapped[dict | None] = mapped_column(JSONB)
 
 
 class PodSubmission(Base):
@@ -424,6 +470,8 @@ class TransportRequest(Base):
     client_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("clients.id"))
     trip_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("trips.id", ondelete="SET NULL"))
     quote_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    quote_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # the requester agreed to the quote (online or told to the office)
+    quote_accepted_via: Mapped[str | None] = mapped_column(String(12))  # online | phone
     ops_note: Mapped[str | None] = mapped_column(String(300))  # shown to the requester
     decided_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

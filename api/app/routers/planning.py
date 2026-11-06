@@ -2,6 +2,7 @@
 
 Vehicle and driver clashes are detected (never silently allowed): the API answers 409 with the clashing trips, and the
 planner can re-send with `force` if the overlap is deliberate (for example a driver changing trucks mid-day)."""
+import secrets
 import uuid
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
@@ -15,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.billing.periods import IST
 from app.config import get_settings
 from app.db import get_session
+from app.events import record
 from app.lr import next_lr_no
 from app.models import AuditLog, Branch, Client, PodStatus, Role, Trip, TripState, User, Vehicle
 from app.notify.service import safely, trip_assigned, trip_update, when_text
@@ -35,7 +37,7 @@ MAX_AHEAD = timedelta(days=365)
 MAX_SPAN = timedelta(days=60)
 
 
-def check_window(start: datetime | None, end: datetime | None) -> None:
+def check_window(start: datetime | None, end: datetime | None, eway_until: datetime | None = None) -> None:
     """A trip cannot be booked into the past, absurdly far ahead, or for months on end."""
     now = datetime.now(UTC)
     aware = lambda d: d if d.tzinfo else d.replace(tzinfo=IST)  # a time sent without a zone is India time
@@ -46,6 +48,15 @@ def check_window(start: datetime | None, end: datetime | None) -> None:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "The start is more than a year away. Check the date.")
     if start and end and aware(end) - aware(start) > MAX_SPAN:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "A trip cannot run for more than 60 days. Check the end date.")
+    if eway_until:
+        if aware(eway_until) <= now:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "The e-way bill has already expired. Get a new one before booking the trip.")
+        if start and aware(eway_until) <= aware(start):
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "The e-way bill expires before the trip starts.")
+        if end and aware(eway_until) < aware(end):
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "The e-way bill expires before the trip is due to end. Extend it or shorten the trip.")
+        if aware(eway_until) > now + MAX_AHEAD:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "The e-way bill validity is more than a year away. Check the date.")
 
 
 class Clash(BaseModel):
@@ -64,8 +75,9 @@ class NewTrip(Coords):
     destination: str = Field(min_length=1, max_length=120)
     freight_amount: Decimal = Field(gt=0, le=10_000_000, decimal_places=2)
     eway_bill_no: str = Field(pattern=r"^\d{12}$")
-    planned_start: datetime | None = None
+    planned_start: datetime  # a trip without a start never shows on the calendar
     planned_end: datetime | None = None
+    eway_valid_until: datetime  # printed on the e-way bill
     material: str | None = Field(default=None, max_length=160)
     weight_tonnes: Decimal | None = Field(default=None, gt=0, le=100, decimal_places=2)
     packages: int | None = Field(default=None, gt=0, le=1_000_000)
@@ -76,7 +88,7 @@ class NewTrip(Coords):
 
     @model_validator(mode="after")
     def _order(self) -> "NewTrip":
-        if self.planned_start and self.planned_end and self.planned_end <= self.planned_start:
+        if self.planned_end and self.planned_end <= self.planned_start:
             raise ValueError("The end must be after the start")
         return self
 
@@ -86,7 +98,12 @@ class Reassign(BaseModel):
     driver_id: uuid.UUID | None = None  # explicit null un-assigns the driver
     planned_start: datetime | None = None
     planned_end: datetime | None = None
+    reason: str | None = Field(default=None, max_length=300)  # required whenever the truck, driver or time actually changes
     force: bool = False
+
+
+class Cancel(BaseModel):
+    reason: str = Field(min_length=3, max_length=300)
 
 
 class BoardTrip(BaseModel):
@@ -200,7 +217,10 @@ async def board(_: Viewer, session: Session) -> dict:
 async def create_trip(body: NewTrip, user: Planner, session: Session) -> dict:
     if await session.get(Client, body.client_id) is None:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Unknown client")
-    check_window(body.planned_start, body.planned_end)
+    check_window(body.planned_start, body.planned_end, body.eway_valid_until)
+    used = await session.scalar(select(Trip.trip_code).where(Trip.eway_bill_no == body.eway_bill_no, Trip.state != TripState.cancelled).limit(1))
+    if used:
+        raise HTTPException(status.HTTP_409_CONFLICT, f"E-way bill {body.eway_bill_no} is already on trip {used}. One e-way bill covers one consignment.")
     vehicle = await _check_people(session, body.vehicle_id, body.driver_id)
     if body.weight_tonnes and vehicle.capacity_tonnes and body.weight_tonnes > vehicle.capacity_tonnes:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, f"{body.weight_tonnes} tonnes is more than {vehicle.reg_no} can carry ({vehicle.capacity_tonnes} tonnes)")
@@ -217,11 +237,16 @@ async def create_trip(body: NewTrip, user: Planner, session: Session) -> dict:
         consignee_name=(body.consignee_name or "").strip() or None, consignee_phone=clean_phone(body.consignee_phone) if body.consignee_phone else None,
         lr_no=lr_no, eway_bill_no=body.eway_bill_no, origin=(body.origin or get_settings().default_origin).strip(),
         destination=body.destination.strip(), freight_amount=body.freight_amount, pod_status=PodStatus.pending, state=TripState.planned,
-        planned_start=body.planned_start, planned_end=body.planned_end,
+        planned_start=body.planned_start, planned_end=body.planned_end, eway_valid_until=body.eway_valid_until,
+        delivery_code=f"{secrets.randbelow(10_000):04d}",
         origin_lat=body.origin_lat, origin_lng=body.origin_lng, destination_lat=body.destination_lat, destination_lng=body.destination_lng,
     )
     session.add(trip)
     session.add(AuditLog(actor_id=user.id, action="trip.create", entity="trip", entity_id=code, meta={"forced": body.force}))
+    await session.flush()
+    record(session, trip, "booked", actor=user.id, public=True)
+    if trip.driver_id:
+        record(session, trip, "assigned", actor=user.id, public=True)
     booked = None
     if body.request_id:
         await session.flush()
@@ -255,8 +280,12 @@ async def reassign(trip_id: uuid.UUID, body: Reassign, user: Planner, session: S
     end = body.planned_end if "planned_end" in fields else trip.planned_end
     if start and end and end <= start:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "The end must be after the start")
+    changed = (vehicle_id, driver_id, start, end) != (trip.vehicle_id, trip.driver_id, trip.planned_start, trip.planned_end)
+    reason = (body.reason or "").strip()
+    if changed and len(reason) < 3:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Say why the plan is changing (a few words): the driver and the audit trail will show it.")
     if start != trip.planned_start or end != trip.planned_end:  # only a changed time is checked, so an old trip can still get a new driver
-        check_window(start if start != trip.planned_start else None, end)
+        check_window(start if start != trip.planned_start else None, end, trip.eway_valid_until if trip.eway_valid_until and trip.eway_valid_until > datetime.now(UTC) else None)
     await _check_people(session, vehicle_id, driver_id)
     if not body.force:
         clashes = await find_clashes(session, vehicle_id=vehicle_id, driver_id=driver_id, start=start, end=end, exclude=trip.id)
@@ -264,20 +293,25 @@ async def reassign(trip_id: uuid.UUID, body: Reassign, user: Planner, session: S
             raise _clash_error(clashes)
     before = (trip.vehicle_id, trip.driver_id, trip.planned_start, trip.planned_end)
     trip.vehicle_id, trip.driver_id, trip.planned_start, trip.planned_end = vehicle_id, driver_id, start, end
-    session.add(AuditLog(actor_id=user.id, action="trip.replan", entity="trip", entity_id=trip.trip_code, meta={"forced": body.force}))
+    session.add(AuditLog(actor_id=user.id, action="trip.replan", entity="trip", entity_id=trip.trip_code, meta={"forced": body.force, "reason": reason}))
+    if changed:
+        record(session, trip, "replanned", actor=user.id, note=reason, public=True)
+        if trip.driver_id != before[1] and trip.driver_id:
+            record(session, trip, "assigned", actor=user.id, public=True)
+            trip.acknowledged_at = None  # the new driver has not seen it yet
     await session.commit()
     result = {"id": str(trip.id), "trip_code": trip.trip_code}
-    await safely(session, _tell_drivers(session, trip, before))
+    await safely(session, _tell_drivers(session, trip, before, reason))
     return result
 
 
-async def _tell_drivers(session: AsyncSession, trip: Trip, before: tuple) -> None:
+async def _tell_drivers(session: AsyncSession, trip: Trip, before: tuple, reason: str = "") -> None:
     """After a re-plan: the new driver gets the trip, the old one is told it is gone, an unchanged driver hears about a new truck or time."""
     old_vehicle, old_driver, old_start, old_end = before
     veh = await session.get(Vehicle, trip.vehicle_id)
     if old_driver != trip.driver_id:
         if old_driver and (gone := await session.get(User, old_driver)):
-            await trip_update(session, trip, gone, "has been given to another driver")
+            await trip_update(session, trip, gone, f"has been given to another driver ({reason})" if reason else "has been given to another driver")
         if trip.driver_id and (new := await session.get(User, trip.driver_id)):
             await trip_assigned(session, trip, new, veh)
     elif trip.driver_id and (trip.vehicle_id != old_vehicle or trip.planned_start != old_start or trip.planned_end != old_end):
@@ -287,18 +321,19 @@ async def _tell_drivers(session: AsyncSession, trip: Trip, before: tuple) -> Non
         if trip.planned_start != old_start or trip.planned_end != old_end:
             parts.append(f"start is now {when_text(trip.planned_start)}")
         if driver := await session.get(User, trip.driver_id):
-            await trip_update(session, trip, driver, "has changed: " + ", ".join(parts))
+            await trip_update(session, trip, driver, "has changed: " + ", ".join(parts) + (f" ({reason})" if reason else ""))
 
 
 @router.post("/trips/{trip_id}/cancel")
-async def cancel(trip_id: uuid.UUID, user: Planner, session: Session) -> dict:
+async def cancel(trip_id: uuid.UUID, body: Cancel, user: Planner, session: Session) -> dict:
     trip = await _planned_trip(session, trip_id)
     if trip.state not in ACTIVE or trip.pod_status != PodStatus.pending:
         raise HTTPException(status.HTTP_409_CONFLICT, "This trip already has a POD or is finished; it cannot be cancelled")
-    trip.state = TripState.cancelled
-    session.add(AuditLog(actor_id=user.id, action="trip.cancel", entity="trip", entity_id=trip.trip_code))
+    trip.state, trip.cancel_reason = TripState.cancelled, body.reason.strip()
+    session.add(AuditLog(actor_id=user.id, action="trip.cancel", entity="trip", entity_id=trip.trip_code, meta={"reason": trip.cancel_reason}))
+    record(session, trip, "cancelled", actor=user.id, note=trip.cancel_reason, public=True)
     await session.commit()
     result = {"id": str(trip.id), "state": trip.state.value}
     if trip.driver_id and (driver := await session.get(User, trip.driver_id)):
-        await safely(session, trip_update(session, trip, driver, "was cancelled"))
+        await safely(session, trip_update(session, trip, driver, f"was cancelled ({trip.cancel_reason})"))
     return result

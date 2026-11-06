@@ -16,6 +16,11 @@ def uid() -> str:
     return uuid.uuid4().hex[:8].upper()
 
 
+def ewb(code: str) -> str:
+    """A 12-digit e-way bill number that belongs to this trip code only (one e-way bill covers one consignment)."""
+    return str(int(uuid.uuid5(uuid.NAMESPACE_DNS, code).int % 10**12)).zfill(12)
+
+
 async def biller(client: AsyncClient) -> dict:
     return await login(client, "billing@cargoone.dev", "cargoone-dev")
 
@@ -32,8 +37,8 @@ async def trip_by_code(code: str) -> Trip | None:
 
 async def test_dry_run_then_commit_creates_trips_idempotently(client: AsyncClient) -> None:
     a, b = f"IMP-{uid()}", f"IMP-{uid()}"
-    csv = HEADER + f"{a},Company B,MH20 EL 4521,Nagpur,38500,LR-{a},341000000001,Pune,9000000001,Some Consignee\n" \
-                   f"{b},Company D,MH17 BY 3092 (hired),Indore,\"41,200\",LR-{b},341000000002,,,\n"
+    csv = HEADER + f"{a},Company B,MH20 EL 4521,Nagpur,38500,LR-{a},{ewb(a)},Pune,9000000001,Some Consignee\n" \
+                   f"{b},Company D,MH17 BY 3092 (hired),Indore,\"41,200\",LR-{b},{ewb(b)},,,\n"
     dry = (await send(client, csv, dry_run=True)).json()
     assert (dry["dry_run"], dry["created"], dry["errors"]) == (True, 2, [])
     assert await trip_by_code(a) is None  # nothing persisted
@@ -51,8 +56,8 @@ async def test_dry_run_then_commit_creates_trips_idempotently(client: AsyncClien
 
 async def test_reimport_updates_open_trips_but_never_trips_with_pod_activity(client: AsyncClient, driver: dict) -> None:
     code = f"IMP-{uid()}"
-    await send(client, HEADER + f"{code},Company B,MH20 EL 4521,Nagpur,1000,LR-{code},341000000001,,,\n", dry_run=False)
-    upd = (await send(client, HEADER + f"{code},Company B,MH20 EL 4521,Nagpur,1500,LR-{code},341000000001,,,\n", dry_run=False)).json()
+    await send(client, HEADER + f"{code},Company B,MH20 EL 4521,Nagpur,1000,LR-{code},{ewb(code)},,,\n", dry_run=False)
+    upd = (await send(client, HEADER + f"{code},Company B,MH20 EL 4521,Nagpur,1500,LR-{code},{ewb(code)},,,\n", dry_run=False)).json()
     assert upd["updated"] == 1 and str((await trip_by_code(code)).freight_amount) == "1500.00"
 
     # give the trip a driver + a POD, then try to rewrite its LR number via import
@@ -62,7 +67,7 @@ async def test_reimport_updates_open_trips_but_never_trips_with_pod_activity(cli
         row.driver_id = await s.scalar(select(User.id).where(User.phone == "9000000001"))
         await s.commit()
     assert (await post(client, driver, str(t.id), render(SCENARIOS["clean"], f"LR-{code}"))).status_code == 200
-    skip = (await send(client, HEADER + f"{code},Company B,MH20 EL 4521,Nagpur,9999,LR-CHANGED,341000000001,,,\n", dry_run=False)).json()
+    skip = (await send(client, HEADER + f"{code},Company B,MH20 EL 4521,Nagpur,9999,LR-CHANGED,{ewb(code)},,,\n", dry_run=False)).json()
     assert skip["skipped"] == 1 and "POD activity" in skip["warnings"][0]["message"]
     after = await trip_by_code(code)
     assert after.lr_no == f"LR-{code}" and str(after.freight_amount) == "1500.00"  # evidence untouched
@@ -70,7 +75,7 @@ async def test_reimport_updates_open_trips_but_never_trips_with_pod_activity(cli
 
 async def test_bad_rows_are_reported_with_row_numbers_and_good_rows_still_import(client: AsyncClient) -> None:
     good = f"IMP-{uid()}"
-    csv = HEADER + f"{good},Company B,MH20 EL 4521,Nagpur,100,LR-1,341000000001,,,\n" \
+    csv = HEADER + f"{good},Company B,MH20 EL 4521,Nagpur,100,LR-{good},{ewb(good)},,,\n" \
                    "BAD-1,Company B,not-a-truck,Nagpur,100,LR-2,12345,,,\n"
     res = (await send(client, csv, dry_run=False)).json()
     assert res["created"] == 1 and len(res["errors"]) == 1
@@ -81,7 +86,7 @@ async def test_bad_rows_are_reported_with_row_numbers_and_good_rows_still_import
 
 async def test_unknown_client_needs_explicit_permission(client: AsyncClient) -> None:
     code, newc = f"IMP-{uid()}", f"Brand New Co {uid()}"
-    csv = HEADER + f"{code},{newc},MH20 EL 4521,Nagpur,100,LR-1,341000000001,,,\n"
+    csv = HEADER + f"{code},{newc},MH20 EL 4521,Nagpur,100,LR-{code},{ewb(code)},,,\n"
     refused = (await send(client, csv, dry_run=False)).json()
     assert refused["created"] == 0 and "Unknown client" in refused["errors"][0]["message"]
     ok = (await send(client, csv, dry_run=False, create_clients=True)).json()
@@ -91,7 +96,7 @@ async def test_unknown_client_needs_explicit_permission(client: AsyncClient) -> 
 async def test_new_vehicles_and_branches_are_created_and_hired_flag_set(client: AsyncClient) -> None:
     code, branch = f"IMP-{uid()}", f"Branch {uid()}"
     reg = f"MH{20 + int(uid()[:2], 16) % 70} ZZ {int(uid()[:4], 16) % 9000 + 1000}"
-    res = (await send(client, HEADER + f"{code},Company B,{reg} (hired),Nagpur,100,LR-1,341000000001,{branch},,\n", dry_run=False)).json()
+    res = (await send(client, HEADER + f"{code},Company B,{reg} (hired),Nagpur,100,LR-{code},{ewb(code)},{branch},,\n", dry_run=False)).json()
     assert res["new_vehicles"] == 1 and res["new_branches"] == [branch]
     async with SessionLocal() as s:
         assert (await s.scalar(select(Vehicle.is_hired).where(Vehicle.reg_no == reg))) is True
@@ -119,7 +124,7 @@ async def test_roles_and_audit(client: AsyncClient, driver: dict) -> None:
         assert (await client.get("/imports/trips/template", headers=h)).status_code == 403
     assert (await client.post("/imports/trips", files={"file": ("t.csv", b"x", "text/csv")})).status_code == 401
     code = f"IMP-{uid()}"
-    await send(client, HEADER + f"{code},Company B,MH20 EL 4521,Nagpur,100,LR-1,341000000001,,,\n", dry_run=False)
+    await send(client, HEADER + f"{code},Company B,MH20 EL 4521,Nagpur,100,LR-{code},{ewb(code)},,,\n", dry_run=False)
     async with SessionLocal() as s:
         meta = (await s.scalars(select(AuditLog.meta).where(AuditLog.action == "import.trips").order_by(AuditLog.at.desc()).limit(1))).first()
     assert meta["created"] == 1 and "Some Consignee" not in str(meta)
@@ -127,7 +132,7 @@ async def test_roles_and_audit(client: AsyncClient, driver: dict) -> None:
 
 async def test_a_blank_lr_in_the_sheet_gets_a_generated_number_but_a_dry_run_uses_none(client: AsyncClient) -> None:
     code = f"IMP-{uid()}"
-    line = HEADER + f"{code},Company B,MH20 EL 4521,Nagpur,1000,,341000000001,,,\n"
+    line = HEADER + f"{code},Company B,MH20 EL 4521,Nagpur,1000,,{ewb(code)},,,\n"
     assert (await send(client, line, dry_run=True)).json()["created"] == 1
     assert (await trip_by_code(code)) is None  # nothing saved, so no number was consumed
     done = (await send(client, line, dry_run=False)).json()

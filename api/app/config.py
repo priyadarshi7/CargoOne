@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     ai_confidence_threshold: float = 0.85
     max_image_bytes: int = 300 * 1024
     max_retakes: int = 2
+    start_early_hours: int = 3  # a driver can start a trip this long before its planned start, not earlier
     # KPI targets and the baseline from the client brief (used by the dashboards)
     baseline_pod_to_invoice_days: float = 18.0
     target_pod_to_invoice_days: float = 4.0

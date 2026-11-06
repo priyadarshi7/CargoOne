@@ -203,3 +203,18 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 | 4 | Review queue + billing queue + Tally export |
 | 5 | Dashboard, client link, import, privacy/security hardening |
 | 6 | Tests, polish, demo data, docs; then Phase 7 begins |
+
+## Shipment workflow: order, dispatch, loading, transit, delivery, billing, close (owner's brief)
+
+One shipment, one link, one timeline. Built in stages; each is on main when its box is ticked.
+
+- [x] **Booking rules.** A trip needs a start time (it never showed on the calendar without one) and the e-way bill's validity, which must cover the trip; a start in the past, more than a year ahead, or a trip longer than 60 days is refused. One e-way bill covers one trip until that trip is cancelled (also checked in imports, with LR numbers). A driver can start a trip only within 3 hours of its planned time and never while the truck or driver is still on another trip (the office can start it for them). Cancelling and re-planning (truck, driver or time) need a reason, which the driver is told and the audit trail keeps.
+- [ ] Dispatch: the driver's acknowledgement shows to the office.
+- [ ] Loading: the driver confirms "loaded" with a photo of the loaded truck and LR before the trip starts.
+- [ ] In transit: delay and breakdown posts, ETA from the live position, late alerts.
+- [ ] Delivery: the receiver's 4-digit code, shortage or damage noted at the door.
+- [ ] Shipment link: one page with the timeline, live map and ETA, for the client (with price, POD and invoice) and the receiver (with the code, no price); WhatsApp at each step.
+- [ ] Billing: invoice marked sent by a person, payments recorded, invoiced and paid shown to the client.
+- [ ] Close: a paid trip is closed and locked; reopening needs an admin and a reason.
+- [ ] Order: the client accepts the quote online; clients get their own login with all their shipments.
+

@@ -12,7 +12,7 @@ from app.config import get_settings
 from app.db import get_session
 from app.imports.trips import TEMPLATE_CSV, ImportFileError, parse, read_rows, reg_key
 from app.lr import next_lr_no
-from app.models import AuditLog, Branch, Client, PodStatus, Role, Trip, User, Vehicle
+from app.models import AuditLog, Branch, Client, PodStatus, Role, Trip, TripState, User, Vehicle
 from app.security import require_roles
 
 router = APIRouter(prefix="/imports", tags=["imports"])
@@ -66,6 +66,8 @@ async def import_trips(
         select(Trip).where(Trip.trip_code.in_([t.trip_code for t in parsed.trips])))).all()}
     with_pod = set((await session.scalars(select(Trip.id).where(Trip.pod_status != PodStatus.pending))).all())
 
+    taken_ewb = {e: c for e, c in (await session.execute(select(Trip.eway_bill_no, Trip.trip_code).where(Trip.state != TripState.cancelled))).all()}
+    taken_lr = {lr: c for lr, c in (await session.execute(select(Trip.lr_no, Trip.trip_code).where(Trip.state != TripState.cancelled))).all()}
     errors = [Issue(row=e.row, trip_code=e.trip_code, message=e.message) for e in parsed.errors]
     warnings: list[Issue] = []
     new_clients: list[str] = []
@@ -74,6 +76,15 @@ async def import_trips(
     s = get_settings()
 
     for p in parsed.trips:
+        if (other := taken_ewb.get(p.eway_bill_no)) and other != p.trip_code:
+            errors.append(Issue(row=p.row, trip_code=p.trip_code, message=f"E-way bill {p.eway_bill_no} is already on {other}. One e-way bill covers one consignment."))
+            continue
+        if p.lr_no and (other := taken_lr.get(p.lr_no)) and other != p.trip_code:
+            errors.append(Issue(row=p.row, trip_code=p.trip_code, message=f"LR number {p.lr_no} is already on {other}."))
+            continue
+        taken_ewb[p.eway_bill_no] = p.trip_code
+        if p.lr_no:
+            taken_lr[p.lr_no] = p.trip_code
         client = clients.get(p.client.lower()) or clients.get(p.client_raw.lower())
         if client is None:
             if not create_clients:
