@@ -32,3 +32,18 @@ async def test_reset_keeps_office_logins_and_branches_and_removes_the_rest() -> 
     async with SessionLocal() as s:
         for t in tables:
             await s.execute(text(f"select 1 from {t} limit 1"))  # every name is a real table
+
+
+async def test_reset_also_removes_a_clients_logins_instead_of_failing(client: AsyncClient) -> None:
+    """Runs the real wipe inside a transaction that is rolled back, so the shared test data survives."""
+    from app.routers.devtools import wipe
+    from tests.test_portal import new_client_login
+
+    ops = await office(client)
+    c = await new_client_login(client, ops)
+    async with SessionLocal() as s:
+        await wipe(s)  # used to fail: the client's login pointed at a client that was being removed
+        assert await s.scalar(text("select count(*) from users where role = 'client'")) == 0
+        assert await s.scalar(text("select count(*) from users where role = 'ops'")) >= 1  # office logins stay
+        await s.rollback()
+    assert c["client_id"]

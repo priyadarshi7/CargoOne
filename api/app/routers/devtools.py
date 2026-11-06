@@ -2,7 +2,7 @@
 
 It exists only when APP_ENV is dev or test (in staging/production the endpoints answer 404, as if they were not there), needs the
 ops head or admin, and a typed confirmation. It keeps the office logins and the branches (there is no screen to recreate branches) and
-removes everything else: drivers, trucks, clients, vendors, trips, PODs, papers, requests, messages and their files."""
+removes everything else: drivers, trucks, clients (and the logins of their people), vendors, trips, PODs, papers, requests, messages and their files."""
 import shutil
 from pathlib import Path
 from typing import Annotated
@@ -36,6 +36,15 @@ class Confirm(BaseModel):
     confirm: str
 
 
+async def wipe(session: AsyncSession) -> None:
+    # users reference trucks and vendors, so wiping those cascades to users: set the office accounts aside and put them back
+    await session.execute(text("create temp table keep_users on commit drop as select * from users where role not in ('driver', 'client')"))
+    await session.execute(text(f"truncate {WIPE} restart identity cascade"))
+    await session.execute(text("insert into users select * from keep_users"))
+    await session.execute(text("alter sequence request_ref_seq restart"))
+    await session.execute(text("alter sequence trip_code_seq restart"))
+
+
 @router.get("/test-data")
 async def info(_: Actor, session: Session) -> dict:
     _dev_only()
@@ -48,12 +57,7 @@ async def reset(body: Confirm, actor: Actor, session: Session) -> dict:
     _dev_only()
     if body.confirm.strip() != "DELETE":
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Type DELETE to confirm")
-    # users reference trucks and vendors, so wiping those cascades to users: set the office accounts aside and put them back
-    await session.execute(text("create temp table keep_users on commit drop as select * from users where role <> 'driver'"))
-    await session.execute(text(f"truncate {WIPE} restart identity cascade"))
-    await session.execute(text("insert into users select * from keep_users"))
-    await session.execute(text("alter sequence request_ref_seq restart"))
-    await session.execute(text("alter sequence trip_code_seq restart"))
+    await wipe(session)
     session.add(AuditLog(actor_id=actor.id, action="devtools.reset", entity="system", entity_id=None))
     await session.commit()
     root = Path(get_settings().storage_dir).resolve()
