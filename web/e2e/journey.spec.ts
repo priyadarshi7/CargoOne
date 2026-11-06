@@ -26,6 +26,7 @@ test('a shipment from booking to delivery: the driver loads, reports a delay, th
   await d.getByLabel('Goods').fill('Cotton bales')
   await d.getByLabel('Consignee name').fill('Sai Traders')
   await d.getByLabel('Consignee phone').fill('9876501234')
+  await d.getByLabel('Consignee email').fill('sai@example.com')
   await d.getByRole('button', { name: 'Create trip' }).click()
   const code = (await d.getByRole('heading', { name: /TRP-/ }).textContent())!.match(/TRP-\d+/)![0]
   await d.getByRole('button', { name: 'Done' }).click()

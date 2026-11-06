@@ -93,9 +93,9 @@ class NewTrip(Coords):
     material: str | None = Field(default=None, max_length=160)
     weight_tonnes: Decimal | None = Field(default=None, gt=0, le=100, decimal_places=2)
     packages: int | None = Field(default=None, gt=0, le=1_000_000)
-    consignee_name: str | None = Field(default=None, max_length=160)
-    consignee_phone: str | None = None
-    consignee_email: str | None = Field(default=None, max_length=160, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    consignee_name: str = Field(min_length=2, max_length=160)  # who receives the load: needed to send the tracking link and the delivery code
+    consignee_phone: str
+    consignee_email: str = Field(max_length=160, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
     request_id: uuid.UUID | None = None  # the accepted transport request this trip fulfils
     force: bool = False
 
@@ -247,8 +247,8 @@ async def create_trip(body: NewTrip, user: Planner, session: Session) -> dict:
     trip = Trip(
         trip_code=code, client_id=body.client_id, vehicle_id=body.vehicle_id, driver_id=body.driver_id, branch_id=body.branch_id,
         material=(body.material or "").strip() or None, weight_tonnes=body.weight_tonnes, packages=body.packages,
-        consignee_name=(body.consignee_name or "").strip() or None, consignee_phone=clean_phone(body.consignee_phone) if body.consignee_phone else None,
-        consignee_email=body.consignee_email.strip().lower() if body.consignee_email else None,
+        consignee_name=body.consignee_name.strip(), consignee_phone=clean_phone(body.consignee_phone),
+        consignee_email=body.consignee_email.strip().lower(),
         lr_no=lr_no, eway_bill_no=body.eway_bill_no, origin=(body.origin or get_settings().default_origin).strip(),
         destination=body.destination.strip(), freight_amount=body.freight_amount, pod_status=PodStatus.pending, state=TripState.planned,
         planned_start=body.planned_start, planned_end=body.planned_end, eway_valid_until=body.eway_valid_until,

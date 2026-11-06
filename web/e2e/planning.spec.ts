@@ -21,6 +21,9 @@ async function fill(page: Page, o: { dest: string; lr: string; vehicle: string; 
   await d.getByLabel('Start').fill(o.start)
   await d.getByLabel('End (optional)').fill(o.end)
   await d.getByLabel('Freight (₹)').fill('24500')
+  await d.getByLabel('Consignee name').fill('Receiver Traders')
+  await d.getByLabel('Consignee phone').fill('9876500321')
+  await d.getByLabel('Consignee email').fill('receiver@example.com')
   await d.getByLabel('E-way bill (12 digits)').fill(ewb())
   await d.getByLabel('E-way bill valid until').fill(when(40, 8))
   return d

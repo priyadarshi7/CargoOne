@@ -39,6 +39,7 @@ async def fresh_vehicle_and_driver() -> tuple[str, str]:
 def body(r: dict, vehicle_id: str, driver_id: str | None, start: datetime | None, hours: int = 10, **extra) -> dict:
     start = start or datetime.now(UTC).replace(microsecond=0) + H  # a trip always has a start now
     return {"client_id": r["clients"][0]["id"], "vehicle_id": vehicle_id, "driver_id": driver_id, "destination": "Nagpur",
+            "consignee_name": "Receiver Traders", "consignee_phone": "9000000321", "consignee_email": "receiver@example.com",
             "freight_amount": "25000", "lr_no": f"LR-{uuid.uuid4().hex[:6]}", "eway_bill_no": f"{uuid.uuid4().int % 10**12:012d}",
             "planned_start": start.isoformat(), "planned_end": (start + hours * H).isoformat(), "eway_valid_until": (start + (hours + 72) * H).isoformat(), **extra}
 

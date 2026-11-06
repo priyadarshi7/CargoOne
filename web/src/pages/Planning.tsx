@@ -299,9 +299,9 @@ function TripDialog({ trip, prefill, refs, canPlan, onClose, onSaved }: { trip: 
             </div>
             {sec(t('plan.sec.consignee'))}
             <div className="grid gap-4 sm:grid-cols-2">
-              {label(t('plan.consignee'), <input className={field} maxLength={160} value={f.consignee_name} onChange={(e) => set('consignee_name', e.target.value)} />)}
-              <PhoneInput label={t('plan.consigneePhone')} value={f.consignee_phone} onChange={(v) => set('consignee_phone', v)} />
-              {label(t('plan.consigneeEmail'), <input className={field} type="email" maxLength={160} value={f.consignee_email} onChange={(e) => set('consignee_email', e.target.value)} />)}
+              {label(t('plan.consignee'), <input className={field} required minLength={2} maxLength={160} value={f.consignee_name} onChange={(e) => set('consignee_name', e.target.value)} />)}
+              <PhoneInput label={t('plan.consigneePhone')} required value={f.consignee_phone} onChange={(v) => set('consignee_phone', v)} />
+              {label(t('plan.consigneeEmail'), <input className={field} type="email" required maxLength={160} value={f.consignee_email} onChange={(e) => set('consignee_email', e.target.value)} />)}
             </div>
           </>
         )}

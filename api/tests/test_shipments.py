@@ -126,8 +126,12 @@ async def test_the_receiver_link_also_goes_by_email_when_the_trip_has_an_address
         trip.consignee_phone, trip.consignee_email = "9000000457", "receiver@example.com"
         await s.commit()
     assert (await client.get(f"/trips/{tid}/shipment-links", headers=h)).json()["receiver"]["has_email"] is True
+    async def mails() -> list[Message]:
+        async with SessionLocal() as s:
+            return list((await s.scalars(select(Message).where(Message.trip_id == uuid.UUID(tid), Message.channel == "email").order_by(Message.created_at))).all())
+
+    before = len(await mails())
     assert (await client.post(f"/trips/{tid}/shipment-links/send?audience=receiver", headers=h)).status_code == 200
-    async with SessionLocal() as s:
-        mails = (await s.scalars(select(Message).where(Message.trip_id == uuid.UUID(tid), Message.channel == "email"))).all()
-    assert len(mails) == 1 and mails[0].to_masked == "r***@example.com"
-    assert "/s/" in mails[0].body and mails[0].body.count("•••") == 1  # the private address is cut out of the stored copy
+    after = await mails()
+    assert len(after) == before + 1 and after[-1].to_masked == "r***@example.com"
+    assert "/s/" in after[-1].body and after[-1].body.count("•••") == 1  # the private address is cut out of the stored copy

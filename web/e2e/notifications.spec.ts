@@ -64,6 +64,8 @@ test('a new driver gets an app link, sets their own PIN from it, and is told abo
   await d.getByLabel('Goods').fill('Cement bags')
   await d.getByLabel('Weight (tonnes)').fill('18')
   await d.getByLabel('Consignee name').fill('Demo Consignee')
+  await d.getByLabel('Consignee phone').fill('9876500322')
+  await d.getByLabel('Consignee email').fill('demo@example.com')
   await d.getByRole('button', { name: 'Create trip' }).click()
   const lr = (await d.getByLabel('LR number').textContent())!.trim()
   await d.getByRole('button', { name: 'Done' }).click()
