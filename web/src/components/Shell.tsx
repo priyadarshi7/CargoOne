@@ -17,6 +17,27 @@ function useReviewCount(enabled: boolean): number {
   return n
 }
 
+/** New client requests waiting for the office. Checked every 30 s and when the tab is opened again, and shown in the tab title too. */
+function useNewRequests(enabled: boolean): number {
+  const [n, setN] = useState(0)
+  const { pathname } = useLocation()
+  useEffect(() => {
+    if (!enabled) return
+    const read = () => { api<{ requests_new: number }>('/home').then((h) => setN(h.requests_new)).catch(() => undefined) }
+    read()
+    const timer = window.setInterval(read, 30_000)
+    const onShow = () => { if (document.visibilityState === 'visible') read() }
+    document.addEventListener('visibilitychange', onShow)
+    return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', onShow) }
+  }, [enabled, pathname])
+  useEffect(() => {
+    const base = document.title.replace(/^\(\d+\) /, '')
+    document.title = n > 0 ? `(${n}) ${base}` : base
+    return () => { document.title = base }
+  }, [n])
+  return n
+}
+
 interface Item { to: string; label: string; icon: LucideIcon; end?: boolean; count?: number }
 interface Group { title: string; items: Item[] }
 
@@ -30,6 +51,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
   const canReview = role === 'billing' || role === 'ops' || role === 'admin'
   const canMap = role === 'ops' || role === 'md' || role === 'admin'
   const reviewCount = useReviewCount(canReview)
+  const newRequests = useNewRequests(role === 'ops' || role === 'billing')
   useEffect(() => { setOpen(false) }, [pathname]) // a tapped link closes the drawer
 
   const groups: Group[] = [
@@ -37,7 +59,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
       { to: '/office', label: role === 'md' ? t('nav.dashboard') : t('nav.today'), icon: Home, end: true },
       ...(role === 'ops' || role === 'admin' ? [{ to: '/office/performance', label: t('nav.performance'), icon: BarChart3 }] : []),
       { to: '/office/trips', label: t('nav.trips'), icon: Truck },
-      ...(canReview ? [{ to: '/office/requests', label: t('nav.requests'), icon: Inbox }, { to: '/office/planning', label: t('nav.planning'), icon: Route }] : []),
+      ...(canReview ? [{ to: '/office/requests', label: t('nav.requests'), icon: Inbox, count: newRequests }, { to: '/office/planning', label: t('nav.planning'), icon: Route }] : []),
       ...(canMap ? [{ to: '/office/live', label: t('nav.live'), icon: Map }] : []),
     ] },
     { title: t('nav.g.money'), items: [
