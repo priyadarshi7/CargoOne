@@ -6,18 +6,22 @@ from datetime import UTC, date, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import func, select
+from sqlalchemy import exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.db import get_session
 from app.models import (
     AuditLog,
     Expense,
     ExpenseStatus,
+    Invoice,
+    Message,
     PodStatus,
     Role,
     TransportRequest,
     Trip,
+    TripEvent,
     TripState,
     User,
     Vehicle,
@@ -36,6 +40,13 @@ UNBILLED_AFTER_DAYS = 3  # verified, but no invoice yet
 EXPENSE_AFTER_DAYS = 2
 PAPERS_WITHIN_DAYS = 30
 REMIND_EVERY = timedelta(hours=24)
+QUOTE_FOLLOW_UP_DAYS = 2  # a quote nobody has answered for this long needs a call
+PAYMENT_DUE_DAYS = 30  # sent to the client and still not paid
+INVOICE_UNSENT_DAYS = 1  # made but nobody has marked it sent
+NOT_STARTED_AFTER_MIN = 60
+UNASSIGNED_WITHIN_HOURS = 48
+UNACKNOWLEDGED_WITHIN_HOURS = 12
+MESSAGES_FAILED_DAYS = 3
 
 
 def _age_days(then: datetime | None, now: datetime) -> int | None:
@@ -64,6 +75,42 @@ async def attention(_: Viewer, session: Session) -> dict:
 
     req_n, req_oldest = (await session.execute(select(func.count(), func.min(TransportRequest.created_at)).where(TransportRequest.status == "new"))).one()
 
+    # requests: a client's "no" nobody has read, a "yes" nobody has booked, a quote nobody has answered
+    no_n, no_oldest = (await session.execute(select(func.count(), func.min(TransportRequest.decided_at)).where(
+        TransportRequest.status == "declined", TransportRequest.declined_by == "client", TransportRequest.decline_seen_at.is_(None)))).one()
+    book_n, book_oldest = (await session.execute(select(func.count(), func.min(func.coalesce(TransportRequest.quote_accepted_at, TransportRequest.decided_at))).where(
+        TransportRequest.status == "accepted", or_(TransportRequest.quote_amount.is_(None), TransportRequest.quote_accepted_at.is_not(None))))).one()
+    wait_n, wait_oldest = (await session.execute(select(func.count(), func.min(TransportRequest.quote_sent_at)).where(
+        TransportRequest.status == "accepted", TransportRequest.quote_amount.is_not(None), TransportRequest.quote_accepted_at.is_(None),
+        TransportRequest.quote_sent_at <= now - timedelta(days=QUOTE_FOLLOW_UP_DAYS)))).one()
+
+    # trips that are not going to plan: nobody assigned, driver silent, late start, broken down, running late, short or damaged at the door
+    live_planned = (Trip.state == TripState.planned,)
+    unassigned_n, _ = (await session.execute(select(func.count(), func.min(Trip.planned_start)).where(
+        *live_planned, Trip.driver_id.is_(None), Trip.planned_start <= now + timedelta(hours=UNASSIGNED_WITHIN_HOURS)))).one()
+    silent_n, _ = (await session.execute(select(func.count(), func.min(Trip.planned_start)).where(
+        *live_planned, Trip.driver_id.is_not(None), Trip.acknowledged_at.is_(None), Trip.planned_start <= now + timedelta(hours=UNACKNOWLEDGED_WITHIN_HOURS)))).one()
+    nostart_n, nostart_oldest = (await session.execute(select(func.count(), func.min(Trip.planned_start)).where(
+        *live_planned, Trip.driver_id.is_not(None), Trip.planned_start <= now - timedelta(minutes=NOT_STARTED_AFTER_MIN)))).one()
+    resolved = aliased(TripEvent)
+    broken = (select(TripEvent.id).where(TripEvent.trip_id == Trip.id, TripEvent.kind == "breakdown",
+                                         ~exists().where(resolved.trip_id == Trip.id, resolved.kind == "resolved", resolved.at > TripEvent.at)))
+    broke_n, broke_oldest = (await session.execute(select(func.count(), func.min(Trip.started_at)).where(Trip.state == TripState.in_transit, exists(broken)))).one()
+    late_n, _ = (await session.execute(select(func.count(), func.min(Trip.late_alert_at)).where(
+        Trip.state == TripState.in_transit, Trip.late_alert_at >= now - timedelta(hours=4)))).one()
+    short_n, short_oldest = (await session.execute(select(func.count(), func.min(Trip.delivered_at)).where(
+        Trip.delivery_issue.is_(True), Trip.invoice_id.is_(None), Trip.state != TripState.cancelled))).one()
+
+    # money: an invoice nobody sent, and one sent long ago and still unpaid
+    unsent_n, unsent_oldest = (await session.execute(select(func.count(), func.min(Invoice.created_at)).where(
+        Invoice.sent_at.is_(None), Invoice.created_at <= now - timedelta(days=INVOICE_UNSENT_DAYS)))).one()
+    overdue_n, overdue_oldest = (await session.execute(select(func.count(), func.min(Invoice.sent_at)).where(
+        Invoice.sent_at.is_not(None), Invoice.paid_at.is_(None), Invoice.sent_at <= now - timedelta(days=PAYMENT_DUE_DAYS)))).one()
+
+    # a note to a client or driver that did not go out
+    failed_n, _ = (await session.execute(select(func.count(), func.min(Message.created_at)).where(
+        Message.status == "failed", Message.created_at >= now - timedelta(days=MESSAGES_FAILED_DAYS)))).one()
+
     soon = today + timedelta(days=PAPERS_WITHIN_DAYS)
     papers = []
     for v in (await session.scalars(select(Vehicle).where(Vehicle.is_active))).all():
@@ -79,6 +126,18 @@ async def attention(_: Viewer, session: Session) -> dict:
 
     items = [
         {"key": "requests_new", "count": req_n, "oldest_days": _age_days(req_oldest, now), "to": "/office/requests", "severity": "high"},
+        {"key": "quote_declined", "count": no_n, "oldest_days": _age_days(no_oldest, now), "to": "/office/requests", "severity": "high"},
+        {"key": "ready_to_book", "count": book_n, "oldest_days": _age_days(book_oldest, now), "to": "/office/requests", "severity": "high"},
+        {"key": "quote_waiting", "count": wait_n, "oldest_days": _age_days(wait_oldest, now), "to": "/office/requests", "severity": "medium"},
+        {"key": "breakdown_open", "count": broke_n, "oldest_days": _age_days(broke_oldest, now), "to": "/office/trips", "severity": "high"},
+        {"key": "late_running", "count": late_n, "oldest_days": None, "to": "/office/trips", "severity": "high"},
+        {"key": "not_started", "count": nostart_n, "oldest_days": _age_days(nostart_oldest, now), "to": "/office/trips", "severity": "high"},
+        {"key": "unassigned", "count": unassigned_n, "oldest_days": None, "to": "/office/planning", "severity": "high"},
+        {"key": "not_acknowledged", "count": silent_n, "oldest_days": None, "to": "/office/trips", "severity": "medium"},
+        {"key": "delivery_issue", "count": short_n, "oldest_days": _age_days(short_oldest, now), "to": "/office/trips", "severity": "medium"},
+        {"key": "invoice_unsent", "count": unsent_n, "oldest_days": _age_days(unsent_oldest, now), "to": "/office/billing", "severity": "medium"},
+        {"key": "payment_overdue", "count": overdue_n, "oldest_days": _age_days(overdue_oldest, now), "to": "/office/billing", "severity": "high"},
+        {"key": "messages_failed", "count": failed_n, "oldest_days": None, "to": "/office/setup?tab=messages", "severity": "medium"},
         {"key": "missing_pod", "count": miss_n, "oldest_days": _age_days(miss_oldest, now), "to": "/office", "severity": "high"},
         {"key": "review_waiting", "count": review_n, "oldest_days": _age_days(review_oldest, now), "to": "/office/review", "severity": "high"},
         {"key": "unbilled", "count": bill_n, "oldest_days": _age_days(bill_oldest, now), "to": "/office/billing", "severity": "medium"},

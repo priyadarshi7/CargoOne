@@ -18,7 +18,18 @@ from app.config import get_settings
 from app.db import get_session
 from app.events import record
 from app.lr import next_lr_no
-from app.models import AuditLog, Branch, Client, PodStatus, Role, Trip, TripState, User, Vehicle
+from app.models import (
+    AuditLog,
+    Branch,
+    Client,
+    PodStatus,
+    Role,
+    TransportRequest,
+    Trip,
+    TripState,
+    User,
+    Vehicle,
+)
 from app.notify.service import safely, trip_assigned, trip_update, when_text
 from app.notify.shipment import tell_parties
 from app.phones import clean_phone
@@ -339,6 +350,10 @@ async def cancel(trip_id: uuid.UUID, body: Cancel, user: Planner, session: Sessi
     trip.state, trip.cancel_reason = TripState.cancelled, body.reason.strip()
     session.add(AuditLog(actor_id=user.id, action="trip.cancel", entity="trip", entity_id=trip.trip_code, meta={"reason": trip.cancel_reason}))
     record(session, trip, "cancelled", actor=user.id, note=trip.cancel_reason, public=True)
+    # a trip made from a request: the request is open again (the agreed quote stands), so the office sees it must be booked again
+    for req in (await session.scalars(select(TransportRequest).where(TransportRequest.trip_id == trip.id, TransportRequest.status == "booked"))).all():
+        req.status, req.trip_id = "accepted", None
+        session.add(AuditLog(actor_id=user.id, action="request.reopened", entity="request", entity_id=req.reference, meta={"trip": trip.trip_code, "why": "trip cancelled"}))
     await session.commit()
     result = {"id": str(trip.id), "state": trip.state.value}
     await safely(session, tell_parties(session, trip, "cancelled"))

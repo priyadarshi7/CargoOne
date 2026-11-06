@@ -3,7 +3,7 @@ Freight amounts are shown to ops and billing, never to anyone else."""
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_session
@@ -37,6 +37,11 @@ async def home(user: Viewer, session: Session) -> dict:
         "pod_missing": await count(live, Trip.pod_status.in_((PodStatus.pending, PodStatus.retake_requested)), Trip.state != TripState.planned),
         "awaiting_review": await count(Trip.pod_status.in_((PodStatus.uploaded, PodStatus.needs_review))),
         "requests_new": await session.scalar(select(func.count()).select_from(TransportRequest).where(TransportRequest.status == "new")) or 0,
+        # everything about requests that waits for a person: new ones, a yes nobody has booked, a client's no nobody has read
+        "requests_attention": await session.scalar(select(func.count()).select_from(TransportRequest).where(or_(
+            TransportRequest.status == "new",
+            (TransportRequest.status == "accepted") & (TransportRequest.quote_amount.is_(None) | TransportRequest.quote_accepted_at.is_not(None)),
+            (TransportRequest.status == "declined") & (TransportRequest.declined_by == "client") & TransportRequest.decline_seen_at.is_(None)))) or 0,
         "trucks_available": await session.scalar(select(func.count()).select_from(Vehicle).where(Vehicle.availability == "available")) or 0,
         "expenses_pending": await session.scalar(select(func.count()).select_from(Expense).where(Expense.status == ExpenseStatus.pending)) or 0,
     }

@@ -17,7 +17,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import case, func, select
+from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -179,8 +179,9 @@ async def reply_to_quote(token: str, body: QuoteReply, request: Request, session
         r.quote_accepted_at, r.quote_accepted_via = datetime.now(UTC), "online"
         session.add(AuditLog(actor_id=None, action="request.quote_accepted", entity="request", entity_id=r.reference, meta={"via": "online"}))
     else:
-        r.status, r.decided_at = "declined", datetime.now(UTC)
-        r.ops_note = f"The quote was turned down by the requester{': ' + body.reason.strip() if body.reason and body.reason.strip() else ''}"
+        why = (body.reason or "").strip()
+        r.status, r.decided_at, r.declined_by, r.decline_reason, r.decline_seen_at = "declined", datetime.now(UTC), "client", why or None, None
+        r.ops_note = f"The quote was turned down by the requester{': ' + why if why else ''}"
         session.add(AuditLog(actor_id=None, action="request.quote_declined", entity="request", entity_id=r.reference))
     await session.commit()
     return {"status": r.status, "quote_accepted": r.quote_accepted_at is not None}
@@ -197,15 +198,19 @@ def _out(r: TransportRequest, client: str | None = None, trip_code: str | None =
         "pickup_date": r.pickup_date.isoformat(), "notes": r.notes, "client_id": str(r.client_id) if r.client_id else None, "client": client,
         "trip_id": str(r.trip_id) if r.trip_id else None, "trip_code": trip_code, "quote_amount": float(r.quote_amount) if r.quote_amount is not None else None,
         "reply": r.ops_note, "quote_accepted_at": r.quote_accepted_at.isoformat() if r.quote_accepted_at else None, "quote_accepted_via": r.quote_accepted_via,
+        "declined_by": r.declined_by, "decline_reason": r.decline_reason, "decline_seen": r.decline_seen_at is not None, "decided_at": r.decided_at.isoformat() if r.decided_at else None,
+        "quote_sent_at": r.quote_sent_at.isoformat() if r.quote_sent_at else None,
     }
 
 
 @office.get("")
-async def list_requests(_: Viewer, session: Session, state: Literal["open", "all"] = "open") -> list[dict]:
+async def list_requests(_: Viewer, session: Session, state: Literal["open", "declined", "all"] = "open") -> list[dict]:
     q = (select(TransportRequest, Client.name, Trip.trip_code).outerjoin(Client, Client.id == TransportRequest.client_id).outerjoin(Trip, Trip.id == TransportRequest.trip_id)
          .order_by(case((TransportRequest.status == "new", 0), (TransportRequest.status == "accepted", 1), else_=2), TransportRequest.created_at.desc()).limit(300))
-    if state == "open":
-        q = q.where(TransportRequest.status.in_(["new", "accepted"]))
+    if state == "open":  # what still needs a person: new, quoted, or a quote the client turned down that nobody has looked at yet
+        q = q.where(or_(TransportRequest.status.in_(["new", "accepted"]), and_(TransportRequest.status == "declined", TransportRequest.declined_by == "client", TransportRequest.decline_seen_at.is_(None))))
+    elif state == "declined":
+        q = q.where(TransportRequest.status == "declined")
     return [_out(r, c, t) for r, c, t in (await session.execute(q)).all()]
 
 
@@ -220,6 +225,8 @@ UPDATES = {
     "accepted": {"en": "accepted. We will confirm the truck and pickup shortly", "hi": "स्वीकार हो गया है। हम जल्द ही ट्रक और पिकअप की पुष्टि करेंगे",
                  "mr": "मान्य झाली आहे. आम्ही लवकरच ट्रक आणि पिकअपची खात्री देऊ"},
     "booked": {"en": "booked as trip {trip}, pickup {when}", "hi": "ट्रिप {trip} के रूप में बुक हो गया, पिकअप {when}", "mr": "ट्रिप {trip} म्हणून बुक झाले, पिकअप {when}"},
+    "requoted": {"en": "has a new quote. Please open the link to see it and answer", "hi": "के लिए नया भाव आया है। देखने और जवाब देने के लिए लिंक खोलें",
+                 "mr": "साठी नवा दर आला आहे. पाहण्यासाठी आणि उत्तर देण्यासाठी लिंक उघडा"},
     "declined": {"en": "could not be taken up this time", "hi": "इस बार स्वीकार नहीं किया जा सका", "mr": "यावेळी स्वीकारता आली नाही"},
 }
 
@@ -265,6 +272,7 @@ async def accept(request_id: uuid.UUID, body: Accept, actor: Manager, session: S
             raise HTTPException(status.HTTP_409_CONFLICT, "A client with this company name already exists. Pick it from the list instead of creating a new one.") from None
     r.status, r.client_id, r.quote_amount, r.ops_note = "accepted", client.id, body.quote_amount, (body.note or "").strip() or None
     r.decided_by, r.decided_at = actor.id, datetime.now(UTC)
+    r.quote_sent_at = r.decided_at if body.quote_amount is not None else None
     session.add(AuditLog(actor_id=actor.id, action="request.accept", entity="request", entity_id=r.reference, meta={"new_client": body.client_id is None}))
     await session.commit()
     result = _out(r, client.name)
@@ -295,11 +303,47 @@ async def decline(request_id: uuid.UUID, body: Decline, actor: Manager, session:
     if r.status not in ("new", "accepted"):
         raise HTTPException(status.HTTP_409_CONFLICT, f"This request is already {r.status}")
     r.status, r.ops_note, r.decided_by, r.decided_at = "declined", body.reason.strip(), actor.id, datetime.now(UTC)
+    r.declined_by, r.decline_reason, r.decline_seen_at = "office", body.reason.strip(), datetime.now(UTC)
     session.add(AuditLog(actor_id=actor.id, action="request.decline", entity="request", entity_id=r.reference))
     await session.commit()
     result = _out(r)
     await safely(session, tell_requester(session, r, "declined"))
     return result
+
+
+class Requote(BaseModel):
+    quote_amount: Decimal = Field(gt=0, le=10_000_000, decimal_places=2)
+    note: str | None = Field(default=None, max_length=300)
+
+
+@office.post("/{request_id}/requote")
+async def requote(request_id: uuid.UUID, body: Requote, actor: Manager, session: Session) -> dict:
+    """A new price: after the client said no to the first one, or while they have not answered. The client is asked again."""
+    r = await _get(session, request_id)
+    reopened = r.status == "declined" and r.declined_by == "client"
+    if not (reopened or (r.status == "accepted" and r.quote_amount is not None and r.quote_accepted_at is None)):
+        raise HTTPException(status.HTTP_409_CONFLICT, "There is no quote waiting for an answer, or the client already agreed to it")
+    r.status, r.quote_amount, r.quote_sent_at = "accepted", body.quote_amount, datetime.now(UTC)
+    r.quote_accepted_at = r.quote_accepted_via = r.declined_by = r.decline_seen_at = None
+    r.decline_reason = None
+    r.ops_note = (body.note or "").strip() or None
+    r.decided_by, r.decided_at = actor.id, datetime.now(UTC)
+    session.add(AuditLog(actor_id=actor.id, action="request.requote", entity="request", entity_id=r.reference, meta={"after_no": reopened}))
+    await session.commit()
+    result = _out(r)
+    await safely(session, tell_requester(session, r, "requoted"))
+    return result
+
+
+@office.post("/{request_id}/seen")
+async def seen(request_id: uuid.UUID, actor: Manager, session: Session) -> dict:
+    """The office has read a client's no and is leaving it closed."""
+    r = await _get(session, request_id)
+    if r.status == "declined" and r.decline_seen_at is None:
+        r.decline_seen_at = datetime.now(UTC)
+        session.add(AuditLog(actor_id=actor.id, action="request.decline_seen", entity="request", entity_id=r.reference))
+        await session.commit()
+    return _out(r)
 
 
 async def book(session: AsyncSession, request_id: uuid.UUID, trip: Trip) -> tuple[TransportRequest, dict] | None:

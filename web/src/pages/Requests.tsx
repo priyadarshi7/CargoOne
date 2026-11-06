@@ -9,7 +9,8 @@ interface Req {
   id: string; reference: string; status: 'new' | 'accepted' | 'booked' | 'declined'; created_at: string; company_name: string; contact_name: string; phone: string
   email: string | null; gstin: string | null; origin: string; destination: string; material: string; weight_tonnes: number | null; truck_type: string | null
   pickup_date: string; notes: string | null; client_id: string | null; client: string | null; trip_code: string | null; quote_amount: number | null; reply: string | null
-  quote_accepted_at: string | null; quote_accepted_via: 'online' | 'phone' | null
+  quote_accepted_at: string | null; quote_accepted_via: 'online' | 'phone' | null; declined_by: 'office' | 'client' | null; decline_reason: string | null; decline_seen: boolean
+  decided_at: string | null; quote_sent_at: string | null
 }
 const TONE = { new: 'bg-warn-soft text-warn', accepted: 'bg-accent-soft text-accent', booked: 'bg-ok-soft text-ok', declined: 'bg-wash text-muted' } as const
 
@@ -19,14 +20,16 @@ export default function Requests() {
   const { user } = useAuth()
   const nav = useNavigate()
   const canAct = user?.role === 'ops' || user?.role === 'admin'
-  const [state, setState] = useState<'open' | 'all'>('open')
+  const [state, setState] = useState<'open' | 'declined' | 'all'>('open')
   const [rows, setRows] = useState<Req[] | null>(null)
   const [error, setError] = useState(false)
   const [accept, setAccept] = useState<Req | null>(null)
   const [decline, setDecline] = useState<Req | null>(null)
   const [view, setView] = useState<Req | null>(null)
+  const [requote, setRequote] = useState<Req | null>(null)
   const load = useCallback(() => { api<Req[]>(`/requests?state=${state}`).then(setRows).catch(() => setError(true)) }, [state])
   const phoneYes = async (r: Req) => { await api(`/requests/${r.id}/quote-confirmed`, { method: 'POST', body: JSON.stringify({}) }).catch(() => undefined); load() }
+  const seen = async (r: Req) => { await api(`/requests/${r.id}/seen`, { method: 'POST' }).catch(() => undefined); load() }
   useEffect(() => { load() }, [load])
 
   return (
@@ -34,7 +37,7 @@ export default function Requests() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div><h1 className="text-3xl font-semibold tracking-tight">{t('req.o.title')}</h1><p className="text-sm text-muted">{t('req.o.sub')}</p></div>
         <div role="tablist" className="flex gap-1 rounded-lg border border-line p-1 text-sm">
-          {(['open', 'all'] as const).map((x) => <button key={x} role="tab" aria-selected={state === x} onClick={() => setState(x)} className={`rounded-md px-3 py-1 ${state === x ? 'bg-accent-soft font-medium text-accent' : 'text-muted'}`}>{t(`req.o.${x}`)}</button>)}
+          {(['open', 'declined', 'all'] as const).map((x) => <button key={x} role="tab" aria-selected={state === x} onClick={() => setState(x)} className={`rounded-md px-3 py-1 ${state === x ? 'bg-accent-soft font-medium text-accent' : 'text-muted'}`}>{t(`req.o.${x}`)}</button>)}
         </div>
       </div>
       {error ? <p className="text-bad">{t('req.o.loadFail')}</p> : !rows ? <p className="text-muted">{t('common.loading')}</p> : rows.length === 0 ? <p className="rounded-xl border border-line px-4 py-8 text-center text-muted">{t('req.o.none')}</p> : (
@@ -45,6 +48,7 @@ export default function Requests() {
                 <p className="font-medium">{r.company_name} <span className="ml-1 text-xs font-normal tabular-nums text-muted">{r.reference}</span></p>
                 <p className="text-sm text-muted">{r.origin} → {r.destination} · {r.material}{r.weight_tonnes ? ` · ${r.weight_tonnes} t` : ''} · {r.pickup_date}</p>
                 <p className="text-xs text-muted">{t('req.o.received')} {date(r.created_at, true)}</p>
+                {r.status === 'declined' && <p className="text-xs font-medium text-bad">{t(r.declined_by === 'client' ? 'req.o.byClient' : 'req.o.byOffice')} · {t('req.o.why', { why: r.decline_reason ?? t('req.o.noReason') })}{r.declined_by === 'client' && r.quote_amount !== null ? ` · ₹${r.quote_amount.toLocaleString('en-IN')}` : ''}</p>}
                 {r.status === 'accepted' && r.quote_amount !== null && <p className={`text-xs font-medium ${r.quote_accepted_at ? 'text-ok' : 'text-warn'}`}>{r.quote_accepted_at ? t(r.quote_accepted_via === 'phone' ? 'req.o.quotePhone' : 'req.o.quoteOnline') : t('req.o.waitingQuote')}</p>}
               </div>
               <span className={`rounded-full px-2.5 py-0.5 text-xs ${TONE[r.status]}`}>{t(`req.status.${r.status}`)}</span>
@@ -53,6 +57,8 @@ export default function Requests() {
                 {canAct && r.status === 'new' && <button onClick={() => setAccept(r)} className={btnPrimary}>{t('req.o.accept')}</button>}
                 {canAct && (r.status === 'new' || r.status === 'accepted') && <button onClick={() => setDecline(r)} className={btnGhost}>{t('req.o.decline')}</button>}
                 {canAct && r.status === 'accepted' && r.quote_amount !== null && !r.quote_accepted_at && <button onClick={() => void phoneYes(r)} className={btnGhost}>{t('req.o.phoneYes')}</button>}
+                {canAct && ((r.status === 'accepted' && r.quote_amount !== null && !r.quote_accepted_at) || (r.status === 'declined' && r.declined_by === 'client')) && <button onClick={() => setRequote(r)} className={btnGhost}>{t('req.o.requote')}</button>}
+                {canAct && r.status === 'declined' && r.declined_by === 'client' && !r.decline_seen && <button onClick={() => void seen(r)} className={btnPrimary}>{t('req.o.seen')}</button>}
                 {canAct && r.status === 'accepted' && (r.quote_amount === null || r.quote_accepted_at) && <button onClick={() => nav(`/office/planning?request=${r.id}`)} className={btnPrimary}>{t('req.o.book')}</button>}
               </div>
             </li>
@@ -67,9 +73,18 @@ export default function Requests() {
             [t('req.truck'), view.truck_type], [t('req.pickup'), view.pickup_date], [t('req.o.client'), view.client], [t('req.o.trip'), view.trip_code],
             [t('req.quote'), view.quote_amount !== null ? `₹${view.quote_amount.toLocaleString('en-IN')}` : null], [t('req.reply'), view.reply], [t('req.o.notes'), view.notes],
           ]} />
+          <h3 className="pt-2 text-sm font-semibold">{t('req.o.history')}</h3>
+          <ul className="space-y-1 text-sm">
+            <li>{date(view.created_at, true)} · {t('req.o.h.received')}</li>
+            {view.quote_sent_at && view.quote_amount !== null && <li>{date(view.quote_sent_at, true)} · {t('req.o.h.quoted', { amount: `₹${view.quote_amount.toLocaleString('en-IN')}` })}</li>}
+            {view.quote_accepted_at && <li>{date(view.quote_accepted_at, true)} · {t('req.o.h.yes', { how: view.quote_accepted_via ?? '' })}</li>}
+            {view.status === 'declined' && view.decided_at && <li>{date(view.decided_at, true)} · {t(view.declined_by === 'client' ? 'req.o.h.no' : 'req.o.h.office', { why: view.decline_reason ?? '' })}</li>}
+            {view.trip_code && <li>{t('req.o.h.booked', { trip: view.trip_code })}</li>}
+          </ul>
           <div className="flex justify-end"><button onClick={() => setView(null)} className={btnPrimary}>{t('setup.close')}</button></div>
         </Modal>
       )}
+      {requote && <RequoteDialog req={requote} onClose={() => setRequote(null)} onDone={() => { setRequote(null); load() }} />}
       {accept && <AcceptDialog req={accept} onClose={() => setAccept(null)} onDone={() => { setAccept(null); load() }} />}
       {decline && <DeclineDialog req={decline} onClose={() => setDecline(null)} onDone={() => { setDecline(null); load() }} />}
     </div>
@@ -116,6 +131,22 @@ function DeclineDialog({ req, onClose, onDone }: { req: Req; onClose: () => void
   return (
     <FormModal title={t('req.d.title', { ref: req.reference })} onClose={onClose} onSubmit={save} submitLabel={t('req.d.go')}>
       <Field label={t('req.d.reason')}><input className={inputCls} required minLength={3} maxLength={300} value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
+    </FormModal>
+  )
+}
+
+function RequoteDialog({ req, onClose, onDone }: { req: Req; onClose: () => void; onDone: () => void }) {
+  const { t } = useI18n()
+  const [f, setF] = useState({ quote_amount: '', note: '' })
+  async function save() {
+    await api(`/requests/${req.id}/requote`, { method: 'POST', body: JSON.stringify({ quote_amount: f.quote_amount, note: f.note || null }) })
+    onDone()
+  }
+  return (
+    <FormModal title={t('req.o.requoteTitle', { ref: req.reference })} onClose={onClose} onSubmit={save} submitLabel={t('req.o.requoteGo')}>
+      {req.decline_reason && <p className="text-sm text-muted">{t('req.o.why', { why: req.decline_reason })}</p>}
+      <Field label={t('req.a.quote')}><input className={inputCls} required inputMode="decimal" value={f.quote_amount} onChange={(e) => setF({ ...f, quote_amount: e.target.value })} /></Field>
+      <Field label={t('req.a.note')}><input className={inputCls} maxLength={300} value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} /></Field>
     </FormModal>
   )
 }

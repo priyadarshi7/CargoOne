@@ -23,7 +23,7 @@ function useNewRequests(enabled: boolean): number {
   const { pathname } = useLocation()
   useEffect(() => {
     if (!enabled) return
-    const read = () => { api<{ requests_new: number }>('/home').then((h) => setN(h.requests_new)).catch(() => undefined) }
+    const read = () => { api<{ requests_attention: number }>('/home').then((h) => setN(h.requests_attention)).catch(() => undefined) }
     read()
     const timer = window.setInterval(read, 30_000)
     const onShow = () => { if (document.visibilityState === 'visible') read() }

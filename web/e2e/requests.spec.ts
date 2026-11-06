@@ -112,3 +112,45 @@ test('billing can read requests but not decide; the request page is translated',
   await page.getByLabel('Language').selectOption('hi')
   await expect(page.getByRole('heading', { name: 'ट्रांसपोर्ट का अनुरोध करें' })).toBeVisible()
 })
+
+test('when a client says no to the quote the office sees it with the reason, and can send a new price', async ({ page, browser }) => {
+  test.setTimeout(120_000)
+  const id = tag()
+  const company = `Decline Steel ${id}`
+  const visitor = await (await browser.newContext({ viewport: { width: 412, height: 860 } })).newPage()
+  await ask(visitor, company, `96${id}`, 'Solapur')
+  await visitor.getByRole('link', { name: 'Open my request page' }).click()
+  const statusPath = new URL(visitor.url()).pathname
+
+  await login(page, 'ops@cargoone.dev')
+  await expect(page).toHaveURL(/\/office/)
+  await page.goto('/office/requests')
+  await page.locator('li', { hasText: company }).getByRole('button', { name: 'Accept', exact: true }).click()
+  const accept = page.getByRole('dialog')
+  await accept.getByLabel('Quoted freight in ₹ (optional)').fill('52000')
+  await accept.getByRole('button', { name: 'Accept', exact: true }).click()
+
+  await visitor.goto(statusPath)
+  await visitor.getByLabel('Reason (optional)').fill('Another transporter is cheaper')
+  await visitor.getByRole('button', { name: 'No, thank you' }).click()
+  await expect(visitor.getByText('Declined').first()).toBeVisible()
+
+  // the office sees it without looking for it: on the dashboard, on the sidebar, and on the request itself
+  await page.goto('/office')
+  await expect(page.getByRole('region', { name: 'Needs attention' })).toContainText('said no to the quote')
+  await page.goto('/office/requests')
+  const row = page.locator('li', { hasText: company })
+  await expect(row).toContainText('The client said no to the quote')
+  await expect(row).toContainText('Another transporter is cheaper')
+  await shot(page, 'request-client-said-no')
+
+  // a new price asks the client again
+  await row.getByRole('button', { name: 'Send a new quote' }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('Quoted freight in ₹ (optional)').fill('46000')
+  await dialog.getByRole('button', { name: 'Send the new quote' }).click()
+  await expect(row).toContainText('Waiting for the client')
+  await visitor.reload()
+  await expect(visitor.getByText('₹46,000').first()).toBeVisible()
+  await expect(visitor.getByRole('button', { name: 'Accept the quote' })).toBeVisible()
+})

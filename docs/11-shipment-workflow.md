@@ -39,6 +39,21 @@ One shipment has one timeline. Everyone sees the part that is theirs. This is wh
 
 - When the payments cover the total, the invoice is paid and its trips are **closed**: they cannot be cancelled or re-planned. Only an admin can undo a payment, with a reason, which reopens the trips. Every step is on the trip's timeline and in the audit log.
 
+## Nothing falls between two people
+
+Every step where one person acts and another must react shows up for the office, without anyone having to look for it. The ops dashboard's **Needs attention** list (and the numbers on the **Requests** sidebar item and in the browser tab) count:
+
+| Where | What is waiting |
+|---|---|
+| Request | a new request; a client's **no** to the quote (with the reason, until someone reads it); a **yes** nobody has booked; a quote unanswered for 2 days |
+| Trip, before it leaves | leaving within 2 days with no driver; a driver who has not opened a job starting within 12 hours; a trip an hour past its start that has not started |
+| Trip, on the road | a breakdown not yet marked as moving again; a trip running late |
+| Delivery | shortage or damage noted at the door and not yet invoiced; a POD missing or waiting for a person (as before) |
+| Money | an invoice made but not marked sent (1 day); an invoice sent over 30 days ago and unpaid |
+| Messages | a note to a client or driver that failed to send (last 3 days) |
+
+When a client says **no** to a quote, the request shows who said no, when and why (also in its History). The office can **send a new quote**, which asks the client again, or **close** it. A request's own history is on its Details. A decline by the office is a different thing and is not re-opened that way. If a trip made from a request is **cancelled**, the request goes back to accepted (the agreed quote stands) and appears again as something to book.
+
 ## The pages and who sees what
 
 | Page | Who | Sees |

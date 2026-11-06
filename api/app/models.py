@@ -473,6 +473,10 @@ class TransportRequest(Base):
     quote_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # the requester agreed to the quote (online or told to the office)
     quote_accepted_via: Mapped[str | None] = mapped_column(String(12))  # online | phone
     ops_note: Mapped[str | None] = mapped_column(String(300))  # shown to the requester
+    declined_by: Mapped[str | None] = mapped_column(String(8))  # office | client (the client said no to the quote)
+    decline_reason: Mapped[str | None] = mapped_column(String(300))
+    decline_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # the office has looked at a client's no
+    quote_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # when the current quote went to the client
     decided_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     consent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # agreed to be contacted about this request
