@@ -14,7 +14,7 @@ const solid = 'inline-flex items-center justify-center gap-2 rounded-xl bg-ink p
 const outline = 'inline-flex items-center justify-center gap-2 rounded-xl border border-ink/15 bg-surface/70 px-7 py-3.5 text-base font-medium hover:bg-surface'
 const wrap = 'mx-auto w-full max-w-6xl px-5 sm:px-8'
 
-/** The public front door at "/": what CargoOne does, how a company asks for a truck, and where staff and drivers sign in. */
+/** The public front door at "/": what CargoOne does, how a company asks for a truck, and where everyone signs in. */
 export default function Landing() {
   const { t, lang, setLang } = useI18n()
   return (

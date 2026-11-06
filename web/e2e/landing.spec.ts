@@ -17,7 +17,7 @@ test('the landing page offers sign in, and the language switch changes the text'
   await page.getByLabel('Language').selectOption('hi')
   await expect(page.getByRole('heading', { level: 1 })).toContainText('माल भेजिए')
   await page.getByLabel('Language').selectOption('en')
-  await page.getByRole('link', { name: 'Staff and driver sign in' }).first().click()
+  await page.getByRole('link', { name: 'Sign in' }).first().click()
   await expect(page).toHaveURL(/\/login$/)
 })
 
