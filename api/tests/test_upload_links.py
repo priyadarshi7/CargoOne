@@ -151,3 +151,19 @@ async def test_token_guessing_and_photo_flooding_are_rate_limited(client: AsyncC
                                 data={"client_upload_id": uuid.uuid4().hex, "captured_at": datetime.now(UTC).isoformat()})).status_code
              for _ in range(13)]
     assert codes[:12] == [415] * 12 and codes[12] == 429
+
+
+async def test_a_hired_driver_enters_the_receivers_code_on_the_link_before_the_photo(client: AsyncClient) -> None:
+    trip_id, lr = await make_trip(assigned=False)
+    async with SessionLocal() as s:  # this trip was made without a code: give it one, as planning does
+        (await s.get(Trip, uuid.UUID(trip_id))).delivery_code = "4821"
+        await s.commit()
+    t = token_of(await new_link(client, trip_id))
+    assert (await client.get(f"/u/{t}")).json()["needs_code"] is True
+    blocked = await client.post(f"/u/{t}/pod", **photo_form(lr))
+    assert blocked.status_code == 409 and "code" in blocked.text
+    assert (await client.post(f"/u/{t}/deliver", json={"code": "0000"})).status_code == 422
+    assert (await client.post(f"/u/{t}/deliver", json={"code": "4821", "shortage_or_damage": True})).status_code == 422  # say what was short
+    assert (await client.post(f"/u/{t}/deliver", json={"code": "4821", "shortage_or_damage": True, "note": "1 box torn"})).status_code == 200
+    assert (await client.get(f"/u/{t}")).json()["needs_code"] is False
+    assert (await client.post(f"/u/{t}/pod", **photo_form(lr))).status_code == 200

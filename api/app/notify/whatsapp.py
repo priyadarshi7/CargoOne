@@ -25,6 +25,7 @@ PARAMS: dict[str, tuple[str, ...]] = {
     "trip_update": ("name", "trip_code", "change", "link"),
     "request_received": ("name", "reference", "link"),
     "request_update": ("name", "reference", "update", "link"),
+    "shipment_update": ("name", "trip_code", "update", "link"),
 }
 
 TEXT: dict[str, dict[str, str]] = {
@@ -44,6 +45,11 @@ TEXT: dict[str, dict[str, str]] = {
         "en": "Hello {name}, there is an update for your trip {trip_code}: {change}. See the details here: {link} Please check them before you leave.",
         "hi": "नमस्ते {name}, आपकी ट्रिप {trip_code} में बदलाव हुआ है: {change}। विवरण यहाँ देखें: {link} निकलने से पहले जाँच लें।",
         "mr": "नमस्कार {name}, तुमच्या ट्रिप {trip_code} मध्ये बदल झाला आहे: {change}. तपशील येथे पहा: {link} निघण्यापूर्वी तपासा.",
+    },
+    "shipment_update": {
+        "en": "Hello {name}, there is an update on your shipment {trip_code}: {update}. Follow it here: {link} Thank you for your patience.",
+        "hi": "नमस्ते {name}, आपकी खेप {trip_code} की जानकारी: {update}। यहाँ देखते रहें: {link} आपके धैर्य के लिए धन्यवाद।",
+        "mr": "नमस्कार {name}, तुमच्या मालाची खेप {trip_code} बद्दल माहिती: {update}. येथे पाहत रहा: {link} तुमच्या संयमाबद्दल धन्यवाद.",
     },
     "request_received": {
         "en": "Hello {name}, we have received your transport request {reference}. You can follow its status here: {link} We will reply shortly.",

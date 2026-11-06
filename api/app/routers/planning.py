@@ -20,6 +20,7 @@ from app.events import record
 from app.lr import next_lr_no
 from app.models import AuditLog, Branch, Client, PodStatus, Role, Trip, TripState, User, Vehicle
 from app.notify.service import safely, trip_assigned, trip_update, when_text
+from app.notify.shipment import tell_parties
 from app.phones import clean_phone
 from app.places import Coords
 from app.planning import overlaps, window
@@ -258,6 +259,8 @@ async def create_trip(body: NewTrip, user: Planner, session: Session) -> dict:
         await safely(session, trip_assigned(session, trip, driver, vehicle))
     if booked:
         await safely(session, tell_requester(session, booked[0], "booked", **booked[1]))
+    if trip.driver_id:
+        await safely(session, tell_parties(session, trip, "assigned"))
     return result
 
 
@@ -302,6 +305,8 @@ async def reassign(trip_id: uuid.UUID, body: Reassign, user: Planner, session: S
     await session.commit()
     result = {"id": str(trip.id), "trip_code": trip.trip_code}
     await safely(session, _tell_drivers(session, trip, before, reason))
+    if (trip.vehicle_id, trip.planned_start) != (before[0], before[2]):
+        await safely(session, tell_parties(session, trip, "replanned"))
     return result
 
 
@@ -334,6 +339,7 @@ async def cancel(trip_id: uuid.UUID, body: Cancel, user: Planner, session: Sessi
     record(session, trip, "cancelled", actor=user.id, note=trip.cancel_reason, public=True)
     await session.commit()
     result = {"id": str(trip.id), "state": trip.state.value}
+    await safely(session, tell_parties(session, trip, "cancelled"))
     if trip.driver_id and (driver := await session.get(User, trip.driver_id)):
         await safely(session, trip_update(session, trip, driver, f"was cancelled ({trip.cancel_reason})"))
     return result

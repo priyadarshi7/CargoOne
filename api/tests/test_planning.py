@@ -115,6 +115,9 @@ async def test_trip_lifecycle_start_cancel_and_delivered_by_pod(client: AsyncCli
     mine = (await client.get("/trips/mine", headers=driver)).json()
     assert next(t for t in mine if t["id"] == trip["id"])["state"] == "planned"
 
+    assert (await client.post(f"/trips/{trip['id']}/start", headers=driver)).status_code == 409  # not loaded yet
+    from tests.test_journey import LOADED
+    assert (await client.post(f"/trips/{trip['id']}/loaded", headers=driver, files=LOADED)).status_code == 200
     started = await client.post(f"/trips/{trip['id']}/start", headers=driver)
     assert started.status_code == 200 and started.json()["state"] == "in_transit" and started.json()["started_at"]
     again = await client.post(f"/trips/{trip['id']}/start", headers=driver)
@@ -250,5 +253,7 @@ async def test_a_driver_starts_only_near_the_planned_time_and_never_two_trips_at
     assert early.status_code == 409 and "up to 3 hours before" in early.text
     assert (await client.post(f"/trips/{far['id']}/start", headers=h)).status_code == 200  # the office may start it for them
     soon = (await client.post("/planning/trips", headers=h, json=body(r, v2, me, datetime.now(UTC) + 2 * H, force=True))).json()
+    from tests.test_journey import LOADED
+    await client.post(f"/trips/{soon['id']}/loaded", headers=driver, files=LOADED)
     busy = await client.post(f"/trips/{soon['id']}/start", headers=driver)
     assert busy.status_code == 409 and far["trip_code"] in busy.text

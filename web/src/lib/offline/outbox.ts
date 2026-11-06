@@ -29,6 +29,10 @@ export async function sendItem(item: OutboxItem): Promise<void> {
   let res: Response
   if (item.kind === 'start') {
     res = await fetch(`${BASE}/trips/${encodeURIComponent(item.data.trip_id)}/start`, { method: 'POST', headers: auth })
+  } else if (item.kind === 'loaded') {
+    const form = new FormData()
+    if (item.photo) form.set('file', item.photo, 'loaded.webp')
+    res = await fetch(`${BASE}/trips/${encodeURIComponent(item.data.trip_id)}/loaded`, { method: 'POST', body: form, headers: auth })
   } else {
     const form = new FormData()
     for (const [k, v] of Object.entries(item.data)) form.set(k, v)

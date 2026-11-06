@@ -54,6 +54,7 @@ class LinkInfo(BaseModel):
     status: str
     retakes_left: int
     expires_at: datetime
+    needs_code: bool = False  # the receiver's 4-digit code must be entered before the photo
 
 
 @router.post("/trips/{trip_id}/upload-link", response_model=LinkOut, status_code=status.HTTP_201_CREATED)
@@ -113,7 +114,8 @@ async def link_info(token: str, request: Request, session: Session) -> LinkInfo:
     link, trip = await _resolve(token, request, session)
     vehicle = await session.scalar(select(Vehicle.reg_no).where(Vehicle.id == trip.vehicle_id))
     return LinkInfo(destination=trip.destination, vehicle=vehicle or "", status=trip.pod_status.value,
-                    retakes_left=max(0, get_settings().max_retakes - trip.retake_count), expires_at=link.expires_at)
+                    retakes_left=max(0, get_settings().max_retakes - trip.retake_count), expires_at=link.expires_at,
+                    needs_code=bool(trip.delivery_code) and trip.delivery_confirmed_at is None)
 
 
 @router.post("/u/{token}/pod", response_model=UploadResult)
@@ -130,3 +132,25 @@ async def link_upload(
     upload_limiter.record(link.token)
     return await ingest_pod(session, storage, trip=trip, file=file, client_upload_id=client_upload_id,
                             captured_at=captured_at, lat=lat, lng=lng, actor_id=None, source="sms_link")
+
+
+class Handover(BaseModel):
+    code: str = Field(pattern=r"^\d{4}$")
+    shortage_or_damage: bool = False
+    note: str | None = Field(default=None, max_length=300)
+
+
+@router.post("/u/{token}/deliver")
+async def link_deliver(token: str, body: Handover, request: Request, session: Session) -> dict:
+    """A hired driver hands the goods over from the link: the receiver's code, and anything short or damaged."""
+    from app.notify.service import safely
+    from app.notify.shipment import tell_parties
+    from app.routers.journey import confirm_delivery
+
+    link, trip = await _resolve(token, request, session)
+    if upload_limiter.blocked(f"code:{link.token}"):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many tries for this link.")
+    upload_limiter.record(f"code:{link.token}")
+    await confirm_delivery(session, trip, code=body.code, issue=body.shortage_or_damage, note=body.note, override=None, actor_id=None, office=False)
+    await safely(session, tell_parties(session, trip, "delivered"))
+    return {"delivered": True}

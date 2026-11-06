@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.registry import AllProvidersFailed, run_extraction
 from app.config import get_settings
+from app.events import record
 from app.models import AuditLog, PodStatus, PodSubmission, Trip, TripState
 from app.pod.decision import Decision, Voice, decide
 from app.storage import Storage
@@ -72,6 +73,8 @@ async def ingest_pod(
     if trip.pod_status not in OPEN_STATUSES:
         raise HTTPException(status.HTTP_409_CONFLICT, f"POD already {trip.pod_status.value}")
 
+    if trip.delivery_code and trip.delivery_confirmed_at is None and source != "office":
+        raise HTTPException(status.HTTP_409_CONFLICT, "Enter the receiver's 4-digit code first: it proves who received the goods")
     data = await file.read(s.max_image_bytes + 1)
     if len(data) > s.max_image_bytes:
         raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, "Image must be under 300 KB")
@@ -119,7 +122,15 @@ async def ingest_pod(
         trip.verified_at = datetime.now(UTC)
     session.add(AuditLog(actor_id=actor_id, action="pod.upload", entity="trip", entity_id=str(trip.id),
                          meta={"attempt": attempt, "decision": decision.value, "source": source}))
+    if trip.delivery_confirmed_at is None:
+        trip.delivery_confirmed_at = trip.pod_uploaded_at  # office upload, or a trip made before delivery codes existed: the photo itself is the proof
+        record(session, trip, "delivered", actor=actor_id, public=True, meta={"by": "pod_photo"})
     await session.commit()
+    if decision == Decision.verified:
+        from app.notify.service import safely
+        from app.notify.shipment import tell_parties
+
+        await safely(session, tell_parties(session, trip, "verified"))
     return result_of(sub, trip)
 
 

@@ -2,9 +2,11 @@ import { CircleCheck, Clock, LinkIcon, LoaderCircle } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { CaptureFlow } from '../components/CaptureFlow'
-import { BASE, type User } from '../lib/api'
+import { DeliveryCodeForm } from '../components/DriverSheets'
+import { ApiError, BASE, type User } from '../lib/api'
+import { translate } from '../lib/i18n'
 
-interface Info { destination: string; vehicle: string; status: string; retakes_left: number }
+interface Info { destination: string; vehicle: string; status: string; retakes_left: number; needs_code?: boolean }
 type State = { kind: 'loading' } | { kind: 'ok'; info: Info } | { kind: 'gone' } | { kind: 'unknown' } | { kind: 'error' }
 
 /** Public page opened from an SMS link: no app, no login, one trip. The link itself is the credential. */
@@ -13,6 +15,7 @@ export default function SmsCapture() {
   const [params] = useSearchParams()
   const lang = (['hi', 'mr', 'en'].includes(params.get('l') ?? '') ? params.get('l') : 'hi') as User['language']
   const [state, setState] = useState<State>({ kind: 'loading' })
+  const [coded, setCoded] = useState(false)
 
   useEffect(() => {
     fetch(`${BASE}/u/${encodeURIComponent(token)}`)
@@ -31,6 +34,19 @@ export default function SmsCapture() {
   const { info } = state
   if (!['pending', 'retake_requested', 'uploaded'].includes(info.status)) {
     return <Center tone="bg-ok-soft text-ok"><CircleCheck size={160} aria-label="Already done" /><p className="text-center text-xl font-semibold">{TEXT[lang].done}</p></Center>
+  }
+  if (info.needs_code && !coded) {
+    const confirm = async (b: object) => {
+      const res = await fetch(`${BASE}/u/${encodeURIComponent(token)}/deliver`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) })
+      if (!res.ok) { const j = (await res.json().catch(() => ({}))) as { detail?: unknown }; throw new ApiError(res.status, typeof j.detail === 'string' ? j.detail : TEXT[lang].error, j.detail) }
+    }
+    return (
+      <div className="mx-auto max-w-md space-y-5 p-5">
+        <h1 className="text-3xl font-semibold">{translate(lang, 'drv.deliver')}</h1>
+        <p className="text-lg text-muted">{translate(lang, 'drv.deliverB')}</p>
+        <DeliveryCodeForm lang={lang} send={confirm} onDone={() => setCoded(true)} />
+      </div>
+    )
   }
   return <CaptureFlow tripId="" linkToken={token} destination={info.destination} lang={lang} />
 }

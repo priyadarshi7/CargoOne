@@ -1,5 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
+import { join } from 'node:path'
 import { failOnBrowserErrors, login, shot } from './helpers'
+
+const PHOTO = join(import.meta.dirname, 'fixtures', 'pod.png')
 
 const when = (days: number, hour: number) => {
   const d = new Date(Date.now() + days * 86_400_000)
@@ -70,11 +73,15 @@ test('ops plans a trip, a clash is flagged, then the driver starts it from the p
   const ctx = await browser.newContext({ viewport: { width: 412, height: 860 } })
   const phone = await ctx.newPage()
   await login(phone, '9000000088', '4821')
+  await expect(phone.locator('button', { hasText: 'Truck is loaded' })).toBeVisible() // loading comes first, with a photo
+  await expect(phone.getByRole('button', { name: /Start trip/ })).toHaveCount(0)
+  await phone.getByLabel('Truck is loaded').setInputFiles(PHOTO)
   await expect(phone.getByRole('button', { name: /Start trip/ })).toBeVisible()
   await shot(phone, 'driver-start-trip')
   await phone.getByRole('button', { name: /Start trip/ }).click()
   await expect(phone.getByRole('button', { name: /Start trip/ })).toHaveCount(0)
-  await expect(phone.getByRole('link', { name: /POD/ })).toBeVisible() // the camera button takes over once on the road
+  await expect(phone.getByRole('button', { name: /Goods reached/ })).toBeVisible() // once on the road: hand over with the receiver's code, then the photo
+  await expect(phone.getByRole('button', { name: /Delay or problem/ })).toBeVisible()
   await ctx.close()
 
   await page.reload()

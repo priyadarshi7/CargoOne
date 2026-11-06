@@ -17,7 +17,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.db import get_session
+from app.lateness import check_late
 from app.models import AccessLink, AuditLog, LinkKind, LocationPing, Role, Trip, TripState, User, Vehicle
+from app.notify.service import safely
 from app.ratelimit import RateLimiter
 from app.routers.client_view import _hash
 from app.security import require_roles
@@ -80,6 +82,7 @@ async def add_pings(trip_id: uuid.UUID, body: PingBatch, user: Driver, session: 
     # Idempotent: the phone retries after a bad connection and the same fix must not be stored twice.
     result = await session.execute(pg_insert(LocationPing).values(rows).on_conflict_do_nothing(constraint="uq_ping_trip_time"))
     await session.commit()
+    await safely(session, check_late(session, trip))
     return {"stored": result.rowcount, "received": len(rows)}
 
 

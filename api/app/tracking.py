@@ -44,3 +44,9 @@ def movement(fixes: list[Fix], now: datetime, *, stale_after: timedelta, stopped
     if stopped_for >= stopped_after:
         return "stopped", int(stopped_for.total_seconds() // 60)
     return "moving", 0
+
+
+def eta(last: Fix, dest_lat: float, dest_lng: float, *, speed_kmh: float, road_factor: float) -> datetime:
+    """When the truck should arrive: the straight line to the drop point, stretched for real roads, at an average speed. An estimate, shown as one."""
+    metres = haversine_m(last, Fix(dest_lat, dest_lng, last.at)) * road_factor
+    return last.at + timedelta(seconds=metres / 1000 / max(speed_kmh, 5) * 3600)

@@ -18,6 +18,7 @@ from app.routers import (
     expenses,
     home,
     imports,
+    journey,
     links,
     notifications,
     onboard,
@@ -48,6 +49,7 @@ app.add_middleware(
 )
 app.include_router(auth.router)
 app.include_router(trips.router)
+app.include_router(journey.router)
 app.include_router(pods.router)
 app.include_router(review.router)
 app.include_router(billing.router)

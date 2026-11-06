@@ -19,6 +19,7 @@ from app.notify.whatsapp import SendResult, render
 log = logging.getLogger("cargoone.email")
 
 SUBJECTS = {
+    "shipment_update": {"en": "CargoOne: update on your shipment {trip_code}", "hi": "CargoOne: आपकी खेप {trip_code} की जानकारी", "mr": "CargoOne: तुमच्या खेप {trip_code} बद्दल माहिती"},
     "request_received": {"en": "CargoOne: we received your transport request {reference}", "hi": "CargoOne: आपका ट्रांसपोर्ट अनुरोध {reference} मिल गया",
                          "mr": "CargoOne: तुमची वाहतूक विनंती {reference} मिळाली"},
     "request_update": {"en": "CargoOne: update on your transport request {reference}", "hi": "CargoOne: आपके ट्रांसपोर्ट अनुरोध {reference} की जानकारी",

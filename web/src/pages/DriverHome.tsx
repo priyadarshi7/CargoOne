@@ -1,7 +1,9 @@
-import { Camera, CircleCheck, Clock, Eye, FileCheck2, MapPin, Navigation, Phone, Play, RotateCcw, Volume2, XCircle, type LucideIcon } from 'lucide-react'
-import { useState } from 'react'
+import { Camera, CircleCheck, Clock, Eye, FileCheck2, KeyRound, MapPin, Navigation, PackageCheck, Phone, Play, TriangleAlert, RotateCcw, Volume2, XCircle, type LucideIcon } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import DriverInbox from '../components/DriverInbox'
+import { DeliveryCodeForm, RoadEventForm, Sheet } from '../components/DriverSheets'
+import { compressPhoto } from '../lib/capture/compress'
 import DriverShell from '../components/DriverShell'
 import StaleNote from '../components/StaleNote'
 import DriverTripDetails from '../components/DriverTripDetails'
@@ -41,6 +43,10 @@ export default function DriverHome() {
   const [starting, setStarting] = useState(false)
   const [later, setLater] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  const [sheet, setSheet] = useState<'deliver' | 'problem' | null>(null)
+  const [saving, setSaving] = useState(false)
+  const photoInput = useRef<HTMLInputElement>(null)
+  const acked = useRef(new Set<string>())
 
   const next = trips?.find((x) => OPEN.includes(x.pod_status) && x.state !== 'cancelled')
   const onRoad = trips?.find((x) => x.state === 'in_transit' && OPEN.includes(x.pod_status))
@@ -54,6 +60,26 @@ export default function DriverHome() {
     await api('/tracking/consent', { method: 'POST' })
     const me = await api<User>('/auth/me')
     adopt(tokenStore.get() ?? '', me)
+  }
+
+  // The office sees that the driver has opened the job. A courtesy signal, so it is not queued: it simply tries again next time.
+  useEffect(() => {
+    const x = trips?.find((v) => OPEN.includes(v.pod_status) && v.state === 'planned')
+    if (!x || x.acknowledged_at || acked.current.has(x.id) || !navigator.onLine) return
+    acked.current.add(x.id)
+    api(`/trips/${x.id}/ack`, { method: 'POST' }).then(() => mutate((all) => all.map((v) => (v.id === x.id ? { ...v, acknowledged_at: new Date().toISOString() } : v)))).catch(() => acked.current.delete(x.id))
+  }, [trips, mutate])
+
+  async function loadedPhoto(id: string, file: File) {
+    setSaving(true)
+    try {
+      const photo = await compressPhoto(file)
+      await enqueueAction('loaded', { trip_id: id }, photo) // safe on the phone first, like starting
+      mutate((all) => all.map((x) => (x.id === id ? { ...x, loaded_at: new Date().toISOString() } : x)))
+      const before = navigator.onLine
+      await flushOutbox().catch(() => undefined)
+      if (!before) setToast(t('drv.savedLoaded'))
+    } finally { setSaving(false) }
   }
 
   async function start(id: string) {
@@ -128,7 +154,15 @@ export default function DriverHome() {
             <p className="mt-4 text-sm text-muted">{next.trip_code} · {next.vehicle}</p>
           </div>
 
-          {next.state === 'planned' ? (
+          {next.state === 'planned' && !next.loaded_at ? (
+            <>
+              <input ref={photoInput} type="file" accept="image/*" capture="environment" aria-label={t('drv.loaded')} className="sr-only" tabIndex={-1}
+                onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void loadedPhoto(next.id, f) }} />
+              <button onClick={() => photoInput.current?.click()} disabled={saving} className={`${big} h-24 bg-ok text-on-solid disabled:opacity-60`}>
+                <PackageCheck size={36} aria-hidden /> <span className="text-left leading-tight">{t('drv.loaded')}<span className="block text-sm font-normal opacity-80">{t('drv.loadedB')}</span></span>
+              </button>
+            </>
+          ) : next.state === 'planned' ? (
             <>
               {(() => {
                 const from = next.planned_start ? new Date(new Date(next.planned_start).getTime() - EARLY_H * 3_600_000) : null
@@ -143,6 +177,10 @@ export default function DriverHome() {
                 )
               })()}
             </>
+          ) : next.needs_code ? (
+            <button onClick={() => setSheet('deliver')} className={`${big} h-24 bg-ok text-on-solid`}>
+              <KeyRound size={36} aria-hidden /> <span className="text-left leading-tight">{t('drv.deliver')}<span className="block text-sm font-normal opacity-80">{t('drv.deliverB')}</span></span>
+            </button>
           ) : (
             <Link to={`/driver/trip/${next.id}`} className={`${big} h-24 bg-ink text-surface`}>
               <Camera size={36} aria-hidden /> <span className="text-left leading-tight">{t('drv.photo')}<span className="block text-sm font-normal opacity-80">{t('drv.photoB')}</span></span>
@@ -156,6 +194,9 @@ export default function DriverHome() {
               ? <a href={phoneTo(next) ?? undefined} className={`${big} h-16 border border-line text-lg`}><Phone size={24} aria-hidden /> {t('drv.call')}</a>
               : <span className={`${big} h-16 border border-line text-lg opacity-40`} aria-disabled="true"><Phone size={24} aria-hidden /> {t('drv.call')}</span>}
           </div>
+          {next.state === 'in_transit' && (
+            <button onClick={() => setSheet('problem')} className={`${big} h-16 border border-line text-lg`}><TriangleAlert size={24} aria-hidden /> {t('drv.problem')}</button>
+          )}
         </section>
       )}
 
@@ -184,6 +225,18 @@ export default function DriverHome() {
             })}
           </ul>
         </section>
+      )}
+      {sheet === 'deliver' && next && (
+        <Sheet title={t('drv.deliver')} lang={lang} onClose={() => setSheet(null)}>
+          <DeliveryCodeForm lang={lang} send={async (b) => { await api(`/trips/${next.id}/deliver`, { method: 'POST', body: JSON.stringify(b) }) }}
+            onDone={() => { mutate((all) => all.map((x) => (x.id === next.id ? { ...x, needs_code: false, state: 'delivered', delivery_confirmed_at: new Date().toISOString() } : x))); setSheet(null) }} />
+        </Sheet>
+      )}
+      {sheet === 'problem' && next && (
+        <Sheet title={t('drv.problem')} lang={lang} onClose={() => setSheet(null)}>
+          <RoadEventForm lang={lang} send={async (b) => { await api(`/trips/${next.id}/events`, { method: 'POST', body: JSON.stringify(b) }) }}
+            onDone={() => { setSheet(null); setToast(t('drv.pSent')) }} />
+        </Sheet>
       )}
     </DriverShell>
   )

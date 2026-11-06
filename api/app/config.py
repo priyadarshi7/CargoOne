@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     ai_confidence_threshold: float = 0.85
     max_image_bytes: int = 300 * 1024
     max_retakes: int = 2
+    eta_speed_kmh: float = 40.0  # average truck speed used for the arrival estimate
+    eta_road_factor: float = 1.3  # roads are longer than the straight line between two points
+    late_grace_min: int = 30  # the arrival estimate may pass the planned end by this much before anyone is told
     start_early_hours: int = 3  # a driver can start a trip this long before its planned start, not earlier
     # KPI targets and the baseline from the client brief (used by the dashboards)
     baseline_pod_to_invoice_days: float = 18.0

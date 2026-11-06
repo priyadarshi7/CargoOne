@@ -13,6 +13,8 @@ from app.db import get_session
 from app.events import record
 from app.lrdoc import LrData, build_lr_pdf
 from app.models import AuditLog, Branch, Client, Role, Trip, TripState, User, Vehicle
+from app.notify.service import safely
+from app.notify.shipment import tell_parties
 from app.security import require_roles
 
 router = APIRouter(prefix="/trips", tags=["trips"])
@@ -51,6 +53,10 @@ class DriverTripOut(TripOut):
     consignee_phone: str | None
     destination_lat: float | None  # exact drop point when it was picked from the map suggestions: Navigate uses it
     destination_lng: float | None
+    acknowledged_at: datetime | None
+    loaded_at: datetime | None  # the truck is loaded (with a photo): until then the driver cannot start
+    delivery_confirmed_at: datetime | None
+    needs_code: bool  # the receiver's 4-digit code is still to be entered before the proof-of-delivery photo
 
 
 _COLUMNS = (Trip, Client.name, Vehicle.reg_no, Vehicle.is_hired, Branch.name)
@@ -94,7 +100,9 @@ async def my_trips(
     rows = (await session.execute(_query().where(Trip.driver_id == user.id))).all()
     return [DriverTripOut(**_out(r).model_dump(), material=r[0].material, weight_tonnes=float(r[0].weight_tonnes) if r[0].weight_tonnes is not None else None,
                           packages=r[0].packages, consignee_name=r[0].consignee_name, consignee_phone=r[0].consignee_phone,
-                          destination_lat=r[0].destination_lat, destination_lng=r[0].destination_lng) for r in rows]
+                          destination_lat=r[0].destination_lat, destination_lng=r[0].destination_lng, acknowledged_at=r[0].acknowledged_at,
+                          loaded_at=r[0].loaded_at, delivery_confirmed_at=r[0].delivery_confirmed_at,
+                          needs_code=bool(r[0].delivery_code) and r[0].delivery_confirmed_at is None) for r in rows]
 
 
 @router.get("/{trip_id}/lr.pdf")
@@ -136,6 +144,8 @@ async def start_trip(
         early = get_settings().start_early_hours
         if user.role == Role.driver and trip.planned_start and now < trip.planned_start - timedelta(hours=early):
             raise HTTPException(status.HTTP_409_CONFLICT, f"This trip is planned for {trip.planned_start.astimezone(IST):%d %b, %H:%M}. You can start it up to {early} hours before.")
+        if user.role == Role.driver and trip.loaded_at is None:
+            raise HTTPException(status.HTTP_409_CONFLICT, "Confirm that the truck is loaded (with a photo) before starting")
         busy = await session.execute(select(Trip.trip_code).where(Trip.state == TripState.in_transit, Trip.id != trip.id, (Trip.vehicle_id == trip.vehicle_id) | (Trip.driver_id == trip.driver_id if trip.driver_id else False)).limit(1))
         if (other := busy.scalar()) is not None:
             raise HTTPException(status.HTTP_409_CONFLICT, f"The truck or driver is still on {other}. Finish that trip first.")
@@ -143,6 +153,7 @@ async def start_trip(
         session.add(AuditLog(actor_id=user.id, action="trip.start", entity="trip", entity_id=trip.trip_code))
         record(session, trip, "started", actor=user.id, public=True)
         await session.commit()
+        await safely(session, tell_parties(session, trip, "started"))
     elif trip.state != TripState.in_transit:
         raise HTTPException(status.HTTP_409_CONFLICT, f"This trip is {trip.state.value}; it cannot be started")
     return _out((await session.execute(_query().where(Trip.id == trip.id))).one())

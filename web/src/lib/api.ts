@@ -80,6 +80,10 @@ export interface DriverTrip extends Trip {
   consignee_phone: string | null
   destination_lat: number | null // the exact drop point, when the office picked it from the map suggestions
   destination_lng: number | null
+  acknowledged_at: string | null
+  loaded_at: string | null // the truck is loaded (photo sent): the driver can start only after this
+  delivery_confirmed_at: string | null
+  needs_code: boolean // the receiver's 4-digit code is still to be entered
 }
 export type TripState = 'planned' | 'in_transit' | 'delivered' | 'cancelled'
 export type PodStatus =

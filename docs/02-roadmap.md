@@ -209,10 +209,10 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 One shipment, one link, one timeline. Built in stages; each is on main when its box is ticked.
 
 - [x] **Booking rules.** A trip needs a start time (it never showed on the calendar without one) and the e-way bill's validity, which must cover the trip; a start in the past, more than a year ahead, or a trip longer than 60 days is refused. One e-way bill covers one trip until that trip is cancelled (also checked in imports, with LR numbers). A driver can start a trip only within 3 hours of its planned time and never while the truck or driver is still on another trip (the office can start it for them). Cancelling and re-planning (truck, driver or time) need a reason, which the driver is told and the audit trail keeps.
-- [ ] Dispatch: the driver's acknowledgement shows to the office.
-- [ ] Loading: the driver confirms "loaded" with a photo of the loaded truck and LR before the trip starts.
-- [ ] In transit: delay and breakdown posts, ETA from the live position, late alerts.
-- [ ] Delivery: the receiver's 4-digit code, shortage or damage noted at the door.
+- [x] **Dispatch.** The driver opening the job is recorded and shown to the office (Journey dialog on the Trips page).
+- [x] **Loading.** The driver confirms "truck is loaded" with a photo of the loaded truck and LR before Start works (saved on the phone first, sent when there is network; the office can confirm without a photo if it says why).
+- [x] **In transit.** The driver reports a delay or a truck problem in a few taps (reasons, no typing); the arrival estimate comes from the live position and the exact drop point; a truck that will arrive late, or after its e-way bill runs out, is flagged once every 3 hours on the timeline. The estimate uses 40 km/h and a 1.3 road factor (settings), and is shown as an estimate.
+- [x] **Delivery.** Each trip gets a 4-digit code the receiver reads out; the driver (app or hired-driver link) enters it, noting any shortage or damage, and only then can the proof-of-delivery photo be sent. Five wrong tries lock it for 15 minutes; only the office can deliver without the code, and must say why.
 - [ ] Shipment link: one page with the timeline, live map and ETA, for the client (with price, POD and invoice) and the receiver (with the code, no price); WhatsApp at each step.
 - [ ] Billing: invoice marked sent by a person, payments recorded, invoiced and paid shown to the client.
 - [ ] Close: a paid trip is closed and locked; reopening needs an admin and a reason.

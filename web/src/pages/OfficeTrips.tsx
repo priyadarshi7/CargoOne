@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { StatusBadge } from '../components/StatusBadge'
 import { Link } from 'react-router-dom'
 import { ClientLinkDialog } from '../components/ClientLinkDialog'
+import { ShipmentDialog } from '../components/ShipmentDialog'
 import { UploadLinkDialog } from '../components/UploadLinkDialog'
 import { api, download, type Trip } from '../lib/api'
 import { useAuth } from '../lib/auth'
@@ -20,6 +21,7 @@ export default function OfficeTrips() {
   const canSendLink = user?.role === 'ops' || user?.role === 'billing' || user?.role === 'admin'
   const [linkFor, setLinkFor] = useState<Trip | null>(null)
   const [shareFor, setShareFor] = useState<Trip | null>(null)
+  const [journeyFor, setJourneyFor] = useState<Trip | null>(null)
   const [trips, setTrips] = useState<Trip[] | null>(null)
   const [error, setError] = useState(false)
   const [note, setNote] = useState<string | null>(null)
@@ -64,7 +66,7 @@ export default function OfficeTrips() {
           <tbody>
             {trips.map((t) => (
               <tr key={t.id} className="border-t border-line">
-                <td className="px-4 py-3 font-medium">{t.trip_code}<div className="text-xs font-normal text-muted">{t.lr_no}{canSendLink && <button onClick={() => void download(`/trips/${t.id}/lr.pdf`, `${t.trip_code}-LR.pdf`).catch(() => setNote(tx('lr.pdfFail')))} className="ml-2 underline hover:text-accent">{tx('lr.pdf')}</button>}</div></td>
+                <td className="px-4 py-3 font-medium"><button onClick={() => setJourneyFor(t)} className="underline-offset-2 hover:text-accent hover:underline" aria-label={`${tx('sh.open')} ${t.trip_code}`}>{t.trip_code}</button><div className="text-xs font-normal text-muted">{t.lr_no}{canSendLink && <button onClick={() => void download(`/trips/${t.id}/lr.pdf`, `${t.trip_code}-LR.pdf`).catch(() => setNote(tx('lr.pdfFail')))} className="ml-2 underline hover:text-accent">{tx('lr.pdf')}</button>}</div></td>
                 <td className="px-4 py-3">{t.client}</td>
                 <td className="px-4 py-3">{t.vehicle}{t.is_hired && <span className="ml-1.5 text-xs text-muted">{tx('trips.hired')}</span>}</td>
                 <td className="px-4 py-3">{t.destination}</td>
@@ -95,6 +97,7 @@ export default function OfficeTrips() {
         </table>
       </div>
       {linkFor && <UploadLinkDialog trip={linkFor} onClose={() => setLinkFor(null)} />}
+      {journeyFor && <ShipmentDialog trip={journeyFor} canAct={user?.role === 'ops' || user?.role === 'admin'} onClose={() => setJourneyFor(null)} />}
       {shareFor && <ClientLinkDialog trip={shareFor} onClose={() => setShareFor(null)} />}
     </div>
   )
