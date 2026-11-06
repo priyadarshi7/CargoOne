@@ -6,6 +6,7 @@ import { DocSlots, DRIVER_DOCS, PendingDocs, uploadPending } from './Docs'
 import InviteDialog, { type Invite } from './Invite'
 import type { Truck } from './TrucksTab'
 import { btnGhost, btnPrimary, Facts, Field, FormModal, inputCls, Modal, Secret, StatusPill, Table } from './ui'
+import PhoneInput from '../../components/PhoneInput'
 
 export interface Driver {
   id: string; name: string; phone: string | null; language: string; branch: string | null; vendor_id: string | null; vendor: string | null
@@ -131,7 +132,7 @@ function DriverForm({ driver, vendors, trucks, onClose, onSaved }: { driver: Dri
     <FormModal title={driver ? driver.name : t('setup.drv.add')} onClose={onClose} onSubmit={save} wide>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label={t('drv.name')}><input className={inputCls} required minLength={2} value={f.name} onChange={set('name')} /></Field>
-        <Field label={t('drv.phone')} hint={t('setup.drv.phoneHint')}><input className={inputCls} required inputMode="tel" value={f.phone} onChange={set('phone')} /></Field>
+        <PhoneInput label={t('drv.phone')} hint={t('setup.drv.phoneHint')} required value={f.phone} onChange={(v) => setF({ ...f, phone: v })} />
         <Field label={t('onb.drv.licenceNo')}><input className={inputCls} required value={f.licence_no} onChange={set('licence_no')} /></Field>
         <Field label={t('onb.drv.licenceExpiry')}><input type="date" className={inputCls} required value={f.licence_expiry} onChange={set('licence_expiry')} /></Field>
         <Field label={t('onb.drv.employment')}>

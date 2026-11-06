@@ -2,6 +2,7 @@ import { Check, Copy, Link2, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { api, ApiError, type Trip } from '../lib/api'
 import { useI18n } from '../lib/i18n'
+import PhoneInput from './PhoneInput'
 
 interface LinkOut { url: string; expires_at: string; sms_sent: boolean }
 const LANGS = [['hi', 'हिन्दी'], ['mr', 'मराठी'], ['en', 'English']] as const
@@ -62,8 +63,7 @@ export function UploadLinkDialog({ trip, onClose }: { trip: Trip; onClose: () =>
         {!link ? (
           <>
             <p className="text-sm text-muted">{t('ul.intro')}</p>
-            <label className="block space-y-1 text-sm"><span className="text-muted">{t('ul.phone')}</span>
-              <input className={field} inputMode="tel" placeholder="e.g. 9876543210" value={phone} onChange={(e) => setPhone(e.target.value)} /></label>
+            <PhoneInput label={t('ul.phone')} value={phone} onChange={setPhone} />
             <fieldset className="space-y-1 text-sm">
               <legend className="text-muted">{t('ul.lang')}</legend>
               <div className="flex gap-2">

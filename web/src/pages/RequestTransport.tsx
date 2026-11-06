@@ -1,5 +1,7 @@
 import { ArrowLeft, CircleCheck, Truck } from 'lucide-react'
 import { useState, type FormEvent, type ReactNode } from 'react'
+import PhoneInput from '../components/PhoneInput'
+import PlaceInput from '../components/PlaceInput'
 import { Link } from 'react-router-dom'
 import { ThemeToggle } from '../components/ThemeToggle'
 import { api, ApiError } from '../lib/api'
@@ -32,7 +34,7 @@ export function PublicFrame({ children, wide }: { children: ReactNode; wide?: bo
   )
 }
 
-const blank = { company_name: '', contact_name: '', phone: '', email: '', gstin: '', origin: '', destination: '', material: '', weight_tonnes: '', truck_type: '', pickup_date: '', notes: '', consent: false, website: '' }
+const blank = { company_name: '', contact_name: '', phone: '', email: '', gstin: '', origin: '', destination: '', origin_lat: null as number | null, origin_lng: null as number | null, destination_lat: null as number | null, destination_lng: null as number | null, material: '', weight_tonnes: '', truck_type: '', pickup_date: '', notes: '', consent: false, website: '' }
 
 /** The public page where a company asks for transport. No login. Hidden field `website` is a trap for bots. */
 export default function RequestTransport() {
@@ -93,7 +95,7 @@ export default function RequestTransport() {
             {label(t('req.company'), <input className={field} required minLength={2} maxLength={160} value={f.company_name} onChange={set('company_name')} autoComplete="organization" />)}
             <div className="grid gap-4 sm:grid-cols-2">
               {label(t('req.contact'), <input className={field} required minLength={2} maxLength={120} value={f.contact_name} onChange={set('contact_name')} autoComplete="name" />)}
-              {label(t('req.phone'), <input className={field} required inputMode="tel" value={f.phone} onChange={set('phone')} autoComplete="tel" />, t('req.phoneHint'))}
+              <PhoneInput label={t('req.phone')} hint={t('req.phoneHint')} required value={f.phone} onChange={(v) => setF({ ...f, phone: v })} />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               {label(t('req.email'), <input className={field} type="email" value={f.email} onChange={set('email')} autoComplete="email" />)}
@@ -106,8 +108,8 @@ export default function RequestTransport() {
           <fieldset className="space-y-4">
             <legend className="mb-1 text-base font-semibold">2. {t('req.s2')}</legend>
             <div className="grid gap-4 sm:grid-cols-2">
-              {label(t('req.origin'), <input className={field} required minLength={2} maxLength={120} value={f.origin} onChange={set('origin')} />)}
-              {label(t('req.destination'), <input className={field} required minLength={2} maxLength={120} value={f.destination} onChange={set('destination')} />)}
+              <PlaceInput label={t('req.origin')} required value={f.origin} lat={f.origin_lat} lng={f.origin_lng} onChange={(text, pos) => setF({ ...f, origin: text, origin_lat: pos?.lat ?? null, origin_lng: pos?.lng ?? null })} />
+              <PlaceInput label={t('req.destination')} required value={f.destination} lat={f.destination_lat} lng={f.destination_lng} onChange={(text, pos) => setF({ ...f, destination: text, destination_lat: pos?.lat ?? null, destination_lng: pos?.lng ?? null })} />
             </div>
             <div className="grid gap-4 sm:grid-cols-3">
               {label(t('req.material'), <input className={field} required minLength={2} maxLength={160} value={f.material} onChange={set('material')} />)}

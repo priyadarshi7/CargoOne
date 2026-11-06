@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../../lib/api'
 import { useI18n } from '../../lib/i18n'
 import { btnGhost, btnPrimary, Field, FormModal, inputCls, StatusPill, Table } from './ui'
+import PhoneInput from '../../components/PhoneInput'
 
 interface Vendor { id: string; name: string; contact_name: string | null; phone: string | null; notes: string | null; is_active: boolean; trucks: number; drivers: number }
 
@@ -52,7 +53,7 @@ function VendorForm({ vendor, onClose, onSaved }: { vendor: Vendor | null; onClo
       <Field label={t('setup.vendor.name')}><input className={inputCls} required minLength={2} value={f.name} onChange={set('name')} /></Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label={t('setup.vendor.contact')}><input className={inputCls} value={f.contact_name} onChange={set('contact_name')} /></Field>
-        <Field label={t('setup.vendor.phone')}><input className={inputCls} inputMode="tel" value={f.phone} onChange={set('phone')} /></Field>
+        <PhoneInput label={t('setup.vendor.phone')} value={f.phone} onChange={(v) => setF({ ...f, phone: v })} />
       </div>
       <Field label={t('setup.vendor.notes')}><input className={inputCls} maxLength={300} value={f.notes} onChange={set('notes')} /></Field>
       {vendor && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.is_active} onChange={(e) => setF({ ...f, is_active: e.target.checked })} /> {t('setup.active')}</label>}

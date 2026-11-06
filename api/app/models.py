@@ -208,6 +208,10 @@ class Trip(Base):
     eway_bill_no: Mapped[str] = mapped_column(String(12))  # every trip links to an e-way bill
     origin: Mapped[str] = mapped_column(String(120))
     destination: Mapped[str] = mapped_column(String(120))
+    origin_lat: Mapped[float | None] = mapped_column(Float)  # the exact place picked from the suggestions; None when it was typed freely
+    origin_lng: Mapped[float | None] = mapped_column(Float)
+    destination_lat: Mapped[float | None] = mapped_column(Float)
+    destination_lng: Mapped[float | None] = mapped_column(Float)
     freight_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
     consignee_name: Mapped[str | None] = mapped_column(String(160))  # PII
     consignee_phone: Mapped[str | None] = mapped_column(String(20))  # PII
@@ -407,6 +411,10 @@ class TransportRequest(Base):
     language: Mapped[str] = mapped_column(String(2), default="en")
     origin: Mapped[str] = mapped_column(String(120))
     destination: Mapped[str] = mapped_column(String(120))
+    origin_lat: Mapped[float | None] = mapped_column(Float)  # the exact place picked from the suggestions; None when it was typed freely
+    origin_lng: Mapped[float | None] = mapped_column(Float)
+    destination_lat: Mapped[float | None] = mapped_column(Float)
+    destination_lng: Mapped[float | None] = mapped_column(Float)
     material: Mapped[str] = mapped_column(String(160))
     weight_tonnes: Mapped[Decimal | None] = mapped_column(Numeric(8, 2))
     truck_type: Mapped[str | None] = mapped_column(String(60))

@@ -14,7 +14,7 @@ test('office sends a link; a hired driver with NO login uploads the POD from it'
   await row.getByRole('button', { name: 'Send link' }).click()
 
   const dialog = page.getByRole('dialog', { name: 'Upload link' })
-  await dialog.getByPlaceholder('e.g. 9876543210').fill('9876543210')
+  await dialog.getByLabel("Driver's mobile (optional)").fill('9876543210')
   await dialog.getByRole('button', { name: 'मराठी' }).click()
   await shot(page, 'office-link-dialog')
   await dialog.getByRole('button', { name: 'Create link and send SMS' }).click()

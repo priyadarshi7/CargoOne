@@ -27,6 +27,7 @@ from app.db import get_session
 from app.models import AuditLog, Client, Role, TransportRequest, Trip, User
 from app.notify.service import safely, send_email, send_to_phone
 from app.phones import clean_phone
+from app.places import Coords
 from app.ratelimit import RateLimiter
 from app.security import require_roles
 
@@ -58,7 +59,7 @@ def status_token(reference: str) -> str:
     return f"{reference}.{base64.urlsafe_b64encode(sig).decode().rstrip('=')[:32]}"
 
 
-class RequestIn(BaseModel):
+class RequestIn(Coords):
     company_name: str = Field(min_length=2, max_length=160)
     contact_name: str = Field(min_length=2, max_length=120)
     phone: str
@@ -112,6 +113,7 @@ async def submit(body: RequestIn, request: Request, session: Session) -> dict:
         gstin=body.gstin, language=body.language, origin=body.origin.strip(), destination=body.destination.strip(), material=body.material.strip(),
         weight_tonnes=body.weight_tonnes, truck_type=(body.truck_type or "").strip() or None, pickup_date=body.pickup_date, notes=(body.notes or "").strip() or None,
         consent_at=datetime.now(UTC),
+        origin_lat=body.origin_lat, origin_lng=body.origin_lng, destination_lat=body.destination_lat, destination_lng=body.destination_lng,
     )
     session.add(req)
     session.add(AuditLog(actor_id=None, action="request.submit", entity="request", entity_id=ref))
@@ -166,6 +168,7 @@ def _out(r: TransportRequest, client: str | None = None, trip_code: str | None =
     return {
         "id": str(r.id), "reference": r.reference, "status": r.status, "created_at": r.created_at.isoformat(), "company_name": r.company_name,
         "contact_name": r.contact_name, "phone": r.phone, "email": r.email, "gstin": r.gstin, "language": r.language, "origin": r.origin, "destination": r.destination,
+        "origin_lat": r.origin_lat, "origin_lng": r.origin_lng, "destination_lat": r.destination_lat, "destination_lng": r.destination_lng,
         "material": r.material, "weight_tonnes": float(r.weight_tonnes) if r.weight_tonnes is not None else None, "truck_type": r.truck_type,
         "pickup_date": r.pickup_date.isoformat(), "notes": r.notes, "client_id": str(r.client_id) if r.client_id else None, "client": client,
         "trip_id": str(r.trip_id) if r.trip_id else None, "trip_code": trip_code, "quote_amount": float(r.quote_amount) if r.quote_amount is not None else None,

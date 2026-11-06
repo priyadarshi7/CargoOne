@@ -32,6 +32,8 @@ This is an engineering record, not legal advice - the DPDP Act 2023 obligations 
 - **Safety rails**: demo seed and demo data refuse to run outside dev/test; non-dev refuses to start with the default/short JWT secret; tests use their own database and never call a real AI.
 - **Secrets**: `.env` git-ignored. (A key was once printed into a development session transcript - rotated by owner; avoid `cat`/`sed` on `.env`.)
 
+- **Place search sends the typed place text to Photon (komoot, OpenStreetMap data)**, from our server, with a generic user agent and no names, phone numbers or account details. People are asked only for a place, not a home address; if the owner wants nothing to leave the machine, self-host Photon (decision 80). The public endpoint `/places/search` is rate-limited per address.
+
 ## Open before any real data / production
 1. **Retention + auto-delete** of POD images and personal fields (period to be agreed with the client; DPDP purpose limitation).
 2. **Notice / consent text** shown to drivers (and where consignee data is collected), plus a **data-principal request workflow** (access, correction, erasure).

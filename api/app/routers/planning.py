@@ -18,6 +18,7 @@ from app.lr import next_lr_no
 from app.models import AuditLog, Branch, Client, PodStatus, Role, Trip, TripState, User, Vehicle
 from app.notify.service import safely, trip_assigned, trip_update, when_text
 from app.phones import clean_phone
+from app.places import Coords
 from app.planning import overlaps, window
 from app.routers.requests import book, tell_requester
 from app.routers.setup import DOCS
@@ -37,7 +38,7 @@ class Clash(BaseModel):
     end: datetime | None
 
 
-class NewTrip(BaseModel):
+class NewTrip(Coords):
     client_id: uuid.UUID
     vehicle_id: uuid.UUID
     driver_id: uuid.UUID | None = None
@@ -199,6 +200,7 @@ async def create_trip(body: NewTrip, user: Planner, session: Session) -> dict:
         lr_no=lr_no, eway_bill_no=body.eway_bill_no, origin=(body.origin or get_settings().default_origin).strip(),
         destination=body.destination.strip(), freight_amount=body.freight_amount, pod_status=PodStatus.pending, state=TripState.planned,
         planned_start=body.planned_start, planned_end=body.planned_end,
+        origin_lat=body.origin_lat, origin_lng=body.origin_lng, destination_lat=body.destination_lat, destination_lng=body.destination_lng,
     )
     session.add(trip)
     session.add(AuditLog(actor_id=user.id, action="trip.create", entity="trip", entity_id=code, meta={"forced": body.force}))

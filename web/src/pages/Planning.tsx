@@ -2,13 +2,15 @@ import { Plus, TriangleAlert, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api, ApiError, download, type TripState } from '../lib/api'
+import PhoneInput from '../components/PhoneInput'
+import PlaceInput from '../components/PlaceInput'
 import { DocSlots, TRIP_DOCS } from './setup/Docs'
 import { useAuth } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
 
 interface BoardTrip { id: string; trip_code: string; lr_no: string; client: string; vehicle_id: string; driver_id: string | null; driver: string | null; origin: string; destination: string; state: TripState; planned_start: string | null; planned_end: string | null; started_at: string | null }
 interface Vehicle { id: string; reg_no: string; is_hired: boolean; availability?: string; capacity_tonnes?: number | null }
-interface Prefill { id: string; reference: string; client_id: string; origin: string; destination: string; material: string; weight_tonnes: number | null; pickup_date: string }
+interface Prefill { id: string; reference: string; client_id: string; origin: string; destination: string; origin_lat?: number | null; origin_lng?: number | null; destination_lat?: number | null; destination_lng?: number | null; material: string; weight_tonnes: number | null; pickup_date: string }
 interface Board { now: string; vehicles: Vehicle[]; trips: BoardTrip[] }
 interface Refs { clients: { id: string; name: string }[]; vehicles: Vehicle[]; drivers: { id: string; name: string; assigned_vehicle_id?: string | null }[]; branches: { id: string; name: string }[]; default_origin: string }
 
@@ -180,7 +182,7 @@ function TripDialog({ trip, prefill, refs, canPlan, onClose, onSaved }: { trip: 
   const locked = editing && (trip.state !== 'planned' || !canPlan)
   const [f, setF] = useState({
     client_id: prefill?.client_id ?? refs.clients[0]?.id ?? '', vehicle_id: trip?.vehicle_id ?? refs.vehicles[0]?.id ?? '', driver_id: trip?.driver_id ?? '',
-    origin: prefill?.origin ?? refs.default_origin, destination: prefill?.destination ?? trip?.destination ?? '', freight_amount: '', eway_bill_no: '', material: prefill?.material ?? '', weight_tonnes: prefill?.weight_tonnes?.toString() ?? '', packages: '', consignee_name: '', consignee_phone: '',
+    origin: prefill?.origin ?? refs.default_origin, destination: prefill?.destination ?? trip?.destination ?? '', origin_lat: (prefill?.origin_lat ?? null) as number | null, origin_lng: (prefill?.origin_lng ?? null) as number | null, destination_lat: (prefill?.destination_lat ?? null) as number | null, destination_lng: (prefill?.destination_lng ?? null) as number | null, freight_amount: '', eway_bill_no: '', material: prefill?.material ?? '', weight_tonnes: prefill?.weight_tonnes?.toString() ?? '', packages: '', consignee_name: '', consignee_phone: '',
     start: prefill ? `${prefill.pickup_date}T08:00` : toLocalInput(trip?.planned_start ?? null), end: toLocalInput(trip?.planned_end ?? null),
   })
   const [error, setError] = useState<string | null>(null)
@@ -206,7 +208,7 @@ function TripDialog({ trip, prefill, refs, canPlan, onClose, onSaved }: { trip: 
         await api(`/planning/trips/${trip.id}`, { method: 'PATCH', body: JSON.stringify({ vehicle_id: f.vehicle_id, driver_id: f.driver_id || null, ...times, force }) })
       } else {
         const made = await api<{ id: string; trip_code: string; lr_no: string }>('/planning/trips', { method: 'POST', body: JSON.stringify({
-          client_id: f.client_id, vehicle_id: f.vehicle_id, driver_id: f.driver_id || null, origin: f.origin || null, destination: f.destination,
+          client_id: f.client_id, vehicle_id: f.vehicle_id, driver_id: f.driver_id || null, origin: f.origin || null, destination: f.destination, origin_lat: f.origin_lat, origin_lng: f.origin_lng, destination_lat: f.destination_lat, destination_lng: f.destination_lng,
           freight_amount: f.freight_amount, eway_bill_no: f.eway_bill_no, material: f.material || null, weight_tonnes: f.weight_tonnes || null,
           packages: f.packages || null, request_id: prefill?.id ?? null, consignee_name: f.consignee_name || null, consignee_phone: f.consignee_phone || null, ...times, force }) })
         setCreated(made)
@@ -259,8 +261,8 @@ function TripDialog({ trip, prefill, refs, canPlan, onClose, onSaved }: { trip: 
             {sec(t('plan.sec.route'))}
             {label(t('plan.client'), <select className={field} value={f.client_id} onChange={(e) => set('client_id', e.target.value)}>{refs.clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>)}
             <div className="grid gap-4 sm:grid-cols-2">
-              {label(t('plan.origin'), <input className={field} value={f.origin} onChange={(e) => set('origin', e.target.value)} />)}
-              {label(t('plan.destination'), <input className={field} required value={f.destination} onChange={(e) => set('destination', e.target.value)} />)}
+              <PlaceInput label={t('plan.origin')} value={f.origin} lat={f.origin_lat} lng={f.origin_lng} onChange={(text, pos) => { setF({ ...f, origin: text, origin_lat: pos?.lat ?? null, origin_lng: pos?.lng ?? null }); setClash(false) }} />
+              <PlaceInput label={t('plan.destination')} required value={f.destination} lat={f.destination_lat} lng={f.destination_lng} onChange={(text, pos) => { setF({ ...f, destination: text, destination_lat: pos?.lat ?? null, destination_lng: pos?.lng ?? null }); setClash(false) }} />
             </div>
           </>
         )}
@@ -291,7 +293,7 @@ function TripDialog({ trip, prefill, refs, canPlan, onClose, onSaved }: { trip: 
             {sec(t('plan.sec.consignee'))}
             <div className="grid gap-4 sm:grid-cols-2">
               {label(t('plan.consignee'), <input className={field} maxLength={160} value={f.consignee_name} onChange={(e) => set('consignee_name', e.target.value)} />)}
-              {label(t('plan.consigneePhone'), <input className={field} inputMode="tel" value={f.consignee_phone} onChange={(e) => set('consignee_phone', e.target.value)} />)}
+              <PhoneInput label={t('plan.consigneePhone')} value={f.consignee_phone} onChange={(v) => set('consignee_phone', v)} />
             </div>
           </>
         )}

@@ -47,6 +47,8 @@ class DriverTripOut(TripOut):
     packages: int | None
     consignee_name: str | None
     consignee_phone: str | None
+    destination_lat: float | None  # exact drop point when it was picked from the map suggestions: Navigate uses it
+    destination_lng: float | None
 
 
 _COLUMNS = (Trip, Client.name, Vehicle.reg_no, Vehicle.is_hired, Branch.name)
@@ -89,7 +91,8 @@ async def my_trips(
 ) -> list[DriverTripOut]:
     rows = (await session.execute(_query().where(Trip.driver_id == user.id))).all()
     return [DriverTripOut(**_out(r).model_dump(), material=r[0].material, weight_tonnes=float(r[0].weight_tonnes) if r[0].weight_tonnes is not None else None,
-                          packages=r[0].packages, consignee_name=r[0].consignee_name, consignee_phone=r[0].consignee_phone) for r in rows]
+                          packages=r[0].packages, consignee_name=r[0].consignee_name, consignee_phone=r[0].consignee_phone,
+                          destination_lat=r[0].destination_lat, destination_lng=r[0].destination_lng) for r in rows]
 
 
 @router.get("/{trip_id}/lr.pdf")

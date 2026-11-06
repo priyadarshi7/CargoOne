@@ -138,7 +138,7 @@ export default function DriverHome() {
           )}
 
           <div className="grid grid-cols-2 gap-3">
-            <a href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(next.destination)}`} target="_blank" rel="noreferrer"
+            <a href={`https://www.google.com/maps/dir/?api=1&destination=${next.destination_lat != null && next.destination_lng != null ? `${next.destination_lat},${next.destination_lng}` : encodeURIComponent(next.destination)}`} target="_blank" rel="noreferrer"
               className={`${big} h-16 border border-line text-lg`}><Navigation size={24} aria-hidden /> {t('drv.navigate')}</a>
             {phoneTo(next)
               ? <a href={phoneTo(next) ?? undefined} className={`${big} h-16 border border-line text-lg`}><Phone size={24} aria-hidden /> {t('drv.call')}</a>

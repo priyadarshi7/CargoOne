@@ -78,6 +78,8 @@ export interface DriverTrip extends Trip {
   packages: number | null
   consignee_name: string | null
   consignee_phone: string | null
+  destination_lat: number | null // the exact drop point, when the office picked it from the map suggestions
+  destination_lng: number | null
 }
 export type TripState = 'planned' | 'in_transit' | 'delivered' | 'cancelled'
 export type PodStatus =

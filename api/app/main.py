@@ -21,6 +21,7 @@ from app.routers import (
     links,
     notifications,
     onboard,
+    places,
     planning,
     pods,
     push,
@@ -69,6 +70,7 @@ app.include_router(home.router)
 app.include_router(documents.router)
 app.include_router(devtools.router)
 app.include_router(notifications.router)
+app.include_router(places.router)
 app.include_router(push.router)
 app.include_router(onboard.router)
 app.include_router(requests.public)
