@@ -184,7 +184,7 @@ function TripDialog({ trip, prefill, refs, canPlan, onClose, onSaved }: { trip: 
   const locked = editing && (trip.state !== 'planned' || !canPlan)
   const [f, setF] = useState({
     client_id: prefill?.client_id ?? refs.clients[0]?.id ?? '', vehicle_id: trip?.vehicle_id ?? refs.vehicles[0]?.id ?? '', driver_id: trip?.driver_id ?? '',
-    origin: prefill?.origin ?? refs.default_origin, destination: prefill?.destination ?? trip?.destination ?? '', origin_lat: (prefill?.origin_lat ?? null) as number | null, origin_lng: (prefill?.origin_lng ?? null) as number | null, destination_lat: (prefill?.destination_lat ?? null) as number | null, destination_lng: (prefill?.destination_lng ?? null) as number | null, freight_amount: prefill?.quote_amount != null ? String(prefill.quote_amount) : '', eway_bill_no: '', material: prefill?.material ?? '', weight_tonnes: prefill?.weight_tonnes?.toString() ?? '', packages: '', consignee_name: '', consignee_phone: '',
+    origin: prefill?.origin ?? refs.default_origin, destination: prefill?.destination ?? trip?.destination ?? '', origin_lat: (prefill?.origin_lat ?? null) as number | null, origin_lng: (prefill?.origin_lng ?? null) as number | null, destination_lat: (prefill?.destination_lat ?? null) as number | null, destination_lng: (prefill?.destination_lng ?? null) as number | null, freight_amount: prefill?.quote_amount != null ? String(prefill.quote_amount) : '', eway_bill_no: '', material: prefill?.material ?? '', weight_tonnes: prefill?.weight_tonnes?.toString() ?? '', packages: '', consignee_name: '', consignee_phone: '', consignee_email: '',
     start: prefill ? prefillStart(prefill.pickup_date) : toLocalInput(trip?.planned_start ?? null), end: toLocalInput(trip?.planned_end ?? null), eway_until: '', reason: '',
   })
   const [error, setError] = useState<string | null>(null)
@@ -213,7 +213,7 @@ function TripDialog({ trip, prefill, refs, canPlan, onClose, onSaved }: { trip: 
         const made = await api<{ id: string; trip_code: string; lr_no: string }>('/planning/trips', { method: 'POST', body: JSON.stringify({
           client_id: f.client_id, vehicle_id: f.vehicle_id, driver_id: f.driver_id || null, origin: f.origin || null, destination: f.destination, origin_lat: f.origin_lat, origin_lng: f.origin_lng, destination_lat: f.destination_lat, destination_lng: f.destination_lng,
           freight_amount: f.freight_amount, eway_bill_no: f.eway_bill_no, material: f.material || null, weight_tonnes: f.weight_tonnes || null,
-          packages: f.packages || null, request_id: prefill?.id ?? null, consignee_name: f.consignee_name || null, consignee_phone: f.consignee_phone || null, ...times, eway_valid_until: fromLocalInput(f.eway_until), force }) })
+          packages: f.packages || null, request_id: prefill?.id ?? null, consignee_name: f.consignee_name || null, consignee_phone: f.consignee_phone || null, consignee_email: f.consignee_email || null, ...times, eway_valid_until: fromLocalInput(f.eway_until), force }) })
         setCreated(made)
         return
       }
@@ -301,6 +301,7 @@ function TripDialog({ trip, prefill, refs, canPlan, onClose, onSaved }: { trip: 
             <div className="grid gap-4 sm:grid-cols-2">
               {label(t('plan.consignee'), <input className={field} maxLength={160} value={f.consignee_name} onChange={(e) => set('consignee_name', e.target.value)} />)}
               <PhoneInput label={t('plan.consigneePhone')} value={f.consignee_phone} onChange={(v) => set('consignee_phone', v)} />
+              {label(t('plan.consigneeEmail'), <input className={field} type="email" maxLength={160} value={f.consignee_email} onChange={(e) => set('consignee_email', e.target.value)} />)}
             </div>
           </>
         )}

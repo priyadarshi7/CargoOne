@@ -3,7 +3,7 @@ private shipment link for that person. Never blocks the action that caused it (c
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Client, Trip, Vehicle
-from app.notify.service import send_to_phone, when_text
+from app.notify.service import send_email, send_to_phone, when_text
 from app.shipment import shipment_url
 
 L = ("en", "hi", "mr")
@@ -58,11 +58,15 @@ async def tell_parties(session: AsyncSession, trip: Trip, kind: str, only: str |
         if only and aud != only:
             continue
         phone = client.contact_phone if aud == "client" else trip.consignee_phone
+        email = None if aud == "client" else trip.consignee_email  # the receiver can also be reached by email
         name = (client.contact_name or client.name) if aud == "client" else (trip.consignee_name or "")
-        if not phone or phone in sent:
-            continue
-        sent.add(phone)
         link = shipment_url(trip, aud)
-        await send_to_phone(session, phone, lang, "shipment_update", {"name": name or "Sir/Madam", "trip_code": trip.trip_code, "update": text, "link": link},
-                            trip=trip, secret=link.rsplit("/", 1)[1])
+        values = {"name": name or "Sir/Madam", "trip_code": trip.trip_code, "update": text, "link": link}
+        if phone and phone not in sent:
+            sent.add(phone)
+            await send_to_phone(session, phone, lang, "shipment_update", values, trip=trip, secret=link.rsplit("/", 1)[1])
+        if email and email not in sent:
+            sent.add(email)
+            msg = await send_email(session, email, lang, "shipment_update", values, secret=link.rsplit("/", 1)[1])
+            msg.trip_id = trip.id
     await session.commit()

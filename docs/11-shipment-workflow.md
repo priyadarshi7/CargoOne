@@ -25,6 +25,7 @@ One shipment has one timeline. Everyone sees the part that is theirs. This is wh
 
 ## 5. Delivery
 
+- The receiver's link goes by WhatsApp to their phone and, when the trip has a receiver email, by email too (same link, same messages; the private part is masked in the log). Email needs the SMTP settings in `.env`.
 - The receiver opens their shipment page and reads out the 4-digit **delivery code**. The driver enters it, and notes anything short or damaged. Five wrong tries lock it for 15 minutes. Only then can the proof-of-delivery photo be sent. A hired driver does the same from the upload link.
 - Only the office can deliver without the code, and must say why.
 - The AI checks the photo as before: verified straight away, or sent to a person.

@@ -117,3 +117,17 @@ async def test_a_cancelled_trip_says_so_on_both_pages(client: AsyncClient, drive
     assert c["cancelled"] and r["cancelled"]
     assert any(e["kind"] == "cancelled" and e.get("note") == "Client postponed" for e in c["timeline"])
     assert all("note" not in e for e in r["timeline"])  # the reason is the client's business
+
+
+async def test_the_receiver_link_also_goes_by_email_when_the_trip_has_an_address(client: AsyncClient, driver: dict) -> None:
+    h, tid = await on_the_road(client, driver)
+    async with SessionLocal() as s:
+        trip = await s.get(Trip, uuid.UUID(tid))
+        trip.consignee_phone, trip.consignee_email = "9000000457", "receiver@example.com"
+        await s.commit()
+    assert (await client.get(f"/trips/{tid}/shipment-links", headers=h)).json()["receiver"]["has_email"] is True
+    assert (await client.post(f"/trips/{tid}/shipment-links/send?audience=receiver", headers=h)).status_code == 200
+    async with SessionLocal() as s:
+        mails = (await s.scalars(select(Message).where(Message.trip_id == uuid.UUID(tid), Message.channel == "email"))).all()
+    assert len(mails) == 1 and mails[0].to_masked == "r***@example.com"
+    assert "/s/" in mails[0].body and mails[0].body.count("•••") == 1  # the private address is cut out of the stored copy

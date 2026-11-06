@@ -196,3 +196,36 @@ def test_the_ocr_engine_reads_one_photo_at_a_time() -> None:
     assert most == 1
     lines = reader(photo)
     assert lines[0].text == "LR No: LR-1" and 0 <= lines[0].x < 1 and lines[0].w > 0
+
+
+FORM = [
+    Line(0, "LRNO:LR-88134", 0.95, 0.60, 0.06, 0.30, 0.03),
+    Line(1, "Remarks / Special Instructions:", 0.95, 0.01, 0.60, 0.35, 0.02),
+    Line(2, "Perfect shipment", 0.90, 0.02, 0.62, 0.20, 0.03),
+    Line(3, "Other Charges:", 0.95, 0.48, 0.60, 0.20, 0.02),
+    Line(4, "Terms & Conditions", 0.90, 0.00, 0.78, 0.30, 0.02),
+]
+
+
+def test_remarks_the_model_skipped_are_read_from_under_their_label() -> None:
+    res = merge(raw(remarks=None, remarks_lines=[], shortage_or_damage=False), FORM, "LR-88134")
+    assert res.remarks == "Perfect shipment" and not res.shortage_or_damage
+    assert by_field(res)["remarks"].source == "ocr" and by_field(res)["remarks"].y == pytest.approx(0.62)
+    worse = FORM[:2] + [Line(2, "short by 6 cartons", 0.9, 0.02, 0.62, 0.2, 0.03)]
+    assert merge(raw(remarks=None, remarks_lines=[], shortage_or_damage=False), worse, "LR-88134").shortage_or_damage  # the words decide, not only the model
+    assert merge(raw(remarks=None, remarks_lines=[]), LINES, "LR-88134").remarks is None  # no label, nothing invented
+
+
+async def test_a_stamp_and_signature_without_a_place_are_looked_for_again() -> None:
+    async def vlm(image, lines, expected):
+        return raw(stamp_box=None, signature_box=None, remarks=None, remarks_lines=[])
+
+    asked: list[str] = []
+
+    async def locate(image, what):
+        asked.append(what)
+        return {"found": True, "box": [480, 800, 630, 900]} if what == "stamp" else {"found": False, "box": None}
+
+    res = await LocalProvider("", "", 1, ocr=lambda _: LINES, vlm=vlm, locate=locate).extract(png(), "image/jpeg", "LR-88134")
+    assert asked == ["stamp", "signature"] and by_field(res)["stamp"].x == pytest.approx(0.48)
+    assert "signature" not in by_field(res) and res.signature_present  # present is still the model's call; only the box is missing

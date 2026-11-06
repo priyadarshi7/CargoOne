@@ -150,7 +150,7 @@ async def _links(session: AsyncSession, trip: Trip) -> dict:
         phone = client.contact_phone if (aud == "client" and client) else trip.consignee_phone
         name = (client.contact_name or client.name) if (aud == "client" and client) else trip.consignee_name
         text = f"{UPDATES['link'][lang]} {url}"
-        out[aud] = {"url": url, "to": name, "has_phone": bool(phone), "whatsapp": _whatsapp(phone, text)}
+        out[aud] = {"url": url, "to": name, "has_phone": bool(phone), "has_email": aud == "receiver" and bool(trip.consignee_email), "whatsapp": _whatsapp(phone, text)}
     out["views"] = {a: (await session.scalar(select(func.count()).select_from(AuditLog).where(AuditLog.action == "shipment.view", AuditLog.entity_id == trip.trip_code, AuditLog.meta["audience"].astext == a)) or 0)
                     for a in ("client", "receiver")}
     return out

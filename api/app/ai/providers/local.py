@@ -275,6 +275,35 @@ def ollama_signature(url: str, model: str, timeout_s: float, transport: httpx.As
     return ask
 
 
+LOCATE_SCHEMA = {"type": "object", "properties": {"found": {"type": "boolean"}, "box": {"type": ["array", "null"], "items": {"type": "number"}}}, "required": ["found", "box"]}
+LOCATE = {
+    "stamp": "Find the rubber stamp or seal (an ink stamp, often a frame with the word STAMP, initials or a company name) on this receipt.",
+    "signature": "Find the handwritten signature in the box labelled \"Receiver's (Consignee) Signature\" at the bottom of this receipt, or the nearest pen signature to it.",
+}
+
+Locate = Callable[[bytes, str], Awaitable[dict]]
+
+
+def ollama_locate(url: str, model: str, timeout_s: float, transport: httpx.AsyncBaseTransport | None = None) -> Locate:
+    """When the model says a stamp or signature is there but gives no place for it, ask only for the place. The answer is a box around
+    it on a 0 to 1000 scale. The box is only for the person reviewing; whether the thing is present was already decided."""
+    async def ask(image: bytes, what: str) -> dict:
+        question = (f"{LOCATE[what]} Give a tight bounding box as [left, top, right, bottom], each 0 to 1000 relative to the whole picture. "
+                    'JSON: {"found": true or false, "box": [...] or null}')
+        body = {"model": model, "stream": False, "format": LOCATE_SCHEMA, "think": False, "options": {"temperature": 0}, "keep_alive": "30m",
+                "messages": [{"role": "user", "content": question, "images": [base64.b64encode(jpeg(prepare(image))).decode()]}]}
+        try:
+            async with httpx.AsyncClient(timeout=timeout_s, transport=transport) as http:
+                res = await http.post(f"{url.rstrip('/')}/api/chat", json=body)
+            res.raise_for_status()
+            msg = res.json()["message"]
+            return json.loads(msg.get("content") or msg.get("thinking") or "")
+        except (httpx.HTTPError, KeyError, ValueError):
+            return {}  # no box: the photo is still judged on present / not present
+
+    return ask
+
+
 # ------------------------------------------------------------------ checking the model against the text
 
 def _key(s: str) -> str:
@@ -309,6 +338,21 @@ def _box_from_model(coords: object, field: str, conf: float) -> Box | None:
     if x1 - x0 < 0.01 or y1 - y0 < 0.01:
         return None
     return Box(field=field, x=x0, y=y0, w=x1 - x0, h=y1 - y0, conf=conf, source="vlm")
+
+
+PROBLEM_WORDS = re.compile(r"short|damag|leak|broken|wet|torn|missing|कम|टूट|खराब|लीक|कमी|तुट|फाट", re.IGNORECASE)
+
+
+def remarks_from_text(lines: list[Line]) -> list[Line]:
+    """The handwriting under the printed "Remarks" label, found from the text reader alone: the lines just below it, in its column,
+    that are not themselves printed labels (those end in a colon)."""
+    label = next((ln for ln in lines if "remark" in ln.text.lower()), None)
+    if label is None:
+        return []
+    top, bottom = label.y + label.h * 0.5, label.y + 0.1
+    found = [ln for ln in lines if ln is not label and top < ln.y <= bottom and ln.x < label.x + 0.45 and not ln.text.strip().endswith(":")
+             and "special" not in ln.text.lower()]
+    return found[:3]
 
 
 def merge(raw: dict, lines: list[Line], expected_lr_no: str) -> PodExtraction:
@@ -365,6 +409,11 @@ def merge(raw: dict, lines: list[Line], expected_lr_no: str) -> PodExtraction:
             boxes = [b for b in boxes if b.field != "delivery_date"]
     qty = checked("quantity_received", raw.get("quantity_received"), "quantity_lines", digits)
     remarks = checked("remarks", raw.get("remarks"), "remarks_lines", words)
+    if not remarks and (under := remarks_from_text(lines)):  # the model skipped it, but the text is plainly there under the label
+        remarks = " ".join(ln.text for ln in under)
+        x, y, w, h = _union(under)
+        boxes.append(Box(field="remarks", x=x, y=y, w=w, h=h, text=remarks, conf=min(ln.conf for ln in under), source="ocr"))
+    shortage = bool(raw.get("shortage_or_damage")) or bool(remarks and PROBLEM_WORDS.search(remarks))
 
     stamp = bool(raw.get("stamp_present"))
     sign = bool(raw.get("signature_present"))
@@ -378,7 +427,7 @@ def merge(raw: dict, lines: list[Line], expected_lr_no: str) -> PodExtraction:
     return PodExtraction(
         is_document=bool(raw.get("is_document")), readable=readable, lr_no=lr_no, consignee_stamp_present=stamp,
         signature_present=sign, delivery_date=delivery, quantity_received=qty, remarks=remarks,
-        shortage_or_damage=bool(raw.get("shortage_or_damage")), confidence=conf, issues=issues, boxes=boxes,
+        shortage_or_damage=shortage, confidence=conf, issues=issues, boxes=boxes,
     )
 
 
@@ -388,11 +437,12 @@ class LocalProvider:
     name = "local"
 
     def __init__(self, url: str, model: str, timeout_s: float, langs: str = "en", ocr_models: str = "mobile", ocr_engine: str = "rapid", *, ocr: Ocr | None = None, vlm: Vlm | None = None,
-                 sign: Sign | None = None) -> None:
+                 sign: Sign | None = None, locate: Locate | None = None) -> None:
         self._ocr = ocr or (RapidReader(langs) if ocr_engine == "rapid" else PaddleReader(langs, ocr_models))
         self._vlm = vlm or ollama_vlm(url, model, timeout_s)
         self._url, self._model = url, model
         self._sign = sign or (ollama_signature(url, model, timeout_s) if vlm is None else None)
+        self._locate = locate or (ollama_locate(url, model, timeout_s) if vlm is None else None)
 
     async def extract(self, image: bytes, mime: str, expected_lr_no: str) -> PodExtraction:
         try:
@@ -406,6 +456,12 @@ class LocalProvider:
             second = await self._sign(image)
             if second.get("signature_present") is True:
                 raw = {**raw, "signature_present": True, "signature_box": second.get("signature_box")}
+        if self._locate and raw.get("is_document"):
+            for present, key, what in (("stamp_present", "stamp_box", "stamp"), ("signature_present", "signature_box", "signature")):
+                if raw.get(present) and _box_from_model(raw.get(key), what, 0) is None:
+                    got = await self._locate(image, what)
+                    if got.get("found") is True:
+                        raw = {**raw, key: got.get("box")}
         return merge(raw, lines, expected_lr_no)
 
     async def warm(self) -> None:

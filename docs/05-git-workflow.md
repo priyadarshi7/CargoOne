@@ -1,7 +1,6 @@
 # Git workflow
 
-- `main` is protected: no direct pushes. Enable on GitHub: *Settings → Branches → Add rule* → require PR, require status checks (`api`, `web`), no force-push.
-- Branch names: `feat/<topic>`, `fix/<topic>`, `chore/<topic>`, `docs/<topic>`.
+- Work goes **directly to `main`** (owner's decision, replacing the earlier PR-only flow): commit on `main`, run the tests, `git push origin main`. Never force-push. Branches and PRs only when the owner asks for one (names then: `feat/<topic>`, `fix/<topic>`, `chore/<topic>`, `docs/<topic>`).
 - Commits: [Conventional Commits](https://www.conventionalcommits.org) — `feat(api): add trip import`. No AI co-author trailers.
-- One PR = one purpose, small, with docs updated. Use the PR template. Squash-merge.
-- Flow: `git switch -c feat/x` → commit → `git push -u origin feat/x` → open PR → CI green → review → squash-merge → delete branch.
+- One commit = one purpose, small, with docs updated in the same commit. CI (`api`, `web`) must stay green on `main`.
+- Flow: `git switch main` → `git pull --ff-only` → change → run tests → commit → `git push origin main`.
