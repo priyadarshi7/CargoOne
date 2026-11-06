@@ -88,6 +88,7 @@ export default function RequestTransport() {
           <div>
             <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{t('req.title')}</h1>
             <p className="mt-2 text-muted">{t('req.sub')}</p>
+            <p className="mt-2 text-sm text-muted">{t('req.haveLogin')} <Link to="/login" className="font-medium text-ink underline underline-offset-2">{t('req.signIn')}</Link></p>
           </div>
 
           <fieldset className="space-y-4">
