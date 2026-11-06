@@ -9,6 +9,7 @@ interface ClientRow {
   id: string; name: string; segment: string | null; billing_cycle: 'weekly' | 'fortnightly' | 'monthly' | 'per_trip'; tally_ledger: string | null
   contact_name: string | null; contact_phone: string | null; gstin: string | null; language: 'en' | 'hi' | 'mr'; is_active: boolean; trips: number
 }
+interface Invite { email_status: string; email_error: string | null; link: string | null }
 interface Login { id: string; name: string; email: string; is_active: boolean; must_change_password: boolean }
 
 export default function ClientsTab({ canEdit }: { canEdit: boolean }) {
@@ -92,7 +93,7 @@ function LoginsDialog({ client, onClose }: { client: ClientRow; onClose: () => v
   const { t } = useI18n()
   const [rows, setRows] = useState<Login[] | null>(null)
   const [f, setF] = useState({ name: '', email: '' })
-  const [secret, setSecret] = useState<string | null>(null)
+  const [note, setNote] = useState<{ email: string; link: string | null; why: string | null } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const load = () => api<Login[]>(`/setup/clients/${client.id}/portal`).then(setRows).catch(() => setError(t('setup.loadFail')))
   useEffect(() => { void load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -100,11 +101,11 @@ function LoginsDialog({ client, onClose }: { client: ClientRow; onClose: () => v
 
   async function add(e: { preventDefault(): void }) {
     e.preventDefault(); setError(null)
-    try { const r = await api<{ password: string }>(`/setup/clients/${client.id}/portal`, { method: 'POST', body: JSON.stringify({ ...f, language: client.language }) }); setSecret(r.password); setF({ name: '', email: '' }); await load() } catch (err) { fail(err) }
+    try { const r = await api<Invite>(`/setup/clients/${client.id}/portal`, { method: 'POST', body: JSON.stringify({ ...f, language: client.language }) }); setNote({ email: f.email, link: r.link, why: r.email_error }); setF({ name: '', email: '' }); await load() } catch (err) { fail(err) }
   }
   async function reset(u: Login) {
     setError(null)
-    try { setSecret((await api<{ password: string }>(`/setup/clients/${client.id}/portal/${u.id}/reset-password`, { method: 'POST' })).password) } catch (err) { fail(err) }
+    try { const r = await api<Invite>(`/setup/clients/${client.id}/portal/${u.id}/reset-password`, { method: 'POST' }); setNote({ email: u.email, link: r.link, why: r.email_error }) } catch (err) { fail(err) }
   }
   async function toggle(u: Login) {
     setError(null)
@@ -113,8 +114,10 @@ function LoginsDialog({ client, onClose }: { client: ClientRow; onClose: () => v
 
   return (
     <Modal title={t('setup.portal.title', { name: client.name })} onClose={onClose} wide>
-      <p className="text-sm text-muted">{t('setup.portal.help')}</p>
-      {secret && <p role="status" className="rounded-lg bg-ok-soft px-3 py-2 text-sm text-ok">{t('setup.portal.created')} <b className="select-all font-mono">{secret}</b></p>}
+      <p className="text-sm text-muted">{t('setup.portal.help')} {t('setup.portal.created')}</p>
+      {note && (note.link
+        ? <p role="status" className="rounded-lg bg-warn-soft px-3 py-2 text-sm text-warn">{t('setup.portal.notsent', { why: note.why ?? '-' })} <b className="select-all break-all font-mono">{note.link}</b></p>
+        : <p role="status" className="rounded-lg bg-ok-soft px-3 py-2 text-sm text-ok">{t('setup.portal.sent', { email: note.email })}</p>)}
       {rows && (rows.length === 0 ? <p className="text-sm text-muted">{t('setup.portal.none')}</p> : (
         <ul className="divide-y divide-line rounded-xl border border-line text-sm">
           {rows.map((u) => (

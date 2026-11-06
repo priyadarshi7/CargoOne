@@ -6,7 +6,7 @@ test('a client gets its own login, asks for a truck, and accepts the quote onlin
   const noErrors = failOnBrowserErrors(page)
   const email = `rekha${Date.now()}@client.example`
 
-  // --- the ops head makes a login for a person at Company D
+  // --- the ops head makes a login for a person at Company D (an email with a link goes to them)
   await login(page, 'ops@cargoone.dev')
   await expect(page).toHaveURL(/\/office/)
   await page.goto('/office/setup?tab=clients')
@@ -15,24 +15,27 @@ test('a client gets its own login, asks for a truck, and accepts the quote onlin
   await logins.getByLabel('Name').fill('Rekha Shah')
   await logins.getByLabel('Email').fill(email)
   await logins.getByRole('button', { name: 'Add a login' }).click()
+  // no mailbox is connected in the test setup, so the dialog hands the link over instead of saying "email sent"
   const shown = logins.getByRole('status')
-  await expect(shown).toContainText('shown only once')
-  const temp = (await shown.locator('b').textContent())!.trim()
+  await expect(shown).toContainText('did not go out')
+  const link = new URL((await shown.locator('b').textContent())!.trim())
+  expect(link.pathname).toMatch(/^\/onboard\//)
   await shot(page, 'setup-client-logins')
 
-  // --- the client signs in: the temporary password must be replaced first
+  // --- the client opens the link, chooses their own password, and lands on their shipments
   const cctx = await browser.newContext({ viewport: { width: 1100, height: 800 } })
   const cl = await cctx.newPage()
-  await login(cl, email, temp)
-  await expect(cl).toHaveURL(/\/portal\/account/)
-  await cl.getByLabel('Current password').fill(temp)
+  await cl.goto(link.pathname)
+  await expect(cl.getByRole('heading', { name: /Welcome, Rekha Shah/ })).toBeVisible()
   await cl.getByLabel('New password', { exact: true }).fill('Rekha-Portal-2026')
-  await cl.getByLabel('New password again').fill('Rekha-Portal-2026')
-  await cl.getByRole('button', { name: 'Change password' }).click()
-  await expect(cl.getByRole('status')).toContainText('Password changed')
-  await cl.getByRole('link', { name: 'Shipments' }).click()
+  await cl.getByLabel('Type it again').fill('Rekha-Portal-2026')
+  await cl.getByRole('button', { name: 'Save and open my account' }).click()
+  await expect(cl).toHaveURL(/\/portal$/)
   await expect(cl.getByRole('heading', { name: 'Your shipments' })).toBeVisible()
   await expect(cl.getByText('Company D').first()).toBeVisible()
+  await cl.goto(link.pathname) // the link works once
+  await expect(cl.getByText(/already been used or has expired/).first()).toBeVisible()
+  await cl.goto('/portal')
   await cl.goto('/office') // not theirs: they are sent back to their own home
   await expect(cl).toHaveURL(/\/portal/)
 

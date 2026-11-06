@@ -5,7 +5,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 
 from app.db import SessionLocal
-from app.models import Client, Trip, TripEvent
+from app.models import Client, Message, Trip, TripEvent
 from tests.conftest import login
 from tests.test_pin_reset import office
 from tests.test_planning import body as plan_body
@@ -14,8 +14,15 @@ from tests.test_requests import submit, token_of
 from tests.test_setup import digits
 
 
-async def new_client_login(client: AsyncClient, ops: dict, *, name: str | None = None, change: bool = True) -> dict:
-    """A fresh client company with its own login. Returns {client_id, email, password, headers}."""
+async def choose_password(client: AsyncClient, link: str, password: str) -> dict:
+    """What the person does with the emailed link: choose their own password. Returns the signed-in headers."""
+    res = await client.post(f"/onboard/{link.rsplit('/', 1)[1]}", json={"pin": password})
+    assert res.status_code == 200, res.text
+    return {"Authorization": f"Bearer {res.json()['access_token']}"}
+
+
+async def new_client_login(client: AsyncClient, ops: dict, *, name: str | None = None, choose: bool = True) -> dict:
+    """A fresh client company with its own login. Returns {client_id, email, password, headers, link}; with choose=False the person has not opened the email yet."""
     company = name or f"Portal Co {digits()}"
     created = await client.post("/setup/clients", headers=ops, json={"name": company, "contact_name": "Rekha", "contact_phone": f"9{digits(9)}"})
     assert created.status_code == 201, created.text
@@ -23,14 +30,11 @@ async def new_client_login(client: AsyncClient, ops: dict, *, name: str | None =
     email = f"rekha{digits()}@client.example"
     made = await client.post(f"/setup/clients/{cid}/portal", headers=ops, json={"name": "Rekha Shah", "email": email})
     assert made.status_code == 201, made.text
-    pw = made.json()["password"]
-    headers = await login(client, email, pw)
-    if change:  # until the temporary password is replaced nothing else works: do what the person must do first
-        new = f"Better-pass-{digits(6)}"
-        res = await client.post("/auth/change-secret", headers=headers, json={"current": pw, "new": new})
-        assert res.status_code == 200, res.text
-        headers, pw = {"Authorization": f"Bearer {res.json()['access_token']}"}, new
-    return {"client_id": cid, "email": email, "password": pw, "headers": headers, "company": company, "user_id": made.json()["login"]["id"]}
+    assert "password" not in made.json()  # nobody is ever shown a password
+    link = made.json()["link"]  # handed back because no real mailbox is connected in tests
+    pw = f"Better-pass-{digits(6)}"
+    headers = await choose_password(client, link, pw) if choose else {}
+    return {"client_id": cid, "email": email, "password": pw, "headers": headers, "company": company, "user_id": made.json()["login"]["id"], "link": link}
 
 
 async def trip_for(client: AsyncClient, ops: dict, client_id: str) -> dict:
@@ -70,22 +74,44 @@ async def test_a_client_login_reaches_nothing_else(client: AsyncClient) -> None:
     assert (await client.get("/portal/shipments")).status_code == 401
 
 
-async def test_the_login_must_change_its_password_and_can_be_switched_off(client: AsyncClient) -> None:
+async def test_the_person_chooses_their_own_password_from_the_emailed_link(client: AsyncClient) -> None:
     ops = await office(client)
-    c = await new_client_login(client, ops, change=False)
-    me = (await client.get("/auth/me", headers=c["headers"])).json()
-    assert me["role"] == "client" and me["must_change_secret"] is True
-    assert (await client.get("/portal/me", headers=c["headers"])).status_code == 403  # nothing works until the password is replaced
-    changed = await client.post("/auth/change-secret", headers=c["headers"], json={"current": c["password"], "new": f"A-better-pass-{digits(6)}"})
-    assert changed.status_code == 200
-    c["headers"] = {"Authorization": f"Bearer {changed.json()['access_token']}"}
-    assert (await client.get("/portal/me", headers=c["headers"])).status_code == 200
+    c = await new_client_login(client, ops, choose=False)
+    assert (await client.post("/auth/login", json={"identifier": c["email"], "secret": "anything-at-all-1"})).status_code == 401  # no password exists until they choose one
+    token = c["link"].rsplit("/", 1)[1]
+    info = (await client.get(f"/onboard/{token}")).json()
+    assert info["kind"] == "password" and info["name"] == "Rekha Shah"
+    assert (await client.post(f"/onboard/{token}", json={"pin": "short"})).status_code == 422  # same password rules as everyone
+    headers = await choose_password(client, c["link"], c["password"])
+    me = (await client.get("/auth/me", headers=headers)).json()
+    assert me["role"] == "client" and me["must_change_secret"] is False
+    assert (await client.get("/portal/me", headers=headers)).status_code == 200
+    assert (await client.post("/auth/login", json={"identifier": c["email"], "secret": c["password"]})).status_code == 200
+    assert (await client.post(f"/onboard/{token}", json={"pin": f"Another-pass-{digits(6)}"})).status_code == 410  # the link works once
+
+
+async def test_the_invite_email_is_recorded_without_the_link_and_a_reset_replaces_the_password(client: AsyncClient) -> None:
+    ops = await office(client)
+    c = await new_client_login(client, ops)
+    async with SessionLocal() as s:
+        mail = (await s.scalars(select(Message).where(Message.template == "client_welcome").order_by(Message.created_at.desc()).limit(1))).one()
+    assert mail.channel == "email" and c["link"].rsplit("/", 1)[1] not in mail.body and "•••" in mail.body
+    reset = await client.post(f"/setup/clients/{c['client_id']}/portal/{c['user_id']}/reset-password", headers=ops)
+    assert reset.status_code == 200 and "password" not in reset.json() and reset.json()["link"]
+    assert (await client.post("/auth/login", json={"identifier": c["email"], "secret": c["password"]})).status_code == 401  # the old password is gone
+    assert (await client.get("/portal/me", headers=c["headers"])).status_code == 401  # and so is the open session
+    again = await choose_password(client, reset.json()["link"], f"Fresh-pass-{digits(6)}")
+    assert (await client.get("/portal/me", headers=again)).status_code == 200
+    assert (await client.post(f"/onboard/{c['link'].rsplit('/', 1)[1]}", json={"pin": f"Old-link-pass-{digits(6)}"})).status_code in (404, 410)  # the earlier link is dead
+
+
+async def test_a_login_can_be_switched_off_and_its_email_not_reused(client: AsyncClient) -> None:
+    ops = await office(client)
+    c = await new_client_login(client, ops)
     off = await client.patch(f"/setup/clients/{c['client_id']}/portal/{c['user_id']}", headers=ops, json={"is_active": False})
     assert off.json()["is_active"] is False
     assert (await client.get("/portal/me", headers=c["headers"])).status_code == 401  # signed out at once
     assert (await client.post("/auth/login", json={"identifier": c["email"], "secret": c["password"]})).status_code == 401
-    reset = await client.post(f"/setup/clients/{c['client_id']}/portal/{c['user_id']}/reset-password", headers=ops)
-    assert reset.status_code == 200 and reset.json()["password"]
     assert (await client.post(f"/setup/clients/{c['client_id']}/portal", headers=ops, json={"name": "Dup", "email": c["email"]})).status_code == 409
 
 
@@ -183,10 +209,8 @@ async def test_a_client_with_no_phone_saved_is_asked_for_one(client: AsyncClient
     company = f"No Phone Co {digits()}"
     cid = (await client.post("/setup/clients", headers=ops, json={"name": company})).json()["id"]
     email = f"nophone{digits()}@client.example"
-    pw = (await client.post(f"/setup/clients/{cid}/portal", headers=ops, json={"name": "Sunil Rao", "email": email})).json()["password"]
-    first = await login(client, email, pw)
-    new = f"Better-pass-{digits(6)}"
-    h = {"Authorization": f"Bearer {(await client.post('/auth/change-secret', headers=first, json={'current': pw, 'new': new})).json()['access_token']}"}
+    link = (await client.post(f"/setup/clients/{cid}/portal", headers=ops, json={"name": "Sunil Rao", "email": email})).json()["link"]
+    h = await choose_password(client, link, f"Better-pass-{digits(6)}")
     assert (await client.get("/portal/me", headers=h)).json()["has_phone"] is False
     body = {"origin": "Pune", "destination": "Nagpur", "material": "Tiles", "pickup_date": (date.today() + timedelta(days=3)).isoformat()}
     assert (await client.post("/portal/requests", headers=h, json=body)).status_code == 422

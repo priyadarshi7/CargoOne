@@ -27,6 +27,23 @@ SUBJECTS = {
 }
 
 
+# Email-only notices (no WhatsApp template exists for these): subject and body per language.
+EMAIL_ONLY: dict[str, dict[str, dict[str, str]]] = {
+    "client_welcome": {
+        "subject": {"en": "CargoOne: your account for following shipments", "hi": "CargoOne: खेप देखने के लिए आपका खाता", "mr": "CargoOne: खेप पाहण्यासाठी तुमचे खाते"},
+        "en": "Hello {name}, {company} has set up an account for you on CargoOne, to follow its shipments and ask for trucks.\n\n"
+              "Choose your password here: {link}\n\nThe link can be used once and works for {hours} hours. After that you sign in with this email address ({email}) and your password.\n\n"
+              "If you were not expecting this, you can ignore this email.",
+        "hi": "नमस्ते {name}, {company} ने CargoOne पर आपके लिए एक खाता बनाया है, ताकि आप उसकी खेप देख सकें और ट्रक माँग सकें।\n\n"
+              "अपना पासवर्ड यहाँ चुनें: {link}\n\nयह लिंक एक ही बार चलेगा और {hours} घंटे तक काम करेगा। इसके बाद इसी ईमेल पते ({email}) और अपने पासवर्ड से साइन इन करें।\n\n"
+              "अगर आपको इसकी उम्मीद नहीं थी, तो इस ईमेल को अनदेखा कर दें।",
+        "mr": "नमस्कार {name}, {company} ने CargoOne वर तुमच्यासाठी खाते तयार केले आहे, जेणेकरून तुम्ही त्यांची खेप पाहू शकता आणि ट्रक मागवू शकता.\n\n"
+              "तुमचा पासवर्ड येथे निवडा: {link}\n\nही लिंक एकदाच वापरता येईल आणि {hours} तास चालेल. त्यानंतर याच ईमेल पत्त्याने ({email}) आणि तुमच्या पासवर्डने साइन इन करा.\n\n"
+              "तुम्हाला याची अपेक्षा नसेल, तर हा ईमेल दुर्लक्षित करा.",
+    },
+}
+
+
 def mask_email(addr: str) -> str:
     local, _, domain = addr.partition("@")
     return f"{local[:1]}***@{domain}"[:20]
@@ -34,6 +51,9 @@ def mask_email(addr: str) -> str:
 
 def compose(template: str, lang: str, values: dict[str, str]) -> tuple[str, str]:
     """Subject and plain-text body for a template, in the person's language."""
+    if template in EMAIL_ONLY:
+        t = EMAIL_ONLY[template]
+        return t["subject"].get(lang, t["subject"]["en"]).format(**values), f"{t.get(lang, t['en']).format(**values)}\n\n{get_settings().company_name}\n"
     subject = SUBJECTS[template].get(lang, SUBJECTS[template]["en"]).format(**values)
     return subject, f"{render(template, lang, values)}\n\n{get_settings().company_name}\n"
 

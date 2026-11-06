@@ -17,8 +17,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth_policy import check_secret
+from app.config import get_settings
 from app.db import get_session
 from app.models import AuditLog, Branch, Client, Role, Trip, TripState, User, Vehicle, Vendor
+from app.notify.service import issue_onboarding_link, safely, send_email
 from app.phones import clean_phone
 from app.routers.requests import gstin_ok
 from app.security import hash_secret, require_roles
@@ -347,33 +349,52 @@ async def list_portal(client_id: uuid.UUID, _: Office, session: Session) -> list
     return [_portal_out(u) for u in (await session.scalars(select(User).where(User.role == Role.client, User.client_id == client_id).order_by(User.name))).all()]
 
 
+async def _invite(session: AsyncSession, u: User, client: Client) -> dict:
+    """Email the person a one-time link to choose their own password. Nobody, the office included, ever sees a password.
+    The link is handed back to the office only when the email did not go out, so they can pass it on another way."""
+    url = await issue_onboarding_link(session, u)
+    out: dict = {"email_status": "failed", "email_error": None}
+
+    async def mail() -> None:
+        msg = await send_email(session, u.email, u.language, "client_welcome",
+                               {"name": u.name, "company": client.name, "link": url, "email": u.email or "", "hours": str(get_settings().onboarding_link_ttl_hours)},
+                               secret=url.rsplit("/", 1)[1])
+        out["email_status"], out["email_error"] = msg.status, msg.error
+
+    await safely(session, mail())
+    await session.commit()
+    out["link"] = url if out["email_status"] != "sent" else None
+    return out
+
+
 @router.post("/clients/{client_id}/portal", status_code=status.HTTP_201_CREATED)
 async def create_portal(client_id: uuid.UUID, body: PortalIn, actor: Manager, session: Session) -> dict:
-    """A named person at the client gets their own sign-in. The temporary password is shown once and must be replaced at first sign-in."""
-    if await session.get(Client, client_id) is None:
+    """A named person at the client gets their own sign-in. They are emailed a link to choose their password."""
+    client = await session.get(Client, client_id)
+    if client is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Client not found")
     email = body.email.strip().lower()
     if await session.scalar(select(User.id).where(User.email == email)):
         raise HTTPException(status.HTTP_409_CONFLICT, "That email already has an account")
-    pw = temporary_password()
-    u = User(name=body.name.strip(), email=email, role=Role.client, client_id=client_id, language=body.language, password_hash=hash_secret(pw), must_change_secret=True)
+    u = User(name=body.name.strip(), email=email, role=Role.client, client_id=client_id, language=body.language,
+             password_hash=hash_secret(secrets.token_urlsafe(24)), must_change_secret=True)  # a password nobody knows, until they choose theirs
     session.add(u)
     await session.flush()
     await _audit(session, actor, "client_login.create", "user", u.id, client=str(client_id))
     await session.commit()
-    return {"login": _portal_out(u), "password": pw}
+    return {"login": _portal_out(u), **await _invite(session, u, client)}
 
 
 @router.post("/clients/{client_id}/portal/{user_id}/reset-password")
 async def reset_portal_password(client_id: uuid.UUID, user_id: uuid.UUID, actor: Manager, session: Session) -> dict:
     u = await _portal_user(session, client_id, user_id)
-    pw = temporary_password()
-    u.password_hash, u.must_change_secret = hash_secret(pw), True
+    client = await session.get(Client, client_id)
+    u.password_hash, u.must_change_secret = hash_secret(secrets.token_urlsafe(24)), True  # the old password stops working at once
     u.token_version += 1
     u.failed_logins, u.locked_until = 0, None
     await _audit(session, actor, "client_login.reset_password", "user", u.id)
     await session.commit()
-    return {"password": pw}
+    return await _invite(session, u, client)
 
 
 @router.patch("/clients/{client_id}/portal/{user_id}")

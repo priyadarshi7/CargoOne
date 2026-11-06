@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth_policy import check_secret
 from app.db import get_session
-from app.models import AuditLog, OnboardingLink, User
+from app.models import AuditLog, OnboardingLink, Role, User
 from app.ratelimit import RateLimiter
 from app.routers.auth import TokenOut, _out
 from app.security import create_token, hash_secret
@@ -28,10 +28,11 @@ class Info(BaseModel):
     name: str
     language: str
     expires_at: datetime
+    kind: str = "pin"  # drivers choose a PIN, a client's people choose a password
 
 
 class SetPin(BaseModel):
-    pin: str = Field(min_length=4, max_length=8)
+    pin: str = Field(min_length=4, max_length=128)  # a PIN for drivers, a password for a client's people
 
 
 async def _resolve(token: str, request: Request, session: AsyncSession) -> tuple[OnboardingLink, User]:
@@ -51,13 +52,14 @@ async def _resolve(token: str, request: Request, session: AsyncSession) -> tuple
 @router.get("/{token}", response_model=Info)
 async def info(token: str, request: Request, session: Session) -> Info:
     link, user = await _resolve(token, request, session)
-    return Info(name=user.name, language=user.language, expires_at=link.expires_at)  # no phone, no company data
+    return Info(name=user.name, language=user.language, expires_at=link.expires_at, kind="password" if user.role == Role.client else "pin")  # no phone, no company data
 
 
 @router.post("/{token}", response_model=TokenOut)
 async def set_pin(token: str, body: SetPin, request: Request, session: Session) -> TokenOut:
     link, user = await _resolve(token, request, session)
-    problem = check_secret(body.pin, is_pin=True)
+    is_client = user.role == Role.client
+    problem = check_secret(body.pin, is_pin=not is_client, email=user.email)
     if problem:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, problem)
     user.password_hash = hash_secret(body.pin)
@@ -65,6 +67,6 @@ async def set_pin(token: str, body: SetPin, request: Request, session: Session) 
     user.token_version += 1
     user.failed_logins, user.locked_until = 0, None
     link.used_at = datetime.now(UTC)
-    session.add(AuditLog(actor_id=user.id, action="driver.onboarded", entity="user", entity_id=str(user.id)))
+    session.add(AuditLog(actor_id=user.id, action="client.onboarded" if is_client else "driver.onboarded", entity="user", entity_id=str(user.id)))
     await session.commit()
     return TokenOut(access_token=create_token(user), user=_out(user))

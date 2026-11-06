@@ -4,7 +4,7 @@ One shipment has one timeline. Everyone sees the part that is theirs. This is wh
 
 ## 1. Order
 
-- A new company asks on the public form (`/request`). A client that already exists signs in at `/login` with the email the ops head made for them (Setup, Clients, **Logins**) and asks for a truck from `/portal/new`: the route and the goods only, because the company is already known. A phone number is asked for only if none is saved.
+- A new company asks on the public form (`/request`). A client that already exists signs in at `/login` with the email the ops head made for them (Setup, Clients, **Logins**). The person is emailed a one-time link (72 hours) to choose their own password, so no password is ever shown or sent; if the email cannot be sent, the dialog shows the link to pass on another way. Reset password works the same way and ends their open sessions and asks for a truck from `/portal/new`: the route and the goods only, because the company is already known. A phone number is asked for only if none is saved.
 - Ops accepts the request, with a quote if they want one. The requester sees the quote on their request page and says **yes or no** there. A yes lets the office book the trip; a no closes the request. If they say yes on the phone, ops records that ("Client said yes by phone"). A trip cannot be booked from a quoted request before a yes.
 - Booking creates the trip with its LR number, the quote as the freight, and the e-way bill with its validity. A trip needs a start time; a start in the past, more than a year ahead, or a trip longer than 60 days is refused; the e-way bill must cover the trip and can be on only one live trip.
 
