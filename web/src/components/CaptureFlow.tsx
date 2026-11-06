@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom'
 import type { User } from '../lib/api'
 import { compressPhoto } from '../lib/capture/compress'
 import { getPosition } from '../lib/capture/geo'
+import { serverNow, syncClock } from '../lib/serverClock'
+import { stampText } from '../lib/capture/stamp'
 import { checkPhoto, type Problem } from '../lib/capture/quality'
 import { acknowledge, enqueue, flush, getItem, type UploadResult } from '../lib/capture/queue'
 import { uploadPod } from '../lib/capture/upload'
@@ -63,9 +65,11 @@ export function CaptureFlow({ tripId, linkToken, destination, lang, backTo }: Ca
   async function send(file: File) {
     setPhase({ kind: 'working' })
     try {
-      const [blob, pos] = await Promise.all([compressPhoto(file), getPosition()])
+      const [pos] = await Promise.all([getPosition(), syncClock()]) // the place and the server's time are printed on the photo, so both come first
+      const { at, fromServer } = serverNow()
+      const blob = await compressPhoto(file, stampText(at, pos, fromServer))
       const item = await enqueue({
-        tripId, linkToken, blob, capturedAt: new Date().toISOString(), lat: pos?.lat ?? null, lng: pos?.lng ?? null,
+        tripId, linkToken, blob, capturedAt: at.toISOString(), lat: pos?.lat ?? null, lng: pos?.lng ?? null,
       })
       await flush(uploadPod).catch(() => undefined)
       const saved = await getItem(item.id)

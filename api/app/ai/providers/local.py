@@ -65,7 +65,8 @@ Answer ONLY with JSON. Rules:
 - shortage_or_damage: true if the remarks mention shortage, short, damage, leakage, broken, wet, torn (or the Hindi/Marathi words).
 - confidence: 0 to 1 for the whole answer; lower when handwriting is unclear.
 - issues: short English phrases for anything wrong (for example "stamp cut off").
-Never guess something you cannot see. Use only ids from the list."""
+Never guess something you cannot see. Use only ids from the list.
+A black strip at the very bottom of the photo that reads "CargoOne" with a time and map position was added by the phone app: it is not part of the paper. Ignore it (it is not a stamp, a signature, remarks or the delivery date)."""
 
 SCHEMA = {
     "type": "object",

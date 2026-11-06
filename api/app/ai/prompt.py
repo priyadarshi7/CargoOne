@@ -15,4 +15,5 @@ Return ONLY JSON matching the schema. Rules:
   (also Hindi/Marathi equivalents such as kam, toot, phoot, nuksan).
 - confidence: 0..1 overall confidence in this extraction. Lower it when handwriting is unclear.
 - issues: short English phrases for anything wrong (e.g. "stamp cut off").
-Never guess a field you cannot see."""
+Never guess a field you cannot see.
+A black strip at the very bottom that reads "CargoOne" with a time and map position was added by the phone app: ignore it."""
