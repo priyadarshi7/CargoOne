@@ -15,7 +15,7 @@ export const hi: Partial<Record<Key, string>> = {
   'review.title': 'जाँच सूची', 'review.sub': 'वे रसीदें जिन्हें सिस्टम खुद सत्यापित नहीं करेगा। सबसे पुरानी पहले।', 'review.empty': 'जाँच के लिए कुछ बाकी नहीं है।',
   'review.error': 'जाँच सूची लोड नहीं हो सकी।', 'review.hoursAgo': '{n} घंटे पहले', 'review.daysAgo': '{n} दिन पहले',
   'reason.shortage_or_damage': 'कमी / टूट-फूट की टिप्पणी', 'reason.low_confidence': 'AI को कम भरोसा', 'reason.date_missing': 'डिलीवरी की तारीख नहीं पढ़ी गई',
-  'reason.retake_cap_reached': 'ड्राइवर दो बार फोटो ले चुका है', 'reason.ai_unavailable': 'AI उपलब्ध नहीं था', 'reason.stamp_missing': 'मुहर दिखाई नहीं दे रही',
+  'reason.gps_missing': 'फ़ोटो में लोकेशन नहीं है', 'reason.far_from_destination': 'मंज़िल से दूर ली गई', 'reason.retake_cap_reached': 'ड्राइवर दो बार फोटो ले चुका है', 'reason.ai_unavailable': 'AI उपलब्ध नहीं था', 'reason.stamp_missing': 'मुहर दिखाई नहीं दे रही',
   'reason.signature_missing': 'हस्ताक्षर दिखाई नहीं दे रहे', 'reason.lr_mismatch': 'LR नंबर मेल नहीं खाता', 'reason.unreadable': 'फोटो पढ़ने लायक नहीं', 'reason.not_a_pod': 'यह रसीद जैसी नहीं दिखती',
   'rd.loadFail': 'यह रसीद लोड नहीं हो सकी।', 'rd.saveFail': 'सेव नहीं हो सका। दोबारा कोशिश करें।', 'rd.attempt': 'कोशिश {n}', 'rd.confidence': 'AI का भरोसा {n}%',
   'rd.check': 'फोटो से मिलान करें', 'rd.lr': 'LR नंबर', 'rd.lrUnread': 'LR नंबर पढ़ा नहीं जा सका - फोटो देखकर भरें (ट्रिप का LR {lr} है)।',

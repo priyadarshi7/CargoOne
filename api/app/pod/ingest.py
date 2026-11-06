@@ -15,6 +15,7 @@ from app.config import get_settings
 from app.events import record
 from app.models import AuditLog, PodStatus, PodSubmission, Trip, TripState
 from app.pod.decision import Decision, Voice, decide
+from app.pod.place import check_place
 from app.storage import Storage
 
 ALLOWED = {"JPEG": ("image/jpeg", "jpg"), "PNG": ("image/png", "png"), "WEBP": ("image/webp", "webp")}
@@ -88,10 +89,12 @@ async def ingest_pod(
     key = f"pods/{trip.id}/{sub_id}.{ext}"
     await storage.put(key, data)
 
+    place = check_place(source=source, lat=lat, lng=lng, dest_lat=trip.destination_lat, dest_lng=trip.destination_lng, max_km=s.pod_max_distance_km)
+    place_reasons = [place.reason] if place.reason else []
     try:
         out = await run_extraction(data, mime, trip.lr_no)
         verdict = decide(out.extraction, expected_lr_no=trip.lr_no, retake_count=trip.retake_count,
-                         threshold=s.ai_confidence_threshold, max_retakes=s.max_retakes)
+                         threshold=s.ai_confidence_threshold, max_retakes=s.max_retakes, place_reasons=place_reasons)
         ai_provider, ai_result, confidence = out.provider, out.extraction.model_dump(), out.extraction.confidence
     except AllProvidersFailed:
         # AI outage must never block the driver: park the POD for a human.
@@ -99,9 +102,9 @@ async def ingest_pod(
         ai_provider, ai_result, confidence = None, {}, None
 
     decision = verdict.decision if verdict else Decision.needs_review
-    reasons = verdict.reasons if verdict else ["ai_unavailable"]
+    reasons = verdict.reasons if verdict else ["ai_unavailable", *place_reasons]
     voice = verdict.voice if verdict else Voice.review
-    ai_result = {**ai_result, "_voice": voice.value}  # remembered so duplicate replies match the first reply
+    ai_result = {**ai_result, "_voice": voice.value, "_place": {"distance_km": place.distance_km}}  # remembered so duplicate replies match the first reply
 
     sub = PodSubmission(
         id=sub_id, trip_id=trip.id, attempt=attempt, storage_key=key, size_bytes=len(data),

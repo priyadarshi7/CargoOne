@@ -19,7 +19,7 @@ export const en = {
   'review.error': 'Could not load the review queue.', 'review.hoursAgo': '{n} h ago', 'review.daysAgo': '{n} days ago',
   // review reasons
   'reason.shortage_or_damage': 'Shortage / damage remark', 'reason.low_confidence': 'Low AI confidence', 'reason.date_missing': 'Delivery date not read',
-  'reason.retake_cap_reached': 'Driver already retook twice', 'reason.ai_unavailable': 'AI was unavailable', 'reason.stamp_missing': 'Stamp not visible',
+  'reason.gps_missing': 'Photo has no location', 'reason.far_from_destination': 'Taken far from the destination', 'reason.retake_cap_reached': 'Driver already retook twice', 'reason.ai_unavailable': 'AI was unavailable', 'reason.stamp_missing': 'Stamp not visible',
   'reason.signature_missing': 'Signature not visible', 'reason.lr_mismatch': 'LR number does not match', 'reason.unreadable': 'Photo unreadable', 'reason.not_a_pod': 'Does not look like a POD',
   // review detail
   'rd.loadFail': 'Could not load this POD.', 'rd.saveFail': 'Could not save. Try again.', 'rd.attempt': 'Attempt {n}', 'rd.confidence': 'AI confidence {n}%',

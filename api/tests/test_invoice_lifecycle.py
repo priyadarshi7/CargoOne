@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 from httpx import AsyncClient
 from sqlalchemy import select
 
+from app.billing.periods import IST
 from app.db import SessionLocal
 from app.devtools.synthetic_pod import SCENARIOS, render
 from app.models import Trip, TripEvent
@@ -32,7 +33,7 @@ async def kinds(trip_id: str) -> list[str]:
 
 
 def today() -> str:
-    return datetime.now(UTC).date().isoformat()
+    return datetime.now(IST).date().isoformat()  # the server counts days in Indian time
 
 
 async def test_an_invoice_is_sent_by_a_person_and_only_then_can_it_be_paid(client: AsyncClient, driver: dict) -> None:

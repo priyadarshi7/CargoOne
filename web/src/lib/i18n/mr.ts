@@ -15,7 +15,7 @@ export const mr: Partial<Record<Key, string>> = {
   'review.title': 'तपासणी यादी', 'review.sub': 'ज्या पावत्या सिस्टम स्वतः सत्यापित करणार नाही. सर्वात जुनी आधी.', 'review.empty': 'तपासणीसाठी काहीही बाकी नाही.',
   'review.error': 'तपासणी यादी लोड होऊ शकली नाही.', 'review.hoursAgo': '{n} तासांपूर्वी', 'review.daysAgo': '{n} दिवसांपूर्वी',
   'reason.shortage_or_damage': 'कमतरता / नुकसानीची नोंद', 'reason.low_confidence': 'AI ला कमी खात्री', 'reason.date_missing': 'डिलिव्हरीची तारीख वाचली गेली नाही',
-  'reason.retake_cap_reached': 'ड्रायव्हरने दोनदा फोटो घेतला आहे', 'reason.ai_unavailable': 'AI उपलब्ध नव्हते', 'reason.stamp_missing': 'शिक्का दिसत नाही',
+  'reason.gps_missing': 'फोटोत लोकेशन नाही', 'reason.far_from_destination': 'गंतव्यापासून दूर घेतला', 'reason.retake_cap_reached': 'ड्रायव्हरने दोनदा फोटो घेतला आहे', 'reason.ai_unavailable': 'AI उपलब्ध नव्हते', 'reason.stamp_missing': 'शिक्का दिसत नाही',
   'reason.signature_missing': 'सही दिसत नाही', 'reason.lr_mismatch': 'LR क्रमांक जुळत नाही', 'reason.unreadable': 'फोटो वाचता येत नाही', 'reason.not_a_pod': 'ही पावतीसारखी दिसत नाही',
   'rd.loadFail': 'ही पावती लोड होऊ शकली नाही.', 'rd.saveFail': 'सेव्ह होऊ शकले नाही. पुन्हा प्रयत्न करा.', 'rd.attempt': 'प्रयत्न {n}', 'rd.confidence': 'AI ची खात्री {n}%',
   'rd.check': 'फोटोशी पडताळा', 'rd.lr': 'LR क्रमांक', 'rd.lrUnread': 'LR क्रमांक वाचता आला नाही - फोटो पाहून भरा (ट्रिपचा LR {lr} आहे).',

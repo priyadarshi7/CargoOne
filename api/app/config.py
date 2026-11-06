@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     ai_confidence_threshold: float = 0.85
     max_image_bytes: int = 300 * 1024
     max_retakes: int = 2
+    pod_max_distance_km: float = 25.0  # a delivery photo taken farther than this from the destination goes to a person
     eta_speed_kmh: float = 40.0  # average truck speed used for the arrival estimate
     eta_road_factor: float = 1.3  # roads are longer than the straight line between two points
     late_grace_min: int = 30  # the arrival estimate may pass the planned end by this much before anyone is told

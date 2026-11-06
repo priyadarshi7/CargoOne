@@ -29,7 +29,7 @@ def token_of(link: dict) -> str:
 def photo_form(lr: str, scenario: str = "clean", upload_id: str | None = None) -> dict:
     return {
         "files": {"file": ("p.png", render(SCENARIOS[scenario], lr), "image/png")},
-        "data": {"client_upload_id": upload_id or uuid.uuid4().hex, "captured_at": datetime.now(UTC).isoformat()},
+        "data": {"client_upload_id": upload_id or uuid.uuid4().hex, "captured_at": datetime.now(UTC).isoformat(), "lat": "21.1458", "lng": "79.0882"},
     }
 
 
@@ -148,7 +148,7 @@ async def test_token_guessing_and_photo_flooding_are_rate_limited(client: AsyncC
     # ...but the same address can still use a VALID link (carrier NAT: many real drivers share one IP)
     assert (await client.get(f"/u/{t}")).status_code == 200
     codes = [(await client.post(f"/u/{t}/pod", files={"file": ("p.png", b"x", "image/png")},
-                                data={"client_upload_id": uuid.uuid4().hex, "captured_at": datetime.now(UTC).isoformat()})).status_code
+                                data={"client_upload_id": uuid.uuid4().hex, "captured_at": datetime.now(UTC).isoformat(), "lat": "21.1458", "lng": "79.0882"})).status_code
              for _ in range(13)]
     assert codes[:12] == [415] * 12 and codes[12] == 429
 

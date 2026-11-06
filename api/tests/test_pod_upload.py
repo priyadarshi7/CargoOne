@@ -32,7 +32,7 @@ async def post(client: AsyncClient, headers: dict, trip_id: str, image: bytes, *
     return await client.post(
         f"/trips/{trip_id}/pod", headers=headers,
         files={"file": ("pod.png", image, "image/png")},
-        data={"client_upload_id": upload_id or uuid.uuid4().hex, "captured_at": datetime.now(UTC).isoformat(), **extra},
+        data={"client_upload_id": upload_id or uuid.uuid4().hex, "captured_at": datetime.now(UTC).isoformat(), "lat": "21.1458", "lng": "79.0882", **extra},
     )
 
 
@@ -136,3 +136,34 @@ async def test_missing_image_file_is_404_not_500(client: AsyncClient, driver: di
 
     monkeypatch.setattr("app.storage.LocalStorage.get", gone)
     assert (await client.get(f"/pods/{sub_id}/image", headers=driver)).status_code == 404
+
+
+async def set_destination(trip_id: str, lat: float, lng: float) -> None:
+    async with SessionLocal() as s:
+        t = await s.get(Trip, uuid.UUID(trip_id))
+        t.destination_lat, t.destination_lng = lat, lng
+        await s.commit()
+
+
+async def test_a_photo_with_no_location_goes_to_review_with_the_reason(client: AsyncClient, driver: dict) -> None:
+    trip_id, lr = await make_trip()
+    res = await client.post(f"/trips/{trip_id}/pod", headers=driver, files={"file": ("pod.png", render(SCENARIOS["clean"], lr), "image/png")},
+                            data={"client_upload_id": uuid.uuid4().hex, "captured_at": datetime.now(UTC).isoformat()})
+    assert res.status_code == 200 and res.json()["decision"] == "needs_review"
+    async with SessionLocal() as s:
+        sub = await s.scalar(select(PodSubmission).where(PodSubmission.trip_id == uuid.UUID(trip_id)))
+    assert sub.decision_reasons == ["gps_missing"]
+
+
+async def test_a_photo_taken_far_from_the_destination_goes_to_review_and_a_near_one_does_not(client: AsyncClient, driver: dict) -> None:
+    far_trip, lr = await make_trip()
+    await set_destination(far_trip, 18.5204, 73.8567)  # Pune
+    res = await post(client, driver, far_trip, render(SCENARIOS["clean"], lr), lat="21.1458", lng="79.0882")  # Nagpur, about 710 km away
+    assert res.json()["decision"] == "needs_review"
+    async with SessionLocal() as s:
+        sub = await s.scalar(select(PodSubmission).where(PodSubmission.trip_id == uuid.UUID(far_trip)))
+    assert sub.decision_reasons == ["far_from_destination"] and 600 < sub.ai_result["_place"]["distance_km"] < 800
+
+    near_trip, lr2 = await make_trip()
+    await set_destination(near_trip, 18.5204, 73.8567)
+    assert (await post(client, driver, near_trip, render(SCENARIOS["clean"], lr2), lat="18.53", lng="73.86")).json()["decision"] == "verified"

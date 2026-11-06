@@ -41,7 +41,7 @@ def _norm(s: str | None) -> str:
 
 
 def decide(ex: PodExtraction, *, expected_lr_no: str, retake_count: int,
-           threshold: float = 0.85, max_retakes: int = 2) -> DecisionResult:
+           threshold: float = 0.85, max_retakes: int = 2, place_reasons: list[str] | None = None) -> DecisionResult:
     retake: list[tuple[str, Voice]] = []
     if not ex.is_document:
         retake.append(("not_a_pod", Voice.retake_not_pod))
@@ -61,7 +61,7 @@ def decide(ex: PodExtraction, *, expected_lr_no: str, retake_count: int,
             return DecisionResult(Decision.retake_requested, reasons, retake[0][1])
         return DecisionResult(Decision.needs_review, [*reasons, "retake_cap_reached"], Voice.review)
 
-    review: list[str] = []
+    review: list[str] = list(place_reasons or [])  # where the photo was taken is checked by the caller; a person looks when it is off
     if ex.shortage_or_damage:
         review.append("shortage_or_damage")
     if ex.confidence < threshold:
