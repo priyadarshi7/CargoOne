@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     gemini_model: str = "gemini-2.5-flash"  # configurable: model names change over time
     ai_timeout_s: float = 20.0
+    # Place search and the map picker. Google when a server key is set (best address data in India), else free OpenStreetMap search.
+    google_maps_server_key: str = ""  # Places API (New) + Geocoding API; used only by this server, never sent to a browser
+    google_maps_browser_key: str = ""  # Maps JavaScript API; shown to browsers by design, so restrict it to this site's addresses in Google Cloud
+    places_provider: str = "auto"  # auto (google if a server key exists) | google | photon
     ollama_url: str = "http://localhost:11434"  # the local vision model runs here (Ollama)
     ollama_model: str = "qwen3-vl:4b"
     local_ai_timeout_s: float = 120.0  # a laptop GPU needs longer than a cloud model; first call also loads the model

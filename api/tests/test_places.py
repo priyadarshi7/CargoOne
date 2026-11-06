@@ -104,3 +104,113 @@ async def test_a_planned_trip_keeps_the_drop_point_and_the_driver_gets_it_for_na
     async with SessionLocal() as s:
         t = (await s.scalars(select(Trip).where(Trip.driver_id == made["driver"]["id"]))).one()
     assert (t.origin_lat, t.origin_lng) == (19.8601, 75.2145)
+
+
+# ---------------------------------------------------------------- Google (Places API (New) + Geocoding), with a fake Google
+
+
+KEY = "test-server-key-1234567890"
+
+
+@pytest.fixture
+def google(monkeypatch):
+    """Google is switched on (a server key and a browser key are set) and every call it would make is recorded."""
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(places, "get_settings", lambda: SimpleNamespace(places_provider="auto", google_maps_server_key=KEY, google_maps_browser_key="browser-key-abc"))
+    calls: list[httpx.Request] = []
+    replies: dict[str, httpx.Response | dict] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        for part, reply in replies.items():
+            if part in str(request.url):
+                return reply if isinstance(reply, httpx.Response) else httpx.Response(200, json=reply)
+        return httpx.Response(404, json={})
+
+    return SimpleNamespace(calls=calls, replies=replies, transport=httpx.MockTransport(handler))
+
+
+AUTOCOMPLETE = {"suggestions": [
+    {"placePrediction": {"placeId": "ChIJabcdefghij1", "text": {"text": "Waluj MIDC, Chhatrapati Sambhajinagar, Maharashtra, India"},
+                         "structuredFormat": {"mainText": {"text": "Waluj MIDC"}, "secondaryText": {"text": "Chhatrapati Sambhajinagar, Maharashtra"}}}},
+    {"queryPrediction": {"text": {"text": "waluj midc companies"}}},  # a search phrase, not a place: dropped
+    {"placePrediction": {"placeId": "ChIJabcdefghij2", "text": {"text": "Waluj Gaon, Maharashtra, India"}}},  # no structured part: split from the text
+]}
+
+
+async def test_google_suggestions_are_places_without_positions_until_one_is_picked(google) -> None:
+    google.replies["places:autocomplete"] = AUTOCOMPLETE
+    got = await places.search("waluj", "sess-1234567890", google.transport)
+    assert [p.name for p in got] == ["Waluj MIDC", "Waluj Gaon"] and got[0].id == "ChIJabcdefghij1"
+    assert got[0].label == "Waluj MIDC, Chhatrapati Sambhajinagar, Maharashtra" and got[0].lat is None and got[0].lng is None
+    assert got[1].detail == "Maharashtra, India"
+    sent = google.calls[0]
+    assert sent.headers["x-goog-api-key"] == KEY  # in a header, never in the address
+    assert KEY not in str(sent.url)
+    import json
+
+    body = json.loads(sent.content)
+    assert body["includedRegionCodes"] == ["in"] and body["sessionToken"] == "sess-1234567890" and body["input"] == "waluj"
+
+
+async def test_google_answers_are_not_kept(google) -> None:
+    google.replies["places:autocomplete"] = AUTOCOMPLETE
+    await places.search("waluj", None, google.transport)
+    await places.search("waluj", None, google.transport)
+    assert len(google.calls) == 2  # Google's terms do not allow caching its results
+
+
+async def test_picking_a_google_suggestion_fetches_its_position_in_the_same_session(google) -> None:
+    google.replies["/v1/places/ChIJabcdefghij1"] = {"id": "ChIJabcdefghij1", "displayName": {"text": "Waluj MIDC"},
+                                                    "formattedAddress": "Waluj, Chhatrapati Sambhajinagar, Maharashtra 431136, India", "location": {"latitude": 19.8601234, "longitude": 75.2145678}}
+    p = await places.details("ChIJabcdefghij1", "sess-1234567890", google.transport)
+    assert (p.lat, p.lng) == (19.860123, 75.214568) and p.label.startswith("Waluj MIDC, Waluj,") and len(p.label) <= 120
+    sent = google.calls[0]
+    assert sent.headers["x-goog-fieldmask"] == "id,displayName,formattedAddress,location"  # only what is used, so only that is billed
+    assert sent.url.params["sessionToken"] == "sess-1234567890"
+
+
+async def test_the_pin_address_comes_from_geocoding_and_keeps_the_pins_own_position(google) -> None:
+    google.replies["geocode/json"] = {"status": "OK", "results": [{"place_id": "ChIJxyz12345678", "formatted_address": "MIDC Waluj, Chhatrapati Sambhajinagar, Maharashtra 431136, India"}]}
+    p = await places.reverse(19.86, 75.21, google.transport)
+    assert p.label.startswith("MIDC Waluj") and (p.lat, p.lng) == (19.86, 75.21)  # the pin stays where the person put it
+    assert google.calls[0].url.params["latlng"] == "19.86,75.21"
+    google.replies["geocode/json"] = {"status": "ZERO_RESULTS", "results": []}
+    assert (await places.reverse(19.86, 75.21, google.transport)).label == "19.86000, 75.21000"  # open fields: the coordinates are better than nothing
+
+
+async def test_a_google_failure_never_leaks_the_key_and_the_form_keeps_working(google) -> None:
+    google.replies["places:autocomplete"] = httpx.Response(403, json={"error": {"message": f"API key {KEY} is not allowed"}})
+    with pytest.raises(places.PlacesUnavailable) as e:
+        await places.search("waluj", None, google.transport)
+    assert KEY not in str(e.value) and "403" in str(e.value)
+    google.replies["geocode/json"] = {"status": "REQUEST_DENIED", "error_message": f"key {KEY} invalid", "results": []}
+    with pytest.raises(places.PlacesUnavailable) as e2:
+        await places.reverse(19.86, 75.21, google.transport)
+    assert KEY not in str(e2.value)
+
+
+def test_which_provider_is_used_and_what_the_browser_may_know(monkeypatch) -> None:
+    from types import SimpleNamespace
+
+    def use(**kw):
+        monkeypatch.setattr(places, "get_settings", lambda: SimpleNamespace(**{"places_provider": "auto", "google_maps_server_key": "", "google_maps_browser_key": "", **kw}))
+
+    use()
+    assert places.provider() == "photon" and places.browser_config() == {"provider": "photon", "maps_key": None}  # no key: the free search
+    use(google_maps_server_key="s", google_maps_browser_key="b")
+    assert places.browser_config() == {"provider": "google", "maps_key": "b"}  # the SERVER key is never offered
+    use(google_maps_server_key="s")
+    assert places.browser_config() == {"provider": "google", "maps_key": None}  # suggestions work, no map without the browser key
+    use(places_provider="photon", google_maps_server_key="s", google_maps_browser_key="b")
+    assert places.browser_config() == {"provider": "photon", "maps_key": None}  # switched off on purpose
+
+
+async def test_the_endpoints_check_what_they_are_given_and_say_when_not_set_up(client: AsyncClient) -> None:
+    assert (await client.get("/places/config")).json() == {"provider": "photon", "maps_key": None}
+    assert (await client.get("/places/details", params={"id": "short"})).status_code == 422  # not a place id
+    assert (await client.get("/places/details", params={"id": "../../etc/passwd"})).status_code == 422
+    assert (await client.get("/places/details", params={"id": "ChIJabcdefghij1"})).status_code == 503  # Google is not configured here
+    assert (await client.get("/places/search", params={"q": "waluj", "session": "x"})).status_code == 422  # session tokens are 8-64 safe characters
+    assert (await client.get("/places/reverse", params={"lat": 51.5, "lng": -0.1})).status_code == 422  # outside India
