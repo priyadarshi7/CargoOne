@@ -51,7 +51,6 @@ def test_retake_cap_sends_to_human_review() -> None:
 @pytest.mark.parametrize(("kw", "reason"), [
     ({"shortage_or_damage": True, "remarks": "short by 6 cartons"}, "shortage_or_damage"),
     ({"confidence": 0.84}, "low_confidence"),
-    ({"delivery_date": None}, "date_missing"),
 ])
 def test_review_reasons_never_auto_verified(kw, reason) -> None:
     r = run(ex(**kw))
@@ -66,3 +65,9 @@ def test_confidence_at_threshold_passes() -> None:
 def test_shortage_with_stamp_missing_prefers_retake_first() -> None:
     r = run(ex(consignee_stamp_present=False, shortage_or_damage=True))
     assert r.decision == Decision.retake_requested
+
+
+def test_a_paper_with_no_delivery_date_is_still_verified_when_everything_else_checks_out() -> None:
+    # many LR forms have no date field for the receiver; the app already records when the load was delivered
+    r = run(ex(delivery_date=None))
+    assert r.decision == Decision.verified and r.reasons == []

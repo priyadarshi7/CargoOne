@@ -2,7 +2,7 @@
 
 - Not a POD / unreadable / no stamp / no signature / wrong LR  -> retake (while retakes remain),
   otherwise -> human review.
-- Shortage or damage remark, low confidence, missing date      -> human review (never auto-verified).
+- Shortage or damage remark, low confidence                    -> human review (never auto-verified). A missing date is not a reason: the app records when the load was delivered.
 - Everything clean                                              -> verified (still never auto-invoiced).
 """
 import re
@@ -66,8 +66,6 @@ def decide(ex: PodExtraction, *, expected_lr_no: str, retake_count: int,
         review.append("shortage_or_damage")
     if ex.confidence < threshold:
         review.append("low_confidence")
-    if not ex.delivery_date:
-        review.append("date_missing")
     if review:
         return DecisionResult(Decision.needs_review, review, Voice.review)
     return DecisionResult(Decision.verified, [], Voice.ok)
