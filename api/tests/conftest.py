@@ -54,7 +54,7 @@ async def seeded() -> None:
     """Requires migrated Postgres (`alembic upgrade head`). Seed is idempotent."""
     async with SessionLocal() as session:
         # Earlier runs leave trips behind; past ~1000 of them new ones fall off the planning board's page and tests that look for them fail.
-        for stmt in ("delete from expenses", "delete from advances", "delete from trips where trip_code not in ('TRP-66120', 'TRP-66134', 'TRP-66141')"):
+        for stmt in ("delete from expenses", "delete from advances", "delete from transport_requests", "delete from trips where trip_code not in ('TRP-66120', 'TRP-66134', 'TRP-66141')"):
             await session.execute(text(stmt))
         await session.commit()
         await seed(session)

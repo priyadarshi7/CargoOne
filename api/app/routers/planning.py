@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.billing.periods import IST
 from app.config import get_settings
 from app.db import get_session
 from app.lr import next_lr_no
@@ -29,6 +30,22 @@ Planner = Annotated[User, Depends(require_roles(Role.ops))]
 Viewer = Annotated[User, Depends(require_roles(Role.ops, Role.billing))]
 Session = Annotated[AsyncSession, Depends(get_session)]
 ACTIVE = (TripState.planned, TripState.in_transit)
+LATE_BY = timedelta(minutes=15)  # a trip may be booked "from now"; a start any earlier than this is the past
+MAX_AHEAD = timedelta(days=365)
+MAX_SPAN = timedelta(days=60)
+
+
+def check_window(start: datetime | None, end: datetime | None) -> None:
+    """A trip cannot be booked into the past, absurdly far ahead, or for months on end."""
+    now = datetime.now(UTC)
+    aware = lambda d: d if d.tzinfo else d.replace(tzinfo=IST)  # a time sent without a zone is India time
+    if start:
+        if aware(start) < now - LATE_BY:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "The start time has already passed. Pick a time from now onwards.")
+        if aware(start) > now + MAX_AHEAD:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "The start is more than a year away. Check the date.")
+    if start and end and aware(end) - aware(start) > MAX_SPAN:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "A trip cannot run for more than 60 days. Check the end date.")
 
 
 class Clash(BaseModel):
@@ -183,6 +200,7 @@ async def board(_: Viewer, session: Session) -> dict:
 async def create_trip(body: NewTrip, user: Planner, session: Session) -> dict:
     if await session.get(Client, body.client_id) is None:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Unknown client")
+    check_window(body.planned_start, body.planned_end)
     vehicle = await _check_people(session, body.vehicle_id, body.driver_id)
     if body.weight_tonnes and vehicle.capacity_tonnes and body.weight_tonnes > vehicle.capacity_tonnes:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, f"{body.weight_tonnes} tonnes is more than {vehicle.reg_no} can carry ({vehicle.capacity_tonnes} tonnes)")
@@ -237,6 +255,8 @@ async def reassign(trip_id: uuid.UUID, body: Reassign, user: Planner, session: S
     end = body.planned_end if "planned_end" in fields else trip.planned_end
     if start and end and end <= start:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "The end must be after the start")
+    if start != trip.planned_start or end != trip.planned_end:  # only a changed time is checked, so an old trip can still get a new driver
+        check_window(start if start != trip.planned_start else None, end)
     await _check_people(session, vehicle_id, driver_id)
     if not body.force:
         clashes = await find_clashes(session, vehicle_id=vehicle_id, driver_id=driver_id, start=start, end=end, exclude=trip.id)

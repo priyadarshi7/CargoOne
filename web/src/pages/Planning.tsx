@@ -26,6 +26,8 @@ const BAR: Record<TripState, string> = {
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
 const toLocalInput = (iso: string | null) => (iso ? new Date(new Date(iso).getTime() - new Date(iso).getTimezoneOffset() * 60_000).toISOString().slice(0, 16) : '')
 const fromLocalInput = (v: string) => (v ? new Date(v).toISOString() : null)
+const nowInput = () => toLocalInput(new Date(Date.now() - 10 * 60_000).toISOString()) // the earliest start the server accepts is about now
+const prefillStart = (day: string) => { const eight = `${day}T08:00`; const now = nowInput(); return eight < now ? now : eight } // a pickup today after 8 am starts "now"
 
 /** Trip planning board: a 15-day timeline per vehicle. Dashed = planned, solid = on the road, green = delivered. */
 export default function Planning() {
@@ -183,7 +185,7 @@ function TripDialog({ trip, prefill, refs, canPlan, onClose, onSaved }: { trip: 
   const [f, setF] = useState({
     client_id: prefill?.client_id ?? refs.clients[0]?.id ?? '', vehicle_id: trip?.vehicle_id ?? refs.vehicles[0]?.id ?? '', driver_id: trip?.driver_id ?? '',
     origin: prefill?.origin ?? refs.default_origin, destination: prefill?.destination ?? trip?.destination ?? '', origin_lat: (prefill?.origin_lat ?? null) as number | null, origin_lng: (prefill?.origin_lng ?? null) as number | null, destination_lat: (prefill?.destination_lat ?? null) as number | null, destination_lng: (prefill?.destination_lng ?? null) as number | null, freight_amount: '', eway_bill_no: '', material: prefill?.material ?? '', weight_tonnes: prefill?.weight_tonnes?.toString() ?? '', packages: '', consignee_name: '', consignee_phone: '',
-    start: prefill ? `${prefill.pickup_date}T08:00` : toLocalInput(trip?.planned_start ?? null), end: toLocalInput(trip?.planned_end ?? null),
+    start: prefill ? prefillStart(prefill.pickup_date) : toLocalInput(trip?.planned_start ?? null), end: toLocalInput(trip?.planned_end ?? null),
   })
   const [error, setError] = useState<string | null>(null)
   const [clash, setClash] = useState(false)
@@ -272,8 +274,8 @@ function TripDialog({ trip, prefill, refs, canPlan, onClose, onSaved }: { trip: 
           {label(t('plan.driver'), <select className={field} disabled={locked} value={f.driver_id} onChange={(e) => pickDriver(e.target.value)}><option value="">{t('plan.noDriver')}</option>{refs.drivers.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select>)}
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          {label(t('plan.start'), <input type="datetime-local" className={field} disabled={locked} value={f.start} onChange={(e) => set('start', e.target.value)} />)}
-          {label(t('plan.end'), <input type="datetime-local" className={field} disabled={locked} value={f.end} onChange={(e) => set('end', e.target.value)} />)}
+          {label(t('plan.start'), <input type="datetime-local" className={field} disabled={locked} min={editing && f.start === toLocalInput(trip?.planned_start ?? null) ? undefined : nowInput()} max={toLocalInput(new Date(Date.now() + 365 * 86_400_000).toISOString())} value={f.start} onChange={(e) => set('start', e.target.value)} />)}
+          {label(t('plan.end'), <input type="datetime-local" className={field} disabled={locked} min={f.start || undefined} value={f.end} onChange={(e) => set('end', e.target.value)} />)}
         </div>
         {!editing && sec(t('plan.sec.freight'))}
         {!editing && (

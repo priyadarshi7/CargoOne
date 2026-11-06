@@ -3,7 +3,7 @@ The image stays the source of truth: reviewers may correct extracted fields, but
 beside the AI output, never over it. Nothing here sends an invoice."""
 import re
 import uuid
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
+from app.billing.periods import IST
 from app.config import get_settings
 from app.db import get_session
 from app.models import AuditLog, Client, PodStatus, PodSubmission, Role, Trip, User
@@ -126,6 +127,15 @@ async def decide_review(trip_id: uuid.UUID, body: ReviewDecision, user: Reviewer
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "LR number does not match this trip")
         if not final.get("delivery_date"):
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Delivery date is required to approve")
+        try:
+            delivered_on = date.fromisoformat(str(final["delivery_date"])[:10])
+        except ValueError:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Delivery date is not a valid date") from None
+        if delivered_on > datetime.now(IST).date():
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Delivery date is in the future")
+        left = trip.started_at or trip.planned_start
+        if left and delivered_on < left.astimezone(IST).date() - timedelta(days=1):
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Delivery date is before the trip started")
         trip.pod_status = PodStatus.verified
         trip.verified_at = now
         if trip.delivered_at is None:

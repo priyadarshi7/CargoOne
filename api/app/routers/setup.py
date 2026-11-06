@@ -11,7 +11,7 @@ from decimal import Decimal
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -131,6 +131,13 @@ class VehicleFields(BaseModel):
     permit_expiry: date | None = None
     puc_expiry: date | None = None
     availability_note: str | None = Field(default=None, max_length=200)
+
+    @field_validator("registration_date")
+    @classmethod
+    def _registered(cls, v: date | None) -> date | None:
+        if v and v > date.today():
+            raise ValueError("The registration date cannot be in the future")
+        return v
 
 
 class VehicleIn(VehicleFields):

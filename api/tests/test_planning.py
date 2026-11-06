@@ -153,3 +153,30 @@ async def test_validation_roles_and_board(client: AsyncClient, driver: dict) -> 
     assert created["id"] in {t["id"] for t in board["trips"]} and v in {x["id"] for x in board["vehicles"]}
     async with SessionLocal() as s:
         assert await s.scalar(select(Client.id).where(Client.id == uuid.UUID(r["clients"][0]["id"])))
+
+
+async def test_a_trip_cannot_be_booked_into_the_past_or_for_months(client: AsyncClient) -> None:
+    h = await ops(client)
+    r = await refs(client, h)
+    v, d = await fresh_vehicle_and_driver()
+    now = datetime.now(UTC).replace(microsecond=0)
+    for start, why in ((now - 2 * H, "passed"), (now - timedelta(days=3), "passed"), (now + timedelta(days=400), "year")):
+        res = await client.post("/planning/trips", headers=h, json=body(r, v, d, start))
+        assert res.status_code == 422 and why in res.text, (start, res.text)
+    long_trip = await client.post("/planning/trips", headers=h, json=body(r, v, d, now + 2 * H, hours=24 * 70))
+    assert long_trip.status_code == 422 and "60 days" in long_trip.text
+    assert (await client.post("/planning/trips", headers=h, json=body(r, v, d, now + 5 * 60 * timedelta(seconds=1)))).status_code == 201  # "from now" is fine
+
+
+async def test_replanning_checks_a_changed_time_but_not_an_untouched_one(client: AsyncClient) -> None:
+    h = await ops(client)
+    r = await refs(client, h)
+    v, d = await fresh_vehicle_and_driver()
+    start = datetime.now(UTC).replace(microsecond=0) + 3 * H
+    trip = (await client.post("/planning/trips", headers=h, json=body(r, v, d, start))).json()["id"]
+    assert (await client.patch(f"/planning/trips/{trip}", headers=h, json={"planned_start": (start - timedelta(days=2)).isoformat()})).status_code == 422
+    async with SessionLocal() as s:  # the time passes without the trip starting: a new driver can still be given
+        t = await s.get(Trip, uuid.UUID(trip))
+        t.planned_start, t.planned_end = start - timedelta(days=1), start - timedelta(hours=14)
+        await s.commit()
+    assert (await client.patch(f"/planning/trips/{trip}", headers=h, json={"driver_id": None})).status_code == 200
