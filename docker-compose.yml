@@ -1,7 +1,3 @@
-# The whole product:   docker compose up -d --build     then open http://localhost:5173
-# Database, API and web app run as containers and restart by themselves. After changing code: run the same command again.
-# After changing .env: docker compose up -d api   (recreates the API with the new settings).
-# Ollama (the vision model) stays on this computer, where it can use the GPU; the API reaches it through host.docker.internal.
 services:
   db:
     image: postgres:16-alpine
@@ -12,36 +8,5 @@ services:
       POSTGRES_DB: cargoone
     ports: ["5432:5432"]
     volumes: [pgdata:/var/lib/postgresql/data]
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cargoone"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
-
-  api:
-    build: { context: ., dockerfile: api/Dockerfile }
-    restart: unless-stopped
-    env_file: [{ path: .env, required: false }]
-    environment:
-      DATABASE_URL: postgresql+asyncpg://cargoone:cargoone@db:5432/cargoone
-      OLLAMA_URL: http://host.docker.internal:11434
-      STORAGE_DIR: /data/storage
-    extra_hosts: ["host.docker.internal:host-gateway"]
-    volumes: ["./api/storage:/data/storage"]
-    depends_on: { db: { condition: service_healthy } }
-    ports: ["8000:8000"]
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health', timeout=3).status == 200 else 1)"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 20s
-
-  web:
-    build: { context: ., dockerfile: web/Dockerfile }
-    restart: unless-stopped
-    depends_on: { api: { condition: service_healthy } }
-    ports: ["5173:80", "4173:80"]  # 5173 is the address the app links to; 4173 is what a phone tunnel points at
-
 volumes:
   pgdata:

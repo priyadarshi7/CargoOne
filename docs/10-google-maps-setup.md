@@ -21,7 +21,7 @@ Without any keys the app uses the free OpenStreetMap search (Photon) and has no 
    GOOGLE_MAPS_BROWSER_KEY=<the browser key>
    PLACES_PROVIDER=auto
    ```
-   After saving `.env`, run `docker compose up -d api` (with `pnpm dev:all` instead, saving restarts the API by itself). Check `http://localhost:8000/places/config`: it should say `"provider": "google"` and show the browser key (never the server key).
+   With `pnpm dev:all` running, saving `.env` restarts the API by itself. Check `http://localhost:8000/places/config`: it should say `"provider": "google"` and show the browser key (never the server key).
 5. **Set a budget alert and a daily quota cap** in the console (Billing, Budgets; APIs, Quotas) so a mistake or abuse cannot run up a bill. Prices and the free allowance change: read Google's current pricing page before launch.
 
 `PLACES_PROVIDER=photon` switches Google off again without removing the keys.
