@@ -1,4 +1,4 @@
-import { X } from 'lucide-react'
+import { Check, Copy, MessageCircle, Send, X } from 'lucide-react'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { api, ApiError, fetchBlob, type Trip } from '../lib/api'
 import { useI18n, type Key } from '../lib/i18n'
@@ -10,17 +10,44 @@ interface Timeline {
   eway_valid_until: string | null; closed_at: string | null; events: Row[]
 }
 
-/** The office's view of one shipment: where each step stands, the timeline in order, the loading photo, and (for ops) delivering without the receiver's code. */
-export function ShipmentDialog({ trip, canAct, onClose }: { trip: Trip; canAct: boolean; onClose: () => void }) {
+interface Link { url: string; to: string | null; has_phone: boolean; whatsapp: string | null }
+interface Links { client: Link; receiver: Link; views: { client: number; receiver: number }; sent_status?: string | null }
+
+/** The office's view of one shipment: where each step stands, the timeline in order, the loading photo, the addresses to share, and (for ops) delivering without the receiver's code. */
+export function ShipmentDialog({ trip, canAct, canShare, onClose }: { trip: Trip; canAct: boolean; canShare: boolean; onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null)
   const { t, date } = useI18n()
   const [tl, setTl] = useState<Timeline | null>(null)
   const [why, setWhy] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [links, setLinks] = useState<Links | null>(null)
+  const [copied, setCopied] = useState<string | null>(null)
+  const [note, setNote] = useState<string | null>(null)
 
   const load = () => api<Timeline>(`/trips/${trip.id}/timeline`).then(setTl).catch(() => setError(t('sh.failed')))
-  useEffect(() => { ref.current?.showModal(); void load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    ref.current?.showModal(); void load()
+    if (canShare) api<Links>(`/trips/${trip.id}/shipment-links`).then(setLinks).catch(() => undefined)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function copy(key: string, url: string) {
+    await navigator.clipboard?.writeText(url).catch(() => undefined)
+    setCopied(key)
+    setTimeout(() => setCopied(null), 2000)
+  }
+  async function send(aud: 'client' | 'receiver') {
+    setBusy(true); setError(null); setNote(null)
+    try { const r = await api<Links>(`/trips/${trip.id}/shipment-links/send?audience=${aud}`, { method: 'POST' }); setLinks(r); setNote(t('sh.sentOk')) }
+    catch (err) { setError(err instanceof ApiError ? err.message : t('sh.failed')) }
+    finally { setBusy(false) }
+  }
+  async function retire() {
+    setBusy(true); setError(null)
+    try { setLinks(await api<Links>(`/trips/${trip.id}/shipment-links/retire`, { method: 'POST' })); setNote(t('sh.retired')) }
+    catch (err) { setError(err instanceof ApiError ? err.message : t('sh.failed')) }
+    finally { setBusy(false) }
+  }
 
   async function photo() {
     try { window.open(URL.createObjectURL(await fetchBlob(`/trips/${trip.id}/loading-photo`)), '_blank', 'noopener') } catch { setError(t('sh.failed')) }
@@ -86,6 +113,29 @@ export function ShipmentDialog({ trip, canAct, onClose }: { trip: Trip; canAct: 
             )}
           </>
         )}
+        {links && (
+          <section aria-label={t('sh.links')} className="space-y-3 border-t border-line pt-4">
+            <h3 className="font-semibold">{t('sh.links')}</h3>
+            <p className="text-sm text-muted">{t('sh.linksHelp')}</p>
+            {(['client', 'receiver'] as const).map((aud) => (
+              <div key={aud} className="space-y-1.5 rounded-xl border border-line p-3 text-sm">
+                <p className="flex flex-wrap items-center justify-between gap-2 font-medium">{t(`sh.${aud}`)}{links[aud].to ? ` · ${links[aud].to}` : ''}<span className="text-xs font-normal text-muted">{t('sh.opens', { n: links.views[aud] })}</span></p>
+                <div className="flex gap-2">
+                  <input readOnly aria-label={`${t(`sh.${aud}`)} link`} value={links[aud].url} onFocus={(e) => e.currentTarget.select()} className="w-full rounded-lg border border-line px-3 py-2 font-mono text-xs outline-none" />
+                  <button type="button" onClick={() => void copy(aud, links[aud].url)} className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 hover:border-accent">{copied === aud ? <Check size={16} aria-hidden /> : <Copy size={16} aria-hidden />} {copied === aud ? t('ul.copied') : t('ul.copy')}</button>
+                </div>
+                {links[aud].has_phone ? (
+                  <div className="flex flex-wrap gap-2">
+                    <a href={links[aud].whatsapp ?? undefined} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs font-medium hover:border-accent hover:text-accent"><MessageCircle size={14} aria-hidden /> {t('sh.wa')}</a>
+                    <button type="button" disabled={busy} onClick={() => void send(aud)} className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs font-medium hover:border-accent hover:text-accent disabled:opacity-50"><Send size={14} aria-hidden /> {t('sh.send')}</button>
+                  </div>
+                ) : <p className="text-xs text-muted">{t('sh.noPhone')}</p>}
+              </div>
+            ))}
+            <button type="button" disabled={busy} onClick={() => void retire()} className="text-sm text-bad underline underline-offset-2">{t('sh.retire')}</button>
+          </section>
+        )}
+        {note && <p role="status" className="text-sm text-ok">{note}</p>}
         {error && <p role="alert" className="text-sm text-bad">{error}</p>}
       </div>
     </dialog>

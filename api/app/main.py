@@ -29,6 +29,7 @@ from app.routers import (
     requests,
     review,
     setup,
+    shipments,
     tracking,
     trips,
 )
@@ -50,6 +51,8 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(trips.router)
 app.include_router(journey.router)
+app.include_router(shipments.public)
+app.include_router(shipments.office)
 app.include_router(pods.router)
 app.include_router(review.router)
 app.include_router(billing.router)

@@ -19,6 +19,7 @@ UPDATES: dict[str, dict[str, str]] = {
     "verified": {"en": "the proof of delivery has been checked and is ready to view", "hi": "डिलीवरी का सबूत जाँच लिया गया है और देखने के लिए तैयार है", "mr": "डिलिव्हरीचा पुरावा तपासला आहे आणि पाहण्यासाठी तयार आहे"},
     "invoiced": {"en": "invoice {invoice} for Rs {amount} has been sent to you", "hi": "बिल {invoice} (Rs {amount}) आपको भेज दिया गया है", "mr": "बिल {invoice} (Rs {amount}) तुम्हाला पाठवले आहे"},
     "paid": {"en": "payment received for invoice {invoice}. Thank you", "hi": "बिल {invoice} का भुगतान मिल गया। धन्यवाद", "mr": "बिल {invoice} चे पैसे मिळाले. धन्यवाद"},
+    "link": {"en": "you can follow your shipment on this page", "hi": "आप अपनी खेप इस पेज पर देख सकते हैं", "mr": "तुम्ही तुमची खेप या पेजवर पाहू शकता"},
     "cancelled": {"en": "this trip has been cancelled", "hi": "यह ट्रिप रद्द कर दी गई है", "mr": "ही ट्रिप रद्द करण्यात आली आहे"},
 }
 REASONS: dict[str, dict[str, str]] = {
@@ -35,14 +36,14 @@ REASONS: dict[str, dict[str, str]] = {
 # Who hears about each step. The receiver never hears about money.
 AUDIENCE = {"assigned": ("client",), "replanned": ("client",), "started": ("client", "receiver"), "delay": ("client", "receiver"), "breakdown": ("client", "receiver"),
             "resolved": ("client", "receiver"), "late": ("client", "receiver"), "delivered": ("client",), "verified": ("client",), "invoiced": ("client",),
-            "paid": ("client",), "cancelled": ("client", "receiver")}
+            "paid": ("client",), "cancelled": ("client", "receiver"), "link": ("client", "receiver")}
 
 
 def reason_text(code: str | None, lang: str) -> str:
     return REASONS.get(code or "other", REASONS["other"]).get(lang, REASONS["other"]["en"])
 
 
-async def tell_parties(session: AsyncSession, trip: Trip, kind: str, **fmt: object) -> None:
+async def tell_parties(session: AsyncSession, trip: Trip, kind: str, only: str | None = None, **fmt: object) -> None:
     client = await session.get(Client, trip.client_id)
     if client is None:
         return
@@ -54,6 +55,8 @@ async def tell_parties(session: AsyncSession, trip: Trip, kind: str, **fmt: obje
     text = UPDATES[kind][lang].format(**values)
     sent: set[str] = set()
     for aud in AUDIENCE[kind]:
+        if only and aud != only:
+            continue
         phone = client.contact_phone if aud == "client" else trip.consignee_phone
         name = (client.contact_name or client.name) if aud == "client" else (trip.consignee_name or "")
         if not phone or phone in sent:

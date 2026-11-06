@@ -97,7 +97,7 @@ export default function OfficeTrips() {
         </table>
       </div>
       {linkFor && <UploadLinkDialog trip={linkFor} onClose={() => setLinkFor(null)} />}
-      {journeyFor && <ShipmentDialog trip={journeyFor} canAct={user?.role === 'ops' || user?.role === 'admin'} onClose={() => setJourneyFor(null)} />}
+      {journeyFor && <ShipmentDialog trip={journeyFor} canAct={user?.role === 'ops' || user?.role === 'admin'} canShare={canSendLink} onClose={() => setJourneyFor(null)} />}
       {shareFor && <ClientLinkDialog trip={shareFor} onClose={() => setShareFor(null)} />}
     </div>
   )

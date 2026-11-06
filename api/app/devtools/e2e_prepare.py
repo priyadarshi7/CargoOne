@@ -79,6 +79,8 @@ async def _seed() -> None:
         s.add(Trip(trip_code='TRP-E2E-MONEY', client_id=client.id, vehicle_id=veh.id, driver_id=money.id, lr_no='LR-E2EMONEY', eway_bill_no='341000000066',
                    origin='Chhatrapati Sambhajinagar', destination='Hingoli', freight_amount=Decimal(30000), pod_status=PodStatus.pending))
         s.add(User(name='Plan Test Driver', phone='9000000088', role=Role.driver, password_hash=hash_secret('4821'), language='en'))
+        s.add(User(name='Journey Test Driver', phone='9000000055', role=Role.driver, password_hash=hash_secret('4821'), language='en'))
+        s.add(Vehicle(reg_no='MH20 JR 0001', is_hired=False, capacity_tonnes=Decimal(20)))
         s.add(User(name='PIN Test Driver', phone='9000000077', role=Role.driver, password_hash=hash_secret('4821'), language='en'))
         await s.commit()
 

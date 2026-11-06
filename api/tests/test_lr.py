@@ -143,7 +143,7 @@ async def test_branch_codes(client: AsyncClient) -> None:
     dup = await client.post("/setup/branches", headers=ops, json={"name": "Another", "code": b["code"].lower()})
     assert dup.status_code == 409  # codes are unique (stored upper-case)
     assert (await client.post("/setup/branches", headers=ops, json={"name": "Bad", "code": "no way!"})).status_code == 422
-    renamed = await client.patch(f"/setup/branches/{b['id']}", headers=ops, json={"code": "zz" + digits(3)})
+    renamed = await client.patch(f"/setup/branches/{b['id']}", headers=ops, json={"code": "zz" + digits(5)})
     assert renamed.json()["code"].startswith("ZZ")
     billing = await office(client, "billing@cargoone.dev")
     assert (await client.get("/setup/branches", headers=billing)).status_code == 200

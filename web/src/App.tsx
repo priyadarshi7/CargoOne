@@ -36,6 +36,7 @@ const Desk = lazy(() => import('./pages/Desk'))
 // The map library is heavy: load it only when a map page is opened
 const LiveMapPage = lazy(() => import('./pages/LiveMapPage'))
 const TrackPublic = lazy(() => import('./pages/TrackPublic'))
+const ShipmentPage = lazy(() => import('./pages/ShipmentPage'))
 
 function Guard({ roles, children }: { roles: Role[]; children: ReactNode }) {
   const { user, loading } = useAuth()
@@ -77,6 +78,7 @@ export default function App() {
           <Route path="/u/:token" element={<SmsCapture />} />
           <Route path="/v/:token" element={<ClientPod />} />
           <Route path="/t/:token" element={<TrackPublic />} />
+          <Route path="/s/:token" element={<ShipmentPage />} />
           <Route path="/driver" element={<Guard roles={['driver']}><DriverHome /></Guard>} />
           <Route path="/driver/messages" element={<Guard roles={['driver']}><DriverMessages /></Guard>} />
           <Route path="/driver/help" element={<Guard roles={['driver']}><DriverHelp /></Guard>} />
