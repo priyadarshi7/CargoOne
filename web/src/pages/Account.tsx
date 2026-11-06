@@ -1,13 +1,13 @@
 import { CircleCheck } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { api, ApiError, tokenStore } from '../lib/api'
+import { api, ApiError, tokenStore, type User } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
 
 /** Change your own password. Other signed-in devices are signed out; this one stays signed in. */
 export default function Account() {
-  const { user } = useAuth()
+  const { user, adopt } = useAuth()
   const { t } = useI18n()
   const [current, setCurrent] = useState('')
   const [next, setNext] = useState('')
@@ -25,6 +25,7 @@ export default function Account() {
     try {
       const res = await api<{ access_token: string }>('/auth/change-secret', { method: 'POST', body: JSON.stringify({ current, new: next }) })
       tokenStore.set(res.access_token)
+      adopt(res.access_token, await api<User>('/auth/me')) // the screen now knows the temporary password is gone
       setCurrent(''); setNext(''); setAgain('')
       setDone(true)
     } catch (err) {

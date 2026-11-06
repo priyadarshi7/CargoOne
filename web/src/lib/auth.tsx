@@ -63,4 +63,4 @@ export function useAuth(): AuthState {
   return v
 }
 
-export const homeFor = (role: User['role']) => (role === 'driver' ? '/driver' : '/office')
+export const homeFor = (role: User['role']) => (role === 'driver' ? '/driver' : role === 'client' ? '/portal' : '/office')

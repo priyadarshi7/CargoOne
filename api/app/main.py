@@ -25,6 +25,7 @@ from app.routers import (
     places,
     planning,
     pods,
+    portal,
     push,
     requests,
     review,
@@ -51,6 +52,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(trips.router)
 app.include_router(journey.router)
+app.include_router(portal.router)
 app.include_router(shipments.public)
 app.include_router(shipments.office)
 app.include_router(pods.router)

@@ -10,7 +10,7 @@ import { useI18n } from '../lib/i18n'
 
 interface BoardTrip { id: string; trip_code: string; lr_no: string; client: string; vehicle_id: string; driver_id: string | null; driver: string | null; origin: string; destination: string; state: TripState; planned_start: string | null; planned_end: string | null; started_at: string | null }
 interface Vehicle { id: string; reg_no: string; is_hired: boolean; availability?: string; capacity_tonnes?: number | null }
-interface Prefill { id: string; reference: string; client_id: string; origin: string; destination: string; origin_lat?: number | null; origin_lng?: number | null; destination_lat?: number | null; destination_lng?: number | null; material: string; weight_tonnes: number | null; pickup_date: string }
+interface Prefill { id: string; reference: string; client_id: string; origin: string; destination: string; origin_lat?: number | null; origin_lng?: number | null; destination_lat?: number | null; destination_lng?: number | null; material: string; weight_tonnes: number | null; pickup_date: string; quote_amount?: number | null }
 interface Board { now: string; vehicles: Vehicle[]; trips: BoardTrip[] }
 interface Refs { clients: { id: string; name: string }[]; vehicles: Vehicle[]; drivers: { id: string; name: string; assigned_vehicle_id?: string | null }[]; branches: { id: string; name: string }[]; default_origin: string }
 
@@ -184,7 +184,7 @@ function TripDialog({ trip, prefill, refs, canPlan, onClose, onSaved }: { trip: 
   const locked = editing && (trip.state !== 'planned' || !canPlan)
   const [f, setF] = useState({
     client_id: prefill?.client_id ?? refs.clients[0]?.id ?? '', vehicle_id: trip?.vehicle_id ?? refs.vehicles[0]?.id ?? '', driver_id: trip?.driver_id ?? '',
-    origin: prefill?.origin ?? refs.default_origin, destination: prefill?.destination ?? trip?.destination ?? '', origin_lat: (prefill?.origin_lat ?? null) as number | null, origin_lng: (prefill?.origin_lng ?? null) as number | null, destination_lat: (prefill?.destination_lat ?? null) as number | null, destination_lng: (prefill?.destination_lng ?? null) as number | null, freight_amount: '', eway_bill_no: '', material: prefill?.material ?? '', weight_tonnes: prefill?.weight_tonnes?.toString() ?? '', packages: '', consignee_name: '', consignee_phone: '',
+    origin: prefill?.origin ?? refs.default_origin, destination: prefill?.destination ?? trip?.destination ?? '', origin_lat: (prefill?.origin_lat ?? null) as number | null, origin_lng: (prefill?.origin_lng ?? null) as number | null, destination_lat: (prefill?.destination_lat ?? null) as number | null, destination_lng: (prefill?.destination_lng ?? null) as number | null, freight_amount: prefill?.quote_amount != null ? String(prefill.quote_amount) : '', eway_bill_no: '', material: prefill?.material ?? '', weight_tonnes: prefill?.weight_tonnes?.toString() ?? '', packages: '', consignee_name: '', consignee_phone: '',
     start: prefill ? prefillStart(prefill.pickup_date) : toLocalInput(trip?.planned_start ?? null), end: toLocalInput(trip?.planned_end ?? null), eway_until: '', reason: '',
   })
   const [error, setError] = useState<string | null>(null)

@@ -159,7 +159,31 @@ async def follow(token: str, request: Request, session: Session) -> dict:
         "weight_tonnes": float(r.weight_tonnes) if r.weight_tonnes is not None else None, "pickup_date": r.pickup_date.isoformat(), "created_at": r.created_at.isoformat(),
         "reply": r.ops_note, "quote_amount": float(r.quote_amount) if r.quote_amount is not None and r.status in ("accepted", "booked") else None,
         "trip_code": trip.trip_code if trip else None, "planned_start": trip.planned_start.isoformat() if trip and trip.planned_start else None, "language": r.language,
+        "can_respond": r.status == "accepted" and r.quote_amount is not None and r.quote_accepted_at is None,  # the quote waits for their yes or no
+        "quote_accepted": r.quote_accepted_at is not None,
     }
+
+
+class QuoteReply(BaseModel):
+    decision: Literal["accept", "decline"]
+    reason: str | None = Field(default=None, max_length=200)
+
+
+@public.post("/{token}/quote")
+async def reply_to_quote(token: str, body: QuoteReply, request: Request, session: Session) -> dict:
+    """The requester says yes or no to the quote on their own status page. A yes lets the office book the trip; a no closes the request."""
+    r = await _by_token(token, request, session)
+    if r.status != "accepted" or r.quote_amount is None or r.quote_accepted_at is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "There is no quote waiting for an answer")
+    if body.decision == "accept":
+        r.quote_accepted_at, r.quote_accepted_via = datetime.now(UTC), "online"
+        session.add(AuditLog(actor_id=None, action="request.quote_accepted", entity="request", entity_id=r.reference, meta={"via": "online"}))
+    else:
+        r.status, r.decided_at = "declined", datetime.now(UTC)
+        r.ops_note = f"The quote was turned down by the requester{': ' + body.reason.strip() if body.reason and body.reason.strip() else ''}"
+        session.add(AuditLog(actor_id=None, action="request.quote_declined", entity="request", entity_id=r.reference))
+    await session.commit()
+    return {"status": r.status, "quote_accepted": r.quote_accepted_at is not None}
 
 
 # ---------------------------------------------------------------- the office
@@ -172,7 +196,7 @@ def _out(r: TransportRequest, client: str | None = None, trip_code: str | None =
         "material": r.material, "weight_tonnes": float(r.weight_tonnes) if r.weight_tonnes is not None else None, "truck_type": r.truck_type,
         "pickup_date": r.pickup_date.isoformat(), "notes": r.notes, "client_id": str(r.client_id) if r.client_id else None, "client": client,
         "trip_id": str(r.trip_id) if r.trip_id else None, "trip_code": trip_code, "quote_amount": float(r.quote_amount) if r.quote_amount is not None else None,
-        "reply": r.ops_note,
+        "reply": r.ops_note, "quote_accepted_at": r.quote_accepted_at.isoformat() if r.quote_accepted_at else None, "quote_accepted_via": r.quote_accepted_via,
     }
 
 
@@ -227,8 +251,8 @@ async def accept(request_id: uuid.UUID, body: Accept, actor: Manager, session: S
     r = await _get(session, request_id)
     if r.status != "new":
         raise HTTPException(status.HTTP_409_CONFLICT, f"This request is already {r.status}")
-    if body.client_id:
-        client = await session.get(Client, body.client_id)
+    if body.client_id or r.client_id:
+        client = await session.get(Client, body.client_id or r.client_id)
         if client is None or not client.is_active:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Unknown or inactive client")
     else:
@@ -246,6 +270,23 @@ async def accept(request_id: uuid.UUID, body: Accept, actor: Manager, session: S
     result = _out(r, client.name)
     await safely(session, tell_requester(session, r, "accepted"))
     return result
+
+
+class PhoneYes(BaseModel):
+    note: str | None = Field(default=None, max_length=200)
+
+
+@office.post("/{request_id}/quote-confirmed")
+async def quote_confirmed(request_id: uuid.UUID, body: PhoneYes, actor: Manager, session: Session) -> dict:
+    """The requester said yes on the phone: record it (and who took the call) so the trip can be booked."""
+    r = await _get(session, request_id)
+    if r.status != "accepted" or r.quote_amount is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "There is no quote waiting for an answer")
+    if r.quote_accepted_at is None:
+        r.quote_accepted_at, r.quote_accepted_via = datetime.now(UTC), "phone"
+        session.add(AuditLog(actor_id=actor.id, action="request.quote_accepted", entity="request", entity_id=r.reference, meta={"via": "phone", "note": body.note}))
+        await session.commit()
+    return _out(r)
 
 
 @office.post("/{request_id}/decline")
@@ -266,6 +307,8 @@ async def book(session: AsyncSession, request_id: uuid.UUID, trip: Trip) -> tupl
     r = await session.get(TransportRequest, request_id)
     if r is None or r.status != "accepted" or r.client_id != trip.client_id:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "That request is not accepted for this client")
+    if r.quote_amount is not None and r.quote_accepted_at is None:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "The client has not accepted the quote yet. Ask them to accept it on their request page, or record their yes from a phone call.")
     r.status, r.trip_id = "booked", trip.id
     session.add(AuditLog(actor_id=None, action="request.book", entity="request", entity_id=r.reference, meta={"trip": trip.trip_code}))
     when = f"{trip.planned_start.astimezone(IST):%d %b, %H:%M}" if trip.planned_start else r.pickup_date.strftime("%d %b")

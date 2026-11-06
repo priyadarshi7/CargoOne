@@ -37,6 +37,9 @@ const Desk = lazy(() => import('./pages/Desk'))
 const LiveMapPage = lazy(() => import('./pages/LiveMapPage'))
 const TrackPublic = lazy(() => import('./pages/TrackPublic'))
 const ShipmentPage = lazy(() => import('./pages/ShipmentPage'))
+const Portal = lazy(() => import('./pages/Portal'))
+const PortalNew = lazy(() => import('./pages/Portal').then((m) => ({ default: m.PortalNew })))
+const PortalAccount = lazy(() => import('./pages/Portal').then((m) => ({ default: m.PortalAccount })))
 
 function Guard({ roles, children }: { roles: Role[]; children: ReactNode }) {
   const { user, loading } = useAuth()
@@ -44,7 +47,8 @@ function Guard({ roles, children }: { roles: Role[]; children: ReactNode }) {
   if (loading) return null
   if (!user) return <Navigate to="/login" replace />
   if (user.must_change_secret && user.role === 'driver' && pathname !== '/driver/pin') return <Navigate to="/driver/pin" replace />
-  if (user.must_change_secret && user.role !== 'driver' && pathname !== '/office/account') return <Navigate to="/office/account" replace /> // new office accounts start with a temporary password
+  if (user.must_change_secret && user.role === 'client' && pathname !== '/portal/account') return <Navigate to="/portal/account" replace />
+  if (user.must_change_secret && user.role !== 'driver' && user.role !== 'client' && pathname !== '/office/account') return <Navigate to="/office/account" replace /> // new office accounts start with a temporary password
   if (!roles.includes(user.role) && user.role !== 'admin') return <Navigate to={homeFor(user.role)} replace />
   return <>{children}</>
 }
@@ -79,6 +83,9 @@ export default function App() {
           <Route path="/v/:token" element={<ClientPod />} />
           <Route path="/t/:token" element={<TrackPublic />} />
           <Route path="/s/:token" element={<ShipmentPage />} />
+          <Route path="/portal" element={<Guard roles={['client']}><Portal /></Guard>} />
+          <Route path="/portal/new" element={<Guard roles={['client']}><PortalNew /></Guard>} />
+          <Route path="/portal/account" element={<Guard roles={['client']}><PortalAccount /></Guard>} />
           <Route path="/driver" element={<Guard roles={['driver']}><DriverHome /></Guard>} />
           <Route path="/driver/messages" element={<Guard roles={['driver']}><DriverMessages /></Guard>} />
           <Route path="/driver/help" element={<Guard roles={['driver']}><DriverHelp /></Guard>} />

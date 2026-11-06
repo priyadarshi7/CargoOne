@@ -43,7 +43,7 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   return res.json() as Promise<T>
 }
 
-export type Role = 'driver' | 'billing' | 'ops' | 'md' | 'admin'
+export type Role = 'driver' | 'billing' | 'ops' | 'md' | 'admin' | 'client'
 export interface User {
   id: string
   name: string

@@ -249,6 +249,7 @@ class ClientIn(BaseModel):
     contact_name: str | None = Field(default=None, max_length=120)
     contact_phone: str | None = None
     gstin: str | None = None
+    language: Literal["en", "hi", "mr"] = "en"  # what the messages about their shipments are written in
 
 
 class ClientPatch(BaseModel):
@@ -259,6 +260,7 @@ class ClientPatch(BaseModel):
     contact_name: str | None = Field(default=None, max_length=120)
     contact_phone: str | None = None
     gstin: str | None = None
+    language: Literal["en", "hi", "mr"] | None = None
     is_active: bool | None = None
 
 
@@ -271,7 +273,7 @@ def _gstin(value: str | None) -> str | None:
 
 def _client_out(c: Client, trips: int) -> dict:
     return {"id": str(c.id), "name": c.name, "segment": c.segment, "billing_cycle": c.billing_cycle, "tally_ledger": c.tally_ledger,
-            "contact_name": c.contact_name, "contact_phone": c.contact_phone, "gstin": c.gstin, "is_active": c.is_active, "trips": trips}
+            "contact_name": c.contact_name, "contact_phone": c.contact_phone, "gstin": c.gstin, "language": c.language, "is_active": c.is_active, "trips": trips}
 
 
 async def _trip_count(session: AsyncSession, client_id: uuid.UUID) -> int:
@@ -287,7 +289,7 @@ async def list_clients(_: Office, session: Session) -> list[dict]:
 @router.post("/clients", status_code=status.HTTP_201_CREATED)
 async def create_client(body: ClientIn, actor: Manager, session: Session) -> dict:
     c = Client(name=body.name.strip(), segment=body.segment or None, billing_cycle=body.billing_cycle, tally_ledger=body.tally_ledger or None,
-               contact_name=body.contact_name or None, contact_phone=clean_phone(body.contact_phone) if body.contact_phone else None, gstin=_gstin(body.gstin))
+               contact_name=body.contact_name or None, contact_phone=clean_phone(body.contact_phone) if body.contact_phone else None, gstin=_gstin(body.gstin), language=body.language)
     session.add(c)
     await _commit(session, "client", flush=True)
     await _audit(session, actor, "client.create", "client", c.id)
@@ -312,11 +314,76 @@ async def update_client(client_id: uuid.UUID, body: ClientPatch, actor: Manager,
         c.contact_phone = clean_phone(body.contact_phone) if body.contact_phone else None
     if "gstin" in sent:
         c.gstin = _gstin(body.gstin)
+    if body.language is not None:
+        c.language = body.language
     if body.is_active is not None:
         c.is_active = body.is_active
     await _audit(session, actor, "client.update", "client", c.id, fields=sorted(sent))
     await _commit(session, "client")
     return _client_out(c, await _trip_count(session, c.id))
+
+
+# ---------------------------------------------------------------- a client's own logins
+
+class PortalIn(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    email: str = Field(pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$", max_length=160)
+    language: Literal["en", "hi", "mr"] = "en"
+
+
+def _portal_out(u: User) -> dict:
+    return {"id": str(u.id), "name": u.name, "email": u.email, "is_active": u.is_active, "must_change_password": u.must_change_secret}
+
+
+async def _portal_user(session: AsyncSession, client_id: uuid.UUID, user_id: uuid.UUID) -> User:
+    u = await session.get(User, user_id)
+    if u is None or u.role != Role.client or u.client_id != client_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Login not found")
+    return u
+
+
+@router.get("/clients/{client_id}/portal")
+async def list_portal(client_id: uuid.UUID, _: Office, session: Session) -> list[dict]:
+    return [_portal_out(u) for u in (await session.scalars(select(User).where(User.role == Role.client, User.client_id == client_id).order_by(User.name))).all()]
+
+
+@router.post("/clients/{client_id}/portal", status_code=status.HTTP_201_CREATED)
+async def create_portal(client_id: uuid.UUID, body: PortalIn, actor: Manager, session: Session) -> dict:
+    """A named person at the client gets their own sign-in. The temporary password is shown once and must be replaced at first sign-in."""
+    if await session.get(Client, client_id) is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Client not found")
+    email = body.email.strip().lower()
+    if await session.scalar(select(User.id).where(User.email == email)):
+        raise HTTPException(status.HTTP_409_CONFLICT, "That email already has an account")
+    pw = temporary_password()
+    u = User(name=body.name.strip(), email=email, role=Role.client, client_id=client_id, language=body.language, password_hash=hash_secret(pw), must_change_secret=True)
+    session.add(u)
+    await session.flush()
+    await _audit(session, actor, "client_login.create", "user", u.id, client=str(client_id))
+    await session.commit()
+    return {"login": _portal_out(u), "password": pw}
+
+
+@router.post("/clients/{client_id}/portal/{user_id}/reset-password")
+async def reset_portal_password(client_id: uuid.UUID, user_id: uuid.UUID, actor: Manager, session: Session) -> dict:
+    u = await _portal_user(session, client_id, user_id)
+    pw = temporary_password()
+    u.password_hash, u.must_change_secret = hash_secret(pw), True
+    u.token_version += 1
+    u.failed_logins, u.locked_until = 0, None
+    await _audit(session, actor, "client_login.reset_password", "user", u.id)
+    await session.commit()
+    return {"password": pw}
+
+
+@router.patch("/clients/{client_id}/portal/{user_id}")
+async def set_portal_active(client_id: uuid.UUID, user_id: uuid.UUID, body: dict, actor: Manager, session: Session) -> dict:
+    u = await _portal_user(session, client_id, user_id)
+    u.is_active = bool(body.get("is_active", u.is_active))
+    u.token_version += 1  # signed out everywhere when switched off
+    await _audit(session, actor, "client_login.update", "user", u.id, active=u.is_active)
+    await session.commit()
+    return _portal_out(u)
 
 
 # ---------------------------------------------------------------- office staff (admin only)

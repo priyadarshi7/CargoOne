@@ -47,7 +47,9 @@ test('a company asks for transport, ops onboards it and books the trip, and the 
   await visitor.reload()
   await expect(visitor.getByRole('status')).toContainText('Accepted')
   await expect(visitor.getByText('A 32 ft container will come')).toBeVisible()
-  await expect(visitor.getByText('₹38,000')).toBeVisible()
+  await expect(visitor.getByText('₹38,000').first()).toBeVisible()
+  await visitor.getByRole('button', { name: 'Accept the quote' }).click() // the trip can only be booked after the company says yes
+  await expect(visitor.getByText(/office will now arrange the truck/)).toBeVisible()
 
   // the company is now a client in Setup, with its contact details
   await page.goto('/office/setup?tab=clients')

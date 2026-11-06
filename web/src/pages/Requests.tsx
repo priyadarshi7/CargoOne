@@ -9,6 +9,7 @@ interface Req {
   id: string; reference: string; status: 'new' | 'accepted' | 'booked' | 'declined'; created_at: string; company_name: string; contact_name: string; phone: string
   email: string | null; gstin: string | null; origin: string; destination: string; material: string; weight_tonnes: number | null; truck_type: string | null
   pickup_date: string; notes: string | null; client_id: string | null; client: string | null; trip_code: string | null; quote_amount: number | null; reply: string | null
+  quote_accepted_at: string | null; quote_accepted_via: 'online' | 'phone' | null
 }
 const TONE = { new: 'bg-warn-soft text-warn', accepted: 'bg-accent-soft text-accent', booked: 'bg-ok-soft text-ok', declined: 'bg-wash text-muted' } as const
 
@@ -25,6 +26,7 @@ export default function Requests() {
   const [decline, setDecline] = useState<Req | null>(null)
   const [view, setView] = useState<Req | null>(null)
   const load = useCallback(() => { api<Req[]>(`/requests?state=${state}`).then(setRows).catch(() => setError(true)) }, [state])
+  const phoneYes = async (r: Req) => { await api(`/requests/${r.id}/quote-confirmed`, { method: 'POST', body: JSON.stringify({}) }).catch(() => undefined); load() }
   useEffect(() => { load() }, [load])
 
   return (
@@ -43,13 +45,15 @@ export default function Requests() {
                 <p className="font-medium">{r.company_name} <span className="ml-1 text-xs font-normal tabular-nums text-muted">{r.reference}</span></p>
                 <p className="text-sm text-muted">{r.origin} → {r.destination} · {r.material}{r.weight_tonnes ? ` · ${r.weight_tonnes} t` : ''} · {r.pickup_date}</p>
                 <p className="text-xs text-muted">{t('req.o.received')} {date(r.created_at, true)}</p>
+                {r.status === 'accepted' && r.quote_amount !== null && <p className={`text-xs font-medium ${r.quote_accepted_at ? 'text-ok' : 'text-warn'}`}>{r.quote_accepted_at ? t(r.quote_accepted_via === 'phone' ? 'req.o.quotePhone' : 'req.o.quoteOnline') : t('req.o.waitingQuote')}</p>}
               </div>
               <span className={`rounded-full px-2.5 py-0.5 text-xs ${TONE[r.status]}`}>{t(`req.status.${r.status}`)}</span>
               <div className="flex flex-wrap gap-2">
                 <button onClick={() => setView(r)} className={btnGhost}>{t('onb.details')}</button>
                 {canAct && r.status === 'new' && <button onClick={() => setAccept(r)} className={btnPrimary}>{t('req.o.accept')}</button>}
                 {canAct && (r.status === 'new' || r.status === 'accepted') && <button onClick={() => setDecline(r)} className={btnGhost}>{t('req.o.decline')}</button>}
-                {canAct && r.status === 'accepted' && <button onClick={() => nav(`/office/planning?request=${r.id}`)} className={btnPrimary}>{t('req.o.book')}</button>}
+                {canAct && r.status === 'accepted' && r.quote_amount !== null && !r.quote_accepted_at && <button onClick={() => void phoneYes(r)} className={btnGhost}>{t('req.o.phoneYes')}</button>}
+                {canAct && r.status === 'accepted' && (r.quote_amount === null || r.quote_accepted_at) && <button onClick={() => nav(`/office/planning?request=${r.id}`)} className={btnPrimary}>{t('req.o.book')}</button>}
               </div>
             </li>
           ))}
@@ -75,7 +79,7 @@ export default function Requests() {
 function AcceptDialog({ req, onClose, onDone }: { req: Req; onClose: () => void; onDone: () => void }) {
   const { t } = useI18n()
   const [clients, setClients] = useState<{ id: string; name: string; is_active: boolean }[]>([])
-  const [f, setF] = useState({ client_id: '', billing_cycle: 'weekly', quote_amount: '', note: '' })
+  const [f, setF] = useState({ client_id: req.client_id ?? '', billing_cycle: 'weekly', quote_amount: '', note: '' })
   useEffect(() => { api<typeof clients>('/setup/clients').then(setClients).catch(() => undefined) }, [])
   async function save() {
     await api(`/requests/${req.id}/accept`, { method: 'POST', body: JSON.stringify({ client_id: f.client_id || null, billing_cycle: f.billing_cycle, quote_amount: f.quote_amount || null, note: f.note || null }) })
