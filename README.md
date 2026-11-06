@@ -3,24 +3,27 @@
 Proof-of-delivery capture, AI verification and billing for full-truckload transporters.
 Driver photographs the POD at the gate → AI checks it on the spot → billing exports to Tally.
 
-## Quick start (local)
-Requirements: Docker Desktop, Node 22+, pnpm, Python 3.12+, [uv](https://docs.astral.sh/uv/).
+## Run everything (Docker)
+Requirements: Docker Desktop, and [Ollama](https://ollama.com) on this computer with `ollama pull qwen3-vl:4b` (it stays outside Docker so it can use the GPU).
 
 ```bash
-cp .env.example api/.env
-docker compose up -d db
-cd api && uv sync && uv run alembic upgrade head && uv run python -m app.seed && uv run uvicorn app.main:app --reload   # http://localhost:8000/docs
-cd web && pnpm install && pnpm dev                                                          # http://localhost:5173
+docker compose up -d --build     # database, API and web app; open http://localhost:5173
 ```
+The three containers restart by themselves and the database is migrated on every start. Nothing watches your files, so:
+- **after changing code**, run the same command again (it rebuilds only what changed);
+- **after changing `.env`**, run `docker compose up -d api`;
+- see what the API says with `docker compose logs -f api`; stop everything with `docker compose down` (the data stays).
 
-## One command for everything (recommended)
-After the one-time setup below (`uv sync`, `pnpm install`, `ollama pull qwen3-vl:4b`), from `web/`:
+The web app is on 5173 and 4173 (a phone tunnel such as `cloudflared tunnel --url http://localhost:4173` points at 4173) and reaches the API through `/api`. The API is also on http://localhost:8000. The read-the-photo step runs on the CPU inside the container (no GPU), so it is slower than the old way below.
+
+## Run for development (code reloads by itself, uses the GPU)
+Needs Node 22+, pnpm, Python 3.12+, [uv](https://docs.astral.sh/uv/) and a one-time `uv sync` and `pnpm install`. Stop the Docker web app and API first (`docker compose stop api web`), then from `web/`:
 
 ```bash
 pnpm dev:all          # or: node scripts/dev.mjs
 pnpm dev:all:phone    # the same, plus a phone link (Cloudflare quick tunnel); the link is printed
 ```
-It starts Docker (and Postgres), runs migrations, starts Ollama, the API and the phone build, and **keeps them current by itself**: saving `.env` restarts the API, editing API code reloads it, editing web code rebuilds the phone app (refresh the phone after a few seconds). Run it again at any time: it first clears stale processes (old API workers left behind are what made "I changed it and nothing changed"). Ctrl+C stops everything it started. A quick tunnel gets a new address each time it starts, so leave the tunnel running; restarting only the app does not change the link.
+It starts Postgres, runs migrations, starts Ollama, the API and the phone build, and keeps them current by itself: saving `.env` restarts the API, editing API code reloads it, editing web code rebuilds the phone app. Run it again at any time: it first clears stale processes. Ctrl+C stops everything it started.
 
 ## AI provider
 Local reader (no cloud, free): see `docs/09-local-ai-setup.md`. Set `AI_PROVIDER=local` in `.env`.
