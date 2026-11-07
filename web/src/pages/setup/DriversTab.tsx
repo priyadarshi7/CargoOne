@@ -3,11 +3,12 @@ import { useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
 import { FilterBar, NoMatch } from '../../components/FilterBar'
 import { hit, useFilters } from '../../lib/filters'
+import { useBusy } from '../../lib/busy'
 import { useI18n } from '../../lib/i18n'
 import { DocSlots, DRIVER_DOCS, PendingDocs, uploadPending } from './Docs'
 import InviteDialog, { type Invite } from './Invite'
 import type { Truck } from './TrucksTab'
-import { btnGhost, btnPrimary, Facts, Field, FormModal, inputCls, Modal, Secret, StatusPill, Table } from './ui'
+import { btnGhost, btnPrimary, Facts, Field, FormModal, inputCls, Modal, Secret, Spin, StatusPill, Table } from './ui'
 import PhoneInput from '../../components/PhoneInput'
 
 export interface Driver {
@@ -32,6 +33,7 @@ export default function DriversTab({ canEdit }: { canEdit: boolean }) {
   const [secret, setSecret] = useState<{ title: string; note: string; value: string } | null>(null)
   const [invite, setInvite] = useState<{ name: string; pin: string | null; invite: Invite } | null>(null)
   const [sendError, setSendError] = useState<string | null>(null)
+  const { busy, run } = useBusy()
 
   async function resend(d: Driver) {
     setSendError(null)
@@ -74,7 +76,7 @@ export default function DriversTab({ canEdit }: { canEdit: boolean }) {
               <div className="flex justify-end gap-2">
                 <button onClick={() => setView(d)} className={`${btnGhost} inline-flex items-center gap-1.5`}><Eye size={14} aria-hidden /> {t('onb.details')}</button>
                 {canEdit && <button onClick={() => setForm(d)} className={`${btnGhost} inline-flex items-center gap-1.5`}><Pencil size={14} aria-hidden /> {t('setup.edit')}</button>}
-                {canEdit && d.is_active && d.must_change_pin && <button onClick={() => void resend(d)} className={`${btnGhost} inline-flex items-center gap-1.5`}><MessageCircle size={14} aria-hidden /> {t('notif.sendLink')}</button>}
+                {canEdit && d.is_active && d.must_change_pin && <button disabled={!!busy} onClick={() => void run(`send-${d.id}`, () => resend(d))} className={`${btnGhost} inline-flex items-center gap-1.5 disabled:opacity-60`}>{busy === `send-${d.id}` ? <Spin /> : <MessageCircle size={14} aria-hidden />} {busy === `send-${d.id}` ? t('common.sending') : t('notif.sendLink')}</button>}
                 {d.is_active && <button onClick={() => setReset(d)} className={`${btnGhost} inline-flex items-center gap-1.5`}><KeyRound size={14} aria-hidden /> {t('drv.reset')}</button>}
               </div>
             </td>
@@ -172,17 +174,18 @@ function DriverForm({ driver, vendors, trucks, onClose, onSaved }: { driver: Dri
 function ToggleDialog({ driver, onClose, onDone }: { driver: Driver; onClose: () => void; onDone: (d: Driver) => void }) {
   const { t } = useI18n()
   const [error, setError] = useState<string | null>(null)
-  async function go() {
+  const { busy, run } = useBusy()
+  const go = () => run('go', async () => {
     try { onDone(await api<Driver>(`/drivers/${driver.id}`, { method: 'PATCH', body: JSON.stringify({ is_active: !driver.is_active }) })) }
     catch (e) { setError(e instanceof ApiError ? e.message : t('setup.saveFail')) }
-  }
+  })
   return (
     <Modal title={driver.name} onClose={onClose}>
       <p className="text-sm text-muted">{driver.is_active ? t('setup.drv.deactivateAsk', { name: driver.name }) : driver.name}</p>
       {error && <p role="alert" className="text-sm text-bad">{error}</p>}
       <div className="flex justify-end gap-3">
         <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm">{t('setup.cancel')}</button>
-        <button onClick={() => void go()} className={btnPrimary}>{driver.is_active ? t('setup.deactivate') : t('setup.reactivate')}</button>
+        <button disabled={!!busy} onClick={() => void go()} className={btnPrimary}>{busy && <Spin />}{busy ? t('common.working') : driver.is_active ? t('setup.deactivate') : t('setup.reactivate')}</button>
       </div>
     </Modal>
   )
@@ -191,17 +194,18 @@ function ToggleDialog({ driver, onClose, onDone }: { driver: Driver; onClose: ()
 function ResetDialog({ driver, onClose, onPin }: { driver: Driver; onClose: () => void; onPin: (pin: string) => void }) {
   const { t } = useI18n()
   const [error, setError] = useState<string | null>(null)
-  async function go() {
+  const { busy, run } = useBusy()
+  const go = () => run('go', async () => {
     try { onPin((await api<{ pin: string }>(`/drivers/${driver.id}/reset-pin`, { method: 'POST' })).pin) }
     catch (e) { setError(e instanceof ApiError ? e.message : t('drv.resetFail')) }
-  }
+  })
   return (
     <Modal title={t('drv.confirmTitle', { name: driver.name })} onClose={onClose}>
       <p className="text-sm text-muted">{t('drv.confirmBody', { name: driver.name })}</p>
       {error && <p role="alert" className="text-sm text-bad">{error}</p>}
       <div className="flex justify-end gap-3">
         <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm">{t('setup.cancel')}</button>
-        <button onClick={() => void go()} className={btnPrimary}>{t('drv.reset')}</button>
+        <button disabled={!!busy} onClick={() => void go()} className={btnPrimary}>{busy && <Spin />}{busy ? t('common.working') : t('drv.reset')}</button>
       </div>
     </Modal>
   )

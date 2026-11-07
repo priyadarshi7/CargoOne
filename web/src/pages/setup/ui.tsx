@@ -7,6 +7,11 @@ export const inputCls = 'w-full rounded-lg border border-line bg-surface px-3 py
 export const btnPrimary = 'rounded-lg bg-ink px-4 py-2 text-sm font-medium text-surface disabled:opacity-60'
 export const btnGhost = 'rounded-lg border border-line px-3 py-1.5 text-xs font-medium hover:border-accent hover:text-accent'
 
+/** A small spinner for a button that is working. */
+export function Spin() {
+  return <span aria-hidden className="mr-2 inline-block size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent align-[-2px]" />
+}
+
 export function Modal({ title, onClose, children, wide }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
   const { t } = useI18n()
   const ref = useRef<HTMLDialogElement>(null)
@@ -54,7 +59,7 @@ export function FormModal({ title, onClose, onSubmit, children, submitLabel, wid
         {error && <p role="alert" className="text-sm text-bad">{error}</p>}
         <div className="flex justify-end gap-3">
           <button type="button" onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm">{t('setup.cancel')}</button>
-          <button disabled={busy} className={btnPrimary}>{busy ? t('setup.saving') : (submitLabel ?? t('setup.save'))}</button>
+          <button disabled={busy} className={btnPrimary}>{busy && <Spin />}{busy ? t('setup.saving') : (submitLabel ?? t('setup.save'))}</button>
         </div>
       </form>
     </Modal>

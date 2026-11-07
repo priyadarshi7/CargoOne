@@ -2,8 +2,9 @@ import { KeyRound, Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { api } from '../../lib/api'
 import { useAuth } from '../../lib/auth'
+import { useBusy } from '../../lib/busy'
 import { useI18n } from '../../lib/i18n'
-import { btnGhost, btnPrimary, Field, FormModal, inputCls, Secret, StatusPill, Table } from './ui'
+import { btnGhost, btnPrimary, Field, FormModal, inputCls, Secret, Spin, StatusPill, Table } from './ui'
 
 interface Staff { id: string; name: string; email: string; role: 'ops' | 'billing' | 'md' | 'admin'; language: string; is_active: boolean; must_change_password: boolean }
 
@@ -14,6 +15,7 @@ export default function StaffTab() {
   const [error, setError] = useState(false)
   const [adding, setAdding] = useState(false)
   const [secret, setSecret] = useState<{ title: string; note: string; value: string } | null>(null)
+  const { busy, run } = useBusy()
   const load = () => api<Staff[]>('/setup/staff').then(setRows).catch(() => setError(true))
   useEffect(() => { void load() }, [])
   if (error) return <p className="text-bad">{t('setup.loadFail')}</p>
@@ -38,8 +40,8 @@ export default function StaffTab() {
             <td className="px-4 py-3">
               {s.role !== 'admin' && s.id !== user?.id && (
                 <div className="flex justify-end gap-2">
-                  <button onClick={() => void reset(s)} className={`${btnGhost} inline-flex items-center gap-1.5`}><KeyRound size={14} aria-hidden /> {t('setup.staff.resetPw')}</button>
-                  <button onClick={() => void toggle(s)} className={btnGhost}>{s.is_active ? t('setup.deactivate') : t('setup.reactivate')}</button>
+                  <button disabled={!!busy} onClick={() => void run(`reset-${s.id}`, () => reset(s))} className={`${btnGhost} inline-flex items-center gap-1.5 disabled:opacity-60`}>{busy === `reset-${s.id}` ? <Spin /> : <KeyRound size={14} aria-hidden />} {t('setup.staff.resetPw')}</button>
+                  <button disabled={!!busy} onClick={() => void run(`toggle-${s.id}`, () => toggle(s))} className={`${btnGhost} disabled:opacity-60`}>{busy === `toggle-${s.id}` && <Spin />}{s.is_active ? t('setup.deactivate') : t('setup.reactivate')}</button>
                 </div>
               )}
             </td>

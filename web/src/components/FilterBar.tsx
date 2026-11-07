@@ -8,7 +8,7 @@ export function FilterBar({ q, onQ, placeholder, selects = [], shown, total, act
   q: string; onQ: (v: string) => void; placeholder: string; selects?: FilterSelect[]; shown: number; total: number; active: boolean; onClear: () => void
 }) {
   const { t } = useI18n()
-  const box = 'h-9 rounded-lg border border-line bg-surface px-3 text-sm outline-none focus:border-accent'
+  const box = 'h-9 rounded-lg border border-line bg-surface px-3 text-sm'
   return (
     <div role="search" className="flex flex-wrap items-center gap-2">
       <label className="relative min-w-52 flex-1 sm:max-w-sm">
@@ -21,7 +21,7 @@ export function FilterBar({ q, onQ, placeholder, selects = [], shown, total, act
         </select>
       ))}
       <span className="text-sm text-muted" aria-live="polite">{t('filter.showing', { a: shown, b: total })}</span>
-      {active && <button type="button" onClick={onClear} className="inline-flex h-9 items-center gap-1 rounded-lg px-2.5 text-sm font-medium text-accent hover:bg-accent-soft"><X size={14} aria-hidden /> {t('filter.clear')}</button>}
+      {active && <button type="button" onClick={onClear} className="inline-flex h-9 items-center gap-1 px-1 text-sm text-muted underline-offset-2 hover:text-ink hover:underline"><X size={14} aria-hidden /> {t('filter.clear')}</button>}
     </div>
   )
 }

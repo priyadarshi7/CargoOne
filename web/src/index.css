@@ -87,6 +87,13 @@ body {
 
 input[type='checkbox'], input[type='radio'] { accent-color: var(--color-ink); }
 
+/* Text fields show focus with their own border and a soft glow, not the square outline buttons and links get */
+input:not([type='checkbox'], [type='radio'], [type='file']):focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 20%, transparent);
+}
+
 input, select, textarea {
   background: var(--color-surface);
   color: var(--color-ink);

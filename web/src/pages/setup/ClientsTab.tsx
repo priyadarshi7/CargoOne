@@ -2,9 +2,10 @@ import { KeyRound, Pencil, Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { FilterBar, NoMatch } from '../../components/FilterBar'
 import { hit, useFilters } from '../../lib/filters'
+import { useBusy } from '../../lib/busy'
 import { useI18n } from '../../lib/i18n'
 import { api, ApiError } from '../../lib/api'
-import { btnGhost, btnPrimary, Field, FormModal, inputCls, Modal, StatusPill, Table } from './ui'
+import { btnGhost, btnPrimary, Field, FormModal, inputCls, Modal, Spin, StatusPill, Table } from './ui'
 import PhoneInput from '../../components/PhoneInput'
 
 interface ClientRow {
@@ -101,19 +102,23 @@ function LoginsDialog({ client, onClose }: { client: ClientRow; onClose: () => v
   const [f, setF] = useState({ name: '', email: '' })
   const [note, setNote] = useState<{ email: string; link: string | null; why: string | null } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const { busy, run } = useBusy()
   const load = () => api<Login[]>(`/setup/clients/${client.id}/portal`).then(setRows).catch(() => setError(t('setup.loadFail')))
   useEffect(() => { void load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const fail = (e: unknown) => setError(e instanceof ApiError ? e.message : t('setup.loadFail'))
 
-  async function add(e: { preventDefault(): void }) {
-    e.preventDefault(); setError(null)
+  const add = (e: { preventDefault(): void }) => { e.preventDefault(); return run('add', send) }
+  async function send() {
+    setError(null); setNote(null)
     try { const r = await api<Invite>(`/setup/clients/${client.id}/portal`, { method: 'POST', body: JSON.stringify({ ...f, language: client.language }) }); setNote({ email: f.email, link: r.link, why: r.email_error }); setF({ name: '', email: '' }); await load() } catch (err) { fail(err) }
   }
-  async function reset(u: Login) {
-    setError(null)
+  const reset = (u: Login) => run(`reset-${u.id}`, () => resetPw(u))
+  async function resetPw(u: Login) {
+    setError(null); setNote(null)
     try { const r = await api<Invite>(`/setup/clients/${client.id}/portal/${u.id}/reset-password`, { method: 'POST' }); setNote({ email: u.email, link: r.link, why: r.email_error }) } catch (err) { fail(err) }
   }
-  async function toggle(u: Login) {
+  const toggle = (u: Login) => run(`toggle-${u.id}`, () => flip(u))
+  async function flip(u: Login) {
     setError(null)
     try { await api(`/setup/clients/${client.id}/portal/${u.id}`, { method: 'PATCH', body: JSON.stringify({ is_active: !u.is_active }) }); await load() } catch (err) { fail(err) }
   }
@@ -129,8 +134,8 @@ function LoginsDialog({ client, onClose }: { client: ClientRow; onClose: () => v
           {rows.map((u) => (
             <li key={u.id} className={`flex flex-wrap items-center gap-3 px-3 py-2.5 ${u.is_active ? '' : 'text-muted'}`}>
               <span className="min-w-0 flex-1"><b className="font-medium">{u.name}</b> <span className="text-muted">{u.email}</span></span>
-              <button onClick={() => void reset(u)} className={btnGhost}>{t('setup.portal.reset')}</button>
-              <button onClick={() => void toggle(u)} className={btnGhost}>{t(u.is_active ? 'setup.portal.off' : 'setup.portal.on')}</button>
+              <button disabled={!!busy} onClick={() => void reset(u)} className={`${btnGhost} disabled:opacity-60`}>{busy === `reset-${u.id}` ? <><Spin />{t('common.sending')}</> : t('setup.portal.reset')}</button>
+              <button disabled={!!busy} onClick={() => void toggle(u)} className={`${btnGhost} disabled:opacity-60`}>{busy === `toggle-${u.id}` && <Spin />}{t(u.is_active ? 'setup.portal.off' : 'setup.portal.on')}</button>
             </li>
           ))}
         </ul>
@@ -138,7 +143,7 @@ function LoginsDialog({ client, onClose }: { client: ClientRow; onClose: () => v
       <form onSubmit={(e) => void add(e)} className="grid gap-3 border-t border-line pt-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
         <Field label={t('setup.portal.name')}><input className={inputCls} required minLength={2} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
         <Field label={t('setup.portal.email')}><input className={inputCls} type="email" required value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></Field>
-        <button className={btnPrimary}>{t('setup.portal.add')}</button>
+        <button disabled={!!busy} className={btnPrimary}>{busy === 'add' ? <><Spin />{t('common.sending')}</> : t('setup.portal.add')}</button>
       </form>
       {error && <p role="alert" className="text-sm text-bad">{error}</p>}
     </Modal>

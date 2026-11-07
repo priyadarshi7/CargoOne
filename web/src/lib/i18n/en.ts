@@ -139,6 +139,7 @@ export const en = {
   "bill.tallyDateTitle": "Choose the Tally voucher date", "bill.tallyDateLabel": "Voucher date", "bill.tallyDateGo": "Push with this date",
   "filter.showing": "{a} of {b}", "filter.clear": "Clear filters", "filter.none": "Nothing matches these filters.", "filter.trips": "Search trip, LR, client, vehicle, place", "filter.allStatus": "All statuses", "filter.allClients": "All clients", "filter.status": "Status", "filter.client": "Client", "filter.anyVehicle": "Own and hired", "filter.own": "Own trucks", "filter.hired": "Hired trucks", "filter.review": "Search trip, client, LR, place", "filter.requests": "Search company, reference, phone, place, material", "filter.invoices": "Search invoice, client, period", "filter.ready": "Search client, trip, LR", "filter.anyTally": "In Tally or not", "filter.inTally": "Already in Tally", "filter.notTally": "Not in Tally yet", "filter.expenses": "Search driver, vehicle, trip, note", "filter.allCats": "All kinds", "filter.category": "Kind of expense", "filter.anyFlag": "Flagged or not", "filter.flagged": "Flagged only", "filter.drivers": "Search name, phone, vehicle, licence", "filter.trucks": "Search registration, type, owner", "filter.clients": "Search name, contact, GSTIN, ledger", "filter.vendors": "Search vendor, contact, phone",
   "filter.search": "Search",
+  "common.sending": "Sending…", "common.working": "Working…",
 } as const
 
 export type Key = keyof typeof en
