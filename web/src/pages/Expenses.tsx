@@ -2,6 +2,8 @@ import { Check, Paperclip, TriangleAlert, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { api, ApiError, fetchBlob } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { FilterBar, NoMatch } from '../components/FilterBar'
+import { hit, useFilters } from '../lib/filters'
 import { useI18n, type Key } from '../lib/i18n'
 
 interface Exp {
@@ -64,6 +66,7 @@ function Review({ canDecide }: { canDecide: boolean }) {
   const [reason, setReason] = useState('')
   const [fail, setFail] = useState<string | null>(null)
   const [receipt, setReceipt] = useState<Exp | null>(null)
+  const { values: f, set, clear, active } = useFilters({ q: '', cat: '', flag: '' })
   const load = useCallback(() => api<Exp[]>('/expenses?status=pending').then(setRows).catch(() => setError(true)), [])
   useEffect(() => { void load() }, [load])
 
@@ -79,11 +82,18 @@ function Review({ canDecide }: { canDecide: boolean }) {
   if (error) return <p className="text-bad">{t('exp.error')}</p>
   if (!rows) return <p className="text-muted">{t('common.loading')}</p>
   if (rows.length === 0) return <p className="rounded-xl border border-line py-16 text-center text-muted">{t('exp.emptyReview')}</p>
+  const cats = [...new Set(rows.map((e) => e.category))]
+  const shown = rows.filter((e) => hit(f.q, e.driver, e.vehicle, e.trip_code, e.note, t(catKey(e.category))) && (!f.cat || e.category === f.cat) && (!f.flag || e.flags.length > 0))
   return (
     <>
+      <FilterBar q={f.q} onQ={(v) => set('q', v)} placeholder={t('filter.expenses')} shown={shown.length} total={rows.length} active={active} onClear={clear} selects={[
+        { key: 'cat', label: t('filter.category'), value: f.cat, onChange: (v) => set('cat', v), options: [['', t('filter.allCats')], ...cats.map((c): [string, string] => [c, t(catKey(c))])] },
+        { key: 'flag', label: t('exp.flagged'), value: f.flag, onChange: (v) => set('flag', v), options: [['', t('filter.anyFlag')], ['1', t('filter.flagged')]] },
+      ]} />
+      {shown.length === 0 && <NoMatch onClear={clear} />}
       {fail && <p role="alert" className="text-sm text-bad">{fail}</p>}
-      <ul className="divide-y divide-line rounded-xl border border-line">
-        {rows.map((e) => (
+      <ul className="divide-y divide-line rounded-xl border border-line empty:hidden">
+        {shown.map((e) => (
           <li key={e.id} className="space-y-3 px-5 py-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>

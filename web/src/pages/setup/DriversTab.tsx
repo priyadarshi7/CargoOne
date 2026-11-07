@@ -1,6 +1,8 @@
 import { Eye, KeyRound, Lock, MessageCircle, Pencil, Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
+import { FilterBar, NoMatch } from '../../components/FilterBar'
+import { hit, useFilters } from '../../lib/filters'
 import { useI18n } from '../../lib/i18n'
 import { DocSlots, DRIVER_DOCS, PendingDocs, uploadPending } from './Docs'
 import InviteDialog, { type Invite } from './Invite'
@@ -24,6 +26,7 @@ export default function DriversTab({ canEdit }: { canEdit: boolean }) {
   const [view, setView] = useState<Driver | null>(null)
   const [error, setError] = useState(false)
   const [showOff, setShowOff] = useState(false)
+  const { values: f, set, clear, active } = useFilters({ q: '' })
   const [form, setForm] = useState<Driver | 'new' | null>(null)
   const [reset, setReset] = useState<Driver | null>(null)
   const [secret, setSecret] = useState<{ title: string; note: string; value: string } | null>(null)
@@ -44,10 +47,12 @@ export default function DriversTab({ canEdit }: { canEdit: boolean }) {
   }, [])
   if (error) return <p className="text-bad">{t('setup.loadFail')}</p>
   if (!rows) return <p className="text-muted">{t('common.loading')}</p>
-  const shown = rows.filter((d) => showOff || d.is_active)
+  const shown = rows.filter((d) => (showOff || d.is_active) && hit(f.q, d.name, d.phone, d.vendor, d.assigned_vehicle, d.licence_no, d.branch))
 
   return (
     <div className="space-y-4">
+      <FilterBar q={f.q} onQ={(v) => set('q', v)} placeholder={t('filter.drivers')} shown={shown.length} total={rows.filter((d) => showOff || d.is_active).length} active={active} onClear={clear} />
+      {shown.length === 0 && rows.length > 0 && <NoMatch onClear={clear} />}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <label className="flex items-center gap-2 text-sm text-muted"><input type="checkbox" checked={showOff} onChange={(e) => setShowOff(e.target.checked)} /> {t('setup.showInactive')}</label>
         {canEdit && <button onClick={() => setForm('new')} className={`${btnPrimary} inline-flex items-center gap-1.5`}><Plus size={16} aria-hidden /> {t('setup.drv.add')}</button>}

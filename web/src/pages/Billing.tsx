@@ -3,9 +3,12 @@ import { FileCode2, FileText, Sheet } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { PaymentsDialog } from '../components/PaymentsDialog'
 import { api, ApiError, download, type Invoice, type QueueGroup, type TallyStatus } from '../lib/api'
+import { FilterBar, NoMatch } from '../components/FilterBar'
+import { hit, useFilters } from '../lib/filters'
 import { useI18n } from '../lib/i18n'
 
 const inr = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })
+const invStatus = (i: Invoice) => (i.paid_at ? 'paid' : i.paid_amount > 0 ? 'part' : i.sent_at ? 'sent' : 'draft')
 const waiting = (iso: string | null) => (iso ? Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000)) : 0)
 
 export default function Billing() {
@@ -54,10 +57,19 @@ export default function Billing() {
 
 function Ready({ groups, onCreated, onStale }: { groups: QueueGroup[]; onCreated: () => Promise<void>; onStale: () => Promise<void> }) {
   const { t } = useI18n()
+  const { values: f, set, clear, active } = useFilters({ rq: '' })
   if (groups.length === 0) {
     return <div className="rounded-2xl border border-line py-20 text-center text-muted">{t('bill.emptyReady')}</div>
   }
-  return <div className="space-y-6">{groups.map((g) => <Group key={`${g.client_id}-${g.period_key}`} group={g} onCreated={onCreated} onStale={onStale} />)}</div>
+  // a group is kept whole (its picked trips and total stay right); it shows when its client, period or any of its trips match
+  const shown = groups.filter((g) => hit(f.rq, g.client, g.period_label, ...g.trips.flatMap((x) => [x.trip_code, x.lr_no, x.eway_bill_no, x.destination])))
+  return (
+    <div className="space-y-6">
+      <FilterBar q={f.rq} onQ={(v) => set('rq', v)} placeholder={t('filter.ready')} shown={shown.length} total={groups.length} active={active} onClear={clear} />
+      {shown.length === 0 && <NoMatch onClear={clear} />}
+      {shown.map((g) => <Group key={`${g.client_id}-${g.period_key}`} group={g} onCreated={onCreated} onStale={onStale} />)}
+    </div>
+  )
 }
 
 function Group({ group, onCreated, onStale }: { group: QueueGroup; onCreated: () => Promise<void>; onStale: () => Promise<void> }) {
@@ -127,6 +139,7 @@ function Invoices({ invoices, onExported }: { invoices: Invoice[]; onExported: (
   const [ask, setAsk] = useState<{ inv: Invoice; names: string } | null>(null)
   const [askDate, setAskDate] = useState<{ inv: Invoice; message: string; date: string; from: string; to: string } | null>(null)
   const [pushing, setPushing] = useState<string | null>(null)
+  const { values: f, set, clear, active } = useFilters({ q: '', st: '', tally: '' })
   useEffect(() => { api<TallyStatus>('/billing/tally/status').then(setTally).catch(() => setTally(null)) }, [])
   const push = async (inv: Invoice, createMissing = false, voucherDate?: string) => {
     setError(null); setNote(null); setAsk(null); setAskDate(null); setPushing(inv.id)
@@ -161,8 +174,14 @@ function Invoices({ invoices, onExported }: { invoices: Invoice[]; onExported: (
   }
   if (invoices.length === 0) return <div className="rounded-2xl border border-line py-20 text-center text-muted">{t('bill.emptyInvoices')}</div>
   const btn = 'inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-ink hover:border-ink hover:bg-wash'
+  const rows = invoices.filter((i) => hit(f.q, i.invoice_no, i.client, i.period_label, i.tally_voucher_no) && (!f.st || invStatus(i) === f.st)
+    && (!f.tally || (f.tally === 'in') === !!i.tally_pushed_at))
   return (
     <div className="space-y-3">
+      <FilterBar q={f.q} onQ={(v) => set('q', v)} placeholder={t('filter.invoices')} shown={rows.length} total={invoices.length} active={active} onClear={clear} selects={[
+        { key: 'st', label: t('bill.status'), value: f.st, onChange: (v) => set('st', v), options: [['', t('filter.allStatus')], ...(['draft', 'sent', 'part', 'paid'] as const).map((s): [string, string] => [s, t(`bill.st.${s}` as const)])] },
+        { key: 'tally', label: 'Tally', value: f.tally, onChange: (v) => set('tally', v), options: [['', t('filter.anyTally')], ['in', t('filter.inTally')], ['not', t('filter.notTally')]] },
+      ]} />
       {tally && (tally.reachable
         ? <p className="text-sm text-muted">{t('bill.tallyUp', { company: tally.company ?? '' })}</p>
         : <p className="text-sm text-warn">{t('bill.tallyDown', { why: tally.detail ?? '' })}</p>)}
@@ -189,13 +208,14 @@ function Invoices({ invoices, onExported }: { invoices: Invoice[]; onExported: (
       )}
       {error && <p role="alert" className="text-sm text-bad">{error}</p>}
       {note && <p role="status" className="text-sm text-ok">{note}</p>}
-      <div className="overflow-x-auto rounded-2xl border border-line">
+      {rows.length === 0 && <NoMatch onClear={clear} />}
+      <div className={`overflow-x-auto rounded-2xl border border-line ${rows.length === 0 ? 'hidden' : ''}`}>
         <table className="w-full min-w-[860px] text-left text-sm">
           <thead className="bg-wash text-muted">
             <tr>{(['bill.invoice', 'bill.client', 'bill.period', 'bill.tripsCol', 'bill.total', 'bill.status', 'bill.exported', 'bill.download'] as const).map((h) => <th key={h} className="px-4 py-3 font-medium">{t(h)}</th>)}</tr>
           </thead>
           <tbody>
-            {invoices.map((i) => (
+            {rows.map((i) => (
               <tr key={i.id} className="border-t border-line">
                 <td className="px-4 py-3 font-medium">{i.invoice_no}<div className="text-xs font-normal text-muted">{date(i.created_at)}</div></td>
                 <td className="px-4 py-3">{i.client}</td>

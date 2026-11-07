@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { FilterBar, NoMatch } from '../components/FilterBar'
+import { hit, useFilters } from '../lib/filters'
 import { useI18n } from '../lib/i18n'
 import { btnGhost, btnPrimary, Facts, Field, FormModal, inputCls, Modal } from './setup/ui'
 
@@ -12,6 +14,7 @@ interface Req {
   quote_accepted_at: string | null; quote_accepted_via: 'online' | 'phone' | null; declined_by: 'office' | 'client' | null; decline_reason: string | null; decline_seen: boolean
   decided_at: string | null; quote_sent_at: string | null
 }
+const FILTERS = { q: '' }
 const TONE = { new: 'bg-warn-soft text-warn', accepted: 'bg-accent-soft text-accent', booked: 'bg-ok-soft text-ok', declined: 'bg-wash text-muted' } as const
 
 /** Companies that asked for transport. Ops accepts (and onboards the company as a client in the same step), declines with a reason, or books the trip. */
@@ -31,6 +34,8 @@ export default function Requests() {
   const phoneYes = async (r: Req) => { await api(`/requests/${r.id}/quote-confirmed`, { method: 'POST', body: JSON.stringify({}) }).catch(() => undefined); load() }
   const seen = async (r: Req) => { await api(`/requests/${r.id}/seen`, { method: 'POST' }).catch(() => undefined); load() }
   useEffect(() => { load() }, [load])
+  const { values: f, set, clear, active } = useFilters(FILTERS)
+  const shownRows = (rows ?? []).filter((r) => hit(f.q, r.company_name, r.reference, r.contact_name, r.phone, r.origin, r.destination, r.material, r.client, r.trip_code))
 
   return (
     <div className="space-y-6">
@@ -40,9 +45,10 @@ export default function Requests() {
           {(['open', 'declined', 'all'] as const).map((x) => <button key={x} role="tab" aria-selected={state === x} onClick={() => setState(x)} className={`rounded-md px-3 py-1 ${state === x ? 'bg-accent-soft font-medium text-accent' : 'text-muted'}`}>{t(`req.o.${x}`)}</button>)}
         </div>
       </div>
-      {error ? <p className="text-bad">{t('req.o.loadFail')}</p> : !rows ? <p className="text-muted">{t('common.loading')}</p> : rows.length === 0 ? <p className="rounded-xl border border-line px-4 py-8 text-center text-muted">{t('req.o.none')}</p> : (
+      {rows && rows.length > 0 && <FilterBar q={f.q} onQ={(v) => set('q', v)} placeholder={t('filter.requests')} shown={shownRows.length} total={rows.length} active={active} onClear={clear} />}
+      {error ? <p className="text-bad">{t('req.o.loadFail')}</p> : !rows ? <p className="text-muted">{t('common.loading')}</p> : rows.length === 0 ? <p className="rounded-xl border border-line px-4 py-8 text-center text-muted">{t('req.o.none')}</p> : shownRows.length === 0 ? <NoMatch onClear={clear} /> : (
         <ul className="divide-y divide-line rounded-xl border border-line">
-          {rows.map((r) => (
+          {shownRows.map((r) => (
             <li key={r.id} className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-4">
               <div className="min-w-0 flex-1">
                 <p className="font-medium">{r.company_name} <span className="ml-1 text-xs font-normal tabular-nums text-muted">{r.reference}</span></p>

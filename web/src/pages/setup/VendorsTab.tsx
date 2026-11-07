@@ -1,6 +1,8 @@
 import { Pencil, Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { api } from '../../lib/api'
+import { FilterBar, NoMatch } from '../../components/FilterBar'
+import { hit, useFilters } from '../../lib/filters'
 import { useI18n } from '../../lib/i18n'
 import { btnGhost, btnPrimary, Field, FormModal, inputCls, StatusPill, Table } from './ui'
 import PhoneInput from '../../components/PhoneInput'
@@ -12,18 +14,22 @@ export default function VendorsTab({ canEdit }: { canEdit: boolean }) {
   const [rows, setRows] = useState<Vendor[] | null>(null)
   const [error, setError] = useState(false)
   const [form, setForm] = useState<Vendor | 'new' | null>(null)
+  const { values: f, set, clear, active } = useFilters({ q: '' })
   const load = () => api<Vendor[]>('/setup/vendors').then(setRows).catch(() => setError(true))
   useEffect(() => { void load() }, [])
   if (error) return <p className="text-bad">{t('setup.loadFail')}</p>
   if (!rows) return <p className="text-muted">{t('common.loading')}</p>
+  const shown = rows.filter((v) => hit(f.q, v.name, v.contact_name, v.phone, v.notes))
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="max-w-xl text-sm text-muted">{t('setup.vendor.help')}</p>
         {canEdit && <button onClick={() => setForm('new')} className={`${btnPrimary} inline-flex items-center gap-1.5`}><Plus size={16} aria-hidden /> {t('setup.vendor.add')}</button>}
       </div>
+      <FilterBar q={f.q} onQ={(v) => set('q', v)} placeholder={t('filter.vendors')} shown={shown.length} total={rows.length} active={active} onClear={clear} />
+      {shown.length === 0 && rows.length > 0 && <NoMatch onClear={clear} />}
       <Table head={[t('setup.vendor.name'), t('setup.vendor.contact'), t('setup.vendor.trucks'), t('setup.vendor.drivers'), t('drv.status'), '']} empty={rows.length ? undefined : t('setup.none')}>
-        {rows.map((v) => (
+        {shown.map((v) => (
           <tr key={v.id} className={`border-t border-line ${v.is_active ? '' : 'text-muted'}`}>
             <td className="px-4 py-3 font-medium">{v.name}{v.notes && <span className="block text-xs font-normal text-muted">{v.notes}</span>}</td>
             <td className="px-4 py-3">{v.contact_name ?? '—'}{v.phone && <span className="block text-xs tabular-nums text-muted">{v.phone}</span>}</td>

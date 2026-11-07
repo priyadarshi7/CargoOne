@@ -1,5 +1,7 @@
 import { KeyRound, Pencil, Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { FilterBar, NoMatch } from '../../components/FilterBar'
+import { hit, useFilters } from '../../lib/filters'
 import { useI18n } from '../../lib/i18n'
 import { api, ApiError } from '../../lib/api'
 import { btnGhost, btnPrimary, Field, FormModal, inputCls, Modal, StatusPill, Table } from './ui'
@@ -17,15 +19,18 @@ export default function ClientsTab({ canEdit }: { canEdit: boolean }) {
   const [rows, setRows] = useState<ClientRow[] | null>(null)
   const [error, setError] = useState(false)
   const [showOff, setShowOff] = useState(false)
+  const { values: f, set, clear, active } = useFilters({ q: '' })
   const [form, setForm] = useState<ClientRow | 'new' | null>(null)
   const [logins, setLogins] = useState<ClientRow | null>(null)
   const load = () => api<ClientRow[]>('/setup/clients').then(setRows).catch(() => setError(true))
   useEffect(() => { void load() }, [])
   if (error) return <p className="text-bad">{t('setup.loadFail')}</p>
   if (!rows) return <p className="text-muted">{t('common.loading')}</p>
-  const shown = rows.filter((c) => showOff || c.is_active)
+  const shown = rows.filter((c) => (showOff || c.is_active) && hit(f.q, c.name, c.contact_name, c.contact_phone, c.email, c.gstin, c.tally_ledger, c.segment))
   return (
     <div className="space-y-4">
+      <FilterBar q={f.q} onQ={(v) => set('q', v)} placeholder={t('filter.clients')} shown={shown.length} total={rows.filter((c) => showOff || c.is_active).length} active={active} onClear={clear} />
+      {shown.length === 0 && rows.length > 0 && <NoMatch onClear={clear} />}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <label className="flex items-center gap-2 text-sm text-muted"><input type="checkbox" checked={showOff} onChange={(e) => setShowOff(e.target.checked)} /> {t('setup.showInactive')}</label>
         {canEdit && <button onClick={() => setForm('new')} className={`${btnPrimary} inline-flex items-center gap-1.5`}><Plus size={16} aria-hidden /> {t('setup.client.add')}</button>}

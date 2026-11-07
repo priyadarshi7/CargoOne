@@ -77,7 +77,7 @@ function OpsDesk() {
     { label: t('desk.t.requests'), value: data.requests_new, to: '/office/requests', icon: Inbox, tone: 'warn' },
     { label: t('desk.t.planned'), value: data.planned, to: '/office/trips', icon: Route, tone: 'plain' },
     { label: t('desk.t.inTransit'), value: data.in_transit, to: '/office/live', icon: Truck, tone: 'plain' },
-    { label: t('desk.t.podMissing'), value: data.pod_missing, to: '/office/trips', icon: PackageSearch, tone: 'warn' },
+    { label: t('desk.t.podMissing'), value: data.pod_missing, to: '/office/trips?pod=pending', icon: PackageSearch, tone: 'warn' },
     { label: t('desk.t.review'), value: data.awaiting_review, to: '/office/review', icon: ClipboardCheck, tone: 'warn' },
     { label: t('desk.t.trucks'), value: data.trucks_available, to: '/office/setup?tab=trucks', icon: Boxes, tone: 'plain' },
   ]
@@ -101,7 +101,7 @@ function BillingDesk() {
     { label: t('desk.t.review'), value: data.awaiting_review, to: '/office/review', icon: ClipboardCheck, tone: 'warn' },
     { label: t('desk.t.ready'), value: data.ready_to_bill, to: '/office/billing', icon: FileClock, tone: 'warn',
       extra: data.ready_amount === null ? undefined : t('desk.t.readyAmt', { amt: inr.format(data.ready_amount) }) },
-    { label: t('desk.t.podMissing'), value: data.pod_missing, to: '/office/trips', icon: PackageSearch, tone: 'warn' },
+    { label: t('desk.t.podMissing'), value: data.pod_missing, to: '/office/trips?pod=pending', icon: PackageSearch, tone: 'warn' },
     { label: t('desk.t.expenses'), value: data.expenses_pending, to: '/office/expenses', icon: ReceiptText, tone: 'warn' },
   ]
   return (

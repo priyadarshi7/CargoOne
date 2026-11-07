@@ -49,6 +49,18 @@ test('billing sends an invoice, the client opens it on the private page, and a p
   // the client hands over cash; billing records it in the invoice's Payments
   await page.getByRole('link', { name: 'Billing' }).click()
   await page.getByRole('button', { name: /^Invoices/ }).click()
+
+  // the invoice list can be searched and filtered
+  await page.getByRole('searchbox').fill('zzz no such invoice')
+  await expect(page.getByText('Nothing matches these filters.')).toBeVisible()
+  await page.getByRole('searchbox').fill('company b')
+  await page.getByLabel('Status').selectOption('sent')
+  await expect(row).toBeVisible()
+  await page.getByLabel('Status').selectOption('paid')
+  await expect(page.getByText('Nothing matches these filters.')).toBeVisible()
+  await page.getByRole('button', { name: 'Clear filters' }).first().click()
+  await expect(row).toBeVisible()
+
   await row.getByRole('button', { name: 'Payments' }).click()
   const pay = page.getByRole('dialog', { name: /Payments for CO\// })
   const balance = Number((await pay.getByText(/^Balance Rs/).textContent())!.replace(/[^\d.]/g, ''))
