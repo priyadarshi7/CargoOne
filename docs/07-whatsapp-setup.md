@@ -51,7 +51,11 @@ Hello {{1}}, your driver account on CargoOne has been created by your company. P
 नमस्कार {{1}}, तुमच्या कंपनीने CargoOne वर तुमचे ड्रायव्हर खाते तयार केले आहे. तुमची नोंदणी पूर्ण करण्यासाठी कृपया ही लिंक उघडा: {{2}} ही लिंक एकदाच वापरता येईल आणि 72 तासांत संपेल.
 ```
 
-Sample values for Meta's review: `Ramesh Patil` | `https://app.example.com/onboard/abc123`
+Sample values for Meta's review (use the set for the language you are submitting):
+
+- English: `Ramesh Patil` | `https://app.example.com/onboard/abc123`
+- Hindi: `रमेश पाटिल` | `https://app.example.com/onboard/abc123`
+- Marathi: `रमेश पाटील` | `https://app.example.com/onboard/abc123`
 
 ### `cargoone_trip_assigned`
 
@@ -75,7 +79,11 @@ Hello {{1}}, a trip has been assigned to you. Trip {{2}}, LR number {{3}}. Route
 नमस्कार {{1}}, तुम्हाला एक ट्रिप दिली आहे. ट्रिप {{2}}, LR क्रमांक {{3}}. मार्ग: {{4}}. ट्रक: {{5}}. सुरू: {{6}}. ट्रिप येथे उघडा: {{7}} निघण्यापूर्वी तपशील तपासा.
 ```
 
-Sample values for Meta's review: `Ramesh Patil` | `TRP-70012` | `LR/MH20/26-27/000123` | `Chhatrapati Sambhajinagar - Nagpur` | `MH20 EL 4521` | `12 Nov, 08:00` | `https://app.example.com/driver?trip=abc123`
+Sample values for Meta's review (use the set for the language you are submitting):
+
+- English: `Ramesh Patil` | `TRP-70012` | `LR/MH20/26-27/000123` | `Chhatrapati Sambhajinagar - Nagpur` | `MH20 EL 4521` | `12 Nov, 08:00` | `https://app.example.com/driver?trip=abc123`
+- Hindi: `रमेश पाटिल` | `TRP-70012` | `LR/MH20/26-27/000123` | `छत्रपति संभाजीनगर - नागपुर` | `MH20 EL 4521` | `12 नवंबर, सुबह 8:00` | `https://app.example.com/driver?trip=abc123`
+- Marathi: `रमेश पाटील` | `TRP-70012` | `LR/MH20/26-27/000123` | `छत्रपती संभाजीनगर - नागपूर` | `MH20 EL 4521` | `12 नोव्हेंबर, सकाळी 8:00` | `https://app.example.com/driver?trip=abc123`
 
 ### `cargoone_trip_update`
 
@@ -99,7 +107,11 @@ Hello {{1}}, there is an update for your trip {{2}}: {{3}}. See the details here
 नमस्कार {{1}}, तुमच्या ट्रिप {{2}} मध्ये बदल झाला आहे: {{3}}. तपशील येथे पहा: {{4}} निघण्यापूर्वी तपासा.
 ```
 
-Sample values for Meta's review: `Ramesh Patil` | `TRP-70012` | `has changed: truck is now MH20 GT 7718` | `https://app.example.com/driver?trip=abc123`
+Sample values for Meta's review (use the set for the language you are submitting):
+
+- English: `Ramesh Patil` | `TRP-70012` | `has changed: truck is now MH20 GT 7718` | `https://app.example.com/driver?trip=abc123`
+- Hindi: `रमेश पाटिल` | `TRP-70012` | `अब ट्रक MH20 GT 7718 है` | `https://app.example.com/driver?trip=abc123`
+- Marathi: `रमेश पाटील` | `TRP-70012` | `आता ट्रक MH20 GT 7718 आहे` | `https://app.example.com/driver?trip=abc123`
 
 ### `cargoone_request_received`
 
@@ -123,7 +135,11 @@ Hello {{1}}, we have received your transport request {{2}}. You can follow its s
 नमस्कार {{1}}, तुमची वाहतूक विनंती {{2}} आम्हाला मिळाली आहे. तिची स्थिती येथे पहा: {{3}} आम्ही लवकरच उत्तर देऊ.
 ```
 
-Sample values for Meta's review: `Anil Mehta` | `REQ-1001` | `https://app.example.com/request/REQ-1001.abc123`
+Sample values for Meta's review (use the set for the language you are submitting):
+
+- English: `Anil Mehta` | `REQ-1001` | `https://app.example.com/request/REQ-1001.abc123`
+- Hindi: `अनिल मेहता` | `REQ-1001` | `https://app.example.com/request/REQ-1001.abc123`
+- Marathi: `अनिल मेहता` | `REQ-1001` | `https://app.example.com/request/REQ-1001.abc123`
 
 ### `cargoone_request_update`
 
@@ -147,7 +163,11 @@ Hello {{1}}, there is an update on your transport request {{2}}: {{3}}. See the 
 नमस्कार {{1}}, तुमच्या वाहतूक विनंती {{2}} बद्दल माहिती: {{3}}. तपशील येथे पहा: {{4}} तुमच्या संयमाबद्दल धन्यवाद.
 ```
 
-Sample values for Meta's review: `Anil Mehta` | `REQ-1001` | `booked as trip TRP-70012, pickup 12 Nov, 08:00` | `https://app.example.com/request/REQ-1001.abc123`
+Sample values for Meta's review (use the set for the language you are submitting):
+
+- English: `Anil Mehta` | `REQ-1001` | `booked as trip TRP-70012, pickup 12 Nov, 08:00` | `https://app.example.com/request/REQ-1001.abc123`
+- Hindi: `अनिल मेहता` | `REQ-1001` | `ट्रिप TRP-70012 के रूप में बुक हुई, पिकअप 12 नवंबर, सुबह 8:00` | `https://app.example.com/request/REQ-1001.abc123`
+- Marathi: `अनिल मेहता` | `REQ-1001` | `ट्रिप TRP-70012 म्हणून बुक झाली, पिकअप 12 नोव्हेंबर, सकाळी 8:00` | `https://app.example.com/request/REQ-1001.abc123`
 
 ### `cargoone_shipment_update`
 
@@ -171,7 +191,11 @@ Hello {{1}}, there is an update on your shipment {{2}}: {{3}}. Follow it here: {
 नमस्कार {{1}}, तुमच्या मालाची खेप {{2}} बद्दल माहिती: {{3}}. येथे पाहत रहा: {{4}} तुमच्या संयमाबद्दल धन्यवाद.
 ```
 
-Sample values for Meta's review: `Anil Mehta` | `TRP-70012` | `the truck has left and your goods are on the way` | `https://app.example.com/s/TRP-70012.c0.abc123`
+Sample values for Meta's review (use the set for the language you are submitting):
+
+- English: `Anil Mehta` | `TRP-70012` | `the truck has left and your goods are on the way` | `https://app.example.com/s/TRP-70012.c0.abc123`
+- Hindi: `अनिल मेहता` | `TRP-70012` | `ट्रक निकल चुका है और आपका माल रास्ते में है` | `https://app.example.com/s/TRP-70012.c0.abc123`
+- Marathi: `अनिल मेहता` | `TRP-70012` | `ट्रक निघाला आहे आणि तुमचा माल रस्त्यात आहे` | `https://app.example.com/s/TRP-70012.c0.abc123`
 
 Without this template every shipment message fails with Meta error `#132001` ("Template name does not exist in the translation"), and the client and receiver get nothing on WhatsApp (the receiver's email still goes). The Hindi and Marathi templates must be approved too, or clients set to those languages fail the same way. Names can be changed without code with `WHATSAPP_TEMPLATE_SHIPMENT_UPDATE`, `_HI` and `_MR`.
 
