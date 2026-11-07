@@ -12,7 +12,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.billing import online
-from app.billing.claims import ClaimIn, client_invoice_view, create_claim
+from app.billing.claims import client_invoice_view
 from app.config import get_settings
 from app.db import get_session
 from app.lateness import arrival_estimate
@@ -134,22 +134,6 @@ async def invoice_pdf(token: str, request: Request, session: Session, storage: A
     session.add(AuditLog(actor_id=None, action="invoice.view", entity="invoice", entity_id=str(inv.id), meta={"via": "link"}))
     await session.commit()
     return Response(pdf, media_type="application/pdf", headers={"Content-Disposition": f'inline; filename="{inv.invoice_no.replace("/", "-")}.pdf"', "Cache-Control": "private, no-store"})
-
-
-@public.post("/{token}/claims", status_code=status.HTTP_201_CREATED)
-async def claim_payment(token: str, body: ClaimIn, request: Request, session: Session) -> dict:
-    """The client says they paid: billing is asked to check the bank. Nothing changes on the invoice until a person confirms."""
-    trip, aud = await _resolve(token, request, session)
-    inv = await _invoice(session, trip)
-    if aud != "client" or inv is None or inv.sent_at is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Invoice not found")
-    if claim_limiter.blocked(trip.trip_code):
-        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many attempts. Try again later.")
-    claim_limiter.record(trip.trip_code)
-    await create_claim(session, inv, body, via="link", user_id=None)
-    session.add(AuditLog(actor_id=None, action="invoice.claim", entity="invoice", entity_id=str(inv.id), meta={"amount": str(body.amount), "via": "link"}))
-    await session.commit()
-    return await client_invoice_view(session, inv)
 
 
 async def _payable(token: str, request: Request, session: AsyncSession) -> Invoice:

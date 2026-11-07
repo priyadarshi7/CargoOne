@@ -13,7 +13,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.billing import online
-from app.billing.claims import ClaimIn, client_invoice_view, create_claim
+from app.billing.claims import client_invoice_view
 from app.billing.periods import IST
 from app.db import get_session
 from app.models import AuditLog, Client, Invoice, PodStatus, Role, TransportRequest, Trip, TripState, User
@@ -94,16 +94,6 @@ async def invoice_pdf(invoice_id: uuid.UUID, user: Member, session: Session, sto
     session.add(AuditLog(actor_id=user.id, action="invoice.view", entity="invoice", entity_id=str(inv.id), meta={"via": "portal"}))
     await session.commit()
     return Response(pdf, media_type="application/pdf", headers={"Content-Disposition": f'inline; filename="{inv.invoice_no.replace("/", "-")}.pdf"', "Cache-Control": "private, no-store"})
-
-
-@router.post("/invoices/{invoice_id}/claims", status_code=status.HTTP_201_CREATED)
-async def claim_payment(invoice_id: uuid.UUID, body: ClaimIn, user: Member, session: Session) -> dict:
-    """"I have paid": billing is asked to check the bank and confirm. The invoice does not change until a person does."""
-    inv = await _my_invoice(session, user, invoice_id)
-    await create_claim(session, inv, body, via="portal", user_id=user.id)
-    session.add(AuditLog(actor_id=user.id, action="invoice.claim", entity="invoice", entity_id=str(inv.id), meta={"amount": str(body.amount), "via": "portal"}))
-    await session.commit()
-    return await client_invoice_view(session, inv)
 
 
 @router.post("/invoices/{invoice_id}/pay")

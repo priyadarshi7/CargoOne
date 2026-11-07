@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test'
 import { failOnBrowserErrors, login, shot } from './helpers'
 
-/** The whole money hand-off: billing sends the invoice (an email with a private link), the client opens it and says they paid, billing checks the bank and confirms. */
-test('billing sends an invoice, the client opens it on the private page and says it paid, and billing confirms', async ({ page, browser }) => {
+/** The money hand-off: billing sends the invoice (an email with a private link), the client opens it, and what billing records (cash, a transfer) shows there. */
+test('billing sends an invoice, the client opens it on the private page, and a payment billing records shows there as paid', async ({ page, browser }) => {
   const noErrors = failOnBrowserErrors(page)
 
   // the client company gets a billing email, under Setup
@@ -43,26 +43,24 @@ test('billing sends an invoice, the client opens it on the private page and says
   const card = client.getByRole('region', { name: /^Invoice / })
   await expect(card).toContainText('To pay')
   await expect(card.getByRole('button', { name: /View invoice/ })).toBeVisible()
-  await card.getByRole('button', { name: 'I have paid' }).click()
-  await card.getByLabel(/Bank reference/).fill('UTR-E2E-0001')
-  await shot(client, 'client-invoice-pay')
-  await card.getByRole('button', { name: 'Tell billing' }).click()
-  await expect(card).toContainText('Waiting for billing to check')
-  await expect(card).toContainText('To pay') // nothing changes until billing confirms
+  await expect(card.getByRole('button', { name: /I have paid/ })).toHaveCount(0) // the client does not report payments: billing records what arrived
+  await shot(client, 'client-invoice')
 
-  // billing sees it waiting, and confirms
+  // the client hands over cash; billing records it in the invoice's Payments
   await page.getByRole('link', { name: 'Billing' }).click()
-  await page.getByRole('button', { name: /Payments to check/ }).click()
-  const claim = page.locator('li', { hasText: 'UTR-E2E-0001' })
-  await expect(claim).toContainText('Company B')
-  await shot(page, 'billing-claims')
-  await claim.getByRole('button', { name: 'Confirm payment' }).click()
-  await expect(page.getByText('No payments are waiting to be checked.')).toBeVisible()
+  await page.getByRole('button', { name: /^Invoices/ }).click()
+  await row.getByRole('button', { name: 'Payments' }).click()
+  const pay = page.getByRole('dialog', { name: /Payments for CO\// })
+  const balance = Number((await pay.getByText(/^Balance Rs/).textContent())!.replace(/[^\d.]/g, ''))
+  await pay.getByLabel('Amount received (Rs)').fill(String(balance))
+  await pay.getByLabel(/Reference/).fill('Cash, receipt 12')
+  await pay.getByRole('button', { name: 'Record payment' }).click()
+  await page.keyboard.press('Escape')
 
   // the client's page now shows it paid
   await client.reload()
   await expect(client.getByRole('region', { name: /^Invoice / })).toContainText('Paid')
-  await expect(client.getByRole('region', { name: /^Invoice / })).toContainText('Confirmed by billing')
+  await expect(client.getByRole('region', { name: /^Invoice / })).toContainText('Cash, receipt 12')
   await ctx.close()
   await clientErrors()
   await noErrors()

@@ -1,6 +1,6 @@
 # Razorpay setup (online invoice payment)
 
-A client can pay an invoice from their login or private link with UPI, card or netbanking. Optional: without keys the button is hidden and "I have paid" (bank transfer) works as before.
+A client can pay an invoice from their login or private link with UPI, card or netbanking. Optional: without keys the button is hidden and billing records payments by hand as before.
 
 ## 1. Keys (enough to start)
 

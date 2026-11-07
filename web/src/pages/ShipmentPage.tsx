@@ -130,12 +130,6 @@ export default function ShipmentPage() {
       {x.invoice && (
         <ClientInvoice inv={x.invoice}
           openPdf={async () => { const r = await fetch(`${BASE}/public/shipments/${encodeURIComponent(token)}/invoice`); if (!r.ok) throw new Error('invoice'); return r.blob() }}
-          claim={async (b) => {
-            const r = await fetch(`${BASE}/public/shipments/${encodeURIComponent(token)}/claims`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) })
-            const j = await r.json().catch(() => ({}))
-            if (!r.ok) throw new ApiError(r.status, typeof j.detail === 'string' ? j.detail : t('inv.claimFail'), j.detail)
-            return j as InvoiceView
-          }}
           online={{
             start: () => post<Checkout>('pay', {}),
             confirm: (r) => post<InvoiceView>('pay/confirm', r),

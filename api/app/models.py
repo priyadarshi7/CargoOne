@@ -210,25 +210,6 @@ class Payment(Base):
     created_at: Mapped[datetime] = now()
 
 
-class PaymentClaim(Base):
-    """The client says an invoice was paid (amount, date, bank reference). Nothing changes on the invoice until billing checks their bank and confirms."""
-    __tablename__ = "payment_claims"
-    id: Mapped[uuid.UUID] = pk()
-    invoice_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("invoices.id", ondelete="CASCADE"), index=True)
-    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
-    paid_on: Mapped[date] = mapped_column(Date)
-    reference: Mapped[str] = mapped_column(String(80))  # UTR or cheque number: how billing finds it in the bank
-    note: Mapped[str | None] = mapped_column(String(200))
-    status: Mapped[str] = mapped_column(String(12), default="pending", server_default="pending")  # pending | confirmed | rejected
-    via: Mapped[str] = mapped_column(String(8), default="portal", server_default="portal")  # portal | link
-    claimed_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
-    decided_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
-    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    reject_reason: Mapped[str | None] = mapped_column(String(200))
-    payment_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
-    created_at: Mapped[datetime] = now()
-
-
 class OnlinePayment(Base):
     """One Razorpay order for an invoice. A payment is applied once: the Razorpay payment id is unique, so the checkout return, the webhook and a retry can all arrive and only one counts."""
     __tablename__ = "online_payments"

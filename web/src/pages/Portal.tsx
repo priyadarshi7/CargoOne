@@ -88,7 +88,6 @@ export default function Portal() {
               <div className="space-y-3">
                 {invs.map((v) => (
                   <ClientInvoice key={v.id} inv={v} openPdf={() => fetchBlob(`/portal/invoices/${v.id}/pdf`)}
-                    claim={(b) => api<InvoiceView>(`/portal/invoices/${v.id}/claims`, { method: 'POST', body: JSON.stringify(b) })}
                     online={{ start: () => api<Checkout>(`/portal/invoices/${v.id}/pay`, { method: 'POST' }),
                       confirm: (r) => api<InvoiceView>(`/portal/invoices/${v.id}/pay/confirm`, { method: 'POST', body: JSON.stringify(r) }) }}
                     onChange={(n) => setInvs((all) => all.map((x) => (x.id === n.id ? n : x)))} />

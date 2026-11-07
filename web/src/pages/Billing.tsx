@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { FileCode2, FileText, Sheet } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { PaymentsDialog } from '../components/PaymentsDialog'
-import { api, ApiError, download, type ClaimRow, type Invoice, type QueueGroup } from '../lib/api'
+import { api, ApiError, download, type Invoice, type QueueGroup } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 
 const inr = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })
@@ -10,18 +10,16 @@ const waiting = (iso: string | null) => (iso ? Math.max(0, Math.floor((Date.now(
 
 export default function Billing() {
   const { t } = useI18n()
-  const [tab, setTab] = useState<'ready' | 'invoices' | 'claims'>('ready')
-  const [claims, setClaims] = useState<ClaimRow[] | null>(null)
+  const [tab, setTab] = useState<'ready' | 'invoices'>('ready')
   const [groups, setGroups] = useState<QueueGroup[] | null>(null)
   const [invoices, setInvoices] = useState<Invoice[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
-      const [g, i, c] = await Promise.all([api<QueueGroup[]>('/billing/queue'), api<Invoice[]>('/billing/invoices'), api<ClaimRow[]>('/billing/claims')])
+      const [g, i] = await Promise.all([api<QueueGroup[]>('/billing/queue'), api<Invoice[]>('/billing/invoices')])
       setGroups(g)
       setInvoices(i)
-      setClaims(c)
     } catch {
       setError(t('bill.error'))
     }
@@ -35,7 +33,7 @@ export default function Billing() {
   )
 
   if (error) return <p className="text-bad">{error}</p>
-  if (!groups || !invoices || !claims) return <p className="text-muted">{t('common.loading')}</p>
+  if (!groups || !invoices) return <p className="text-muted">{t('common.loading')}</p>
 
   return (
     <div className="space-y-6">
@@ -46,12 +44,10 @@ export default function Billing() {
       <div className="flex gap-6 border-b border-line">
         {tabBtn('ready', t('bill.tabReady'), groups.reduce((n, g) => n + g.trips.length, 0))}
         {tabBtn('invoices', t('bill.tabInvoices'), invoices.length)}
-        {tabBtn('claims', t('bill.tabClaims'), claims.length)}
       </div>
       {tab === 'ready'
         ? <Ready groups={groups} onCreated={async () => { await load(); setTab('invoices') }} onStale={load} />
-        : tab === 'invoices' ? <Invoices invoices={invoices} onExported={load} />
-          : <Claims claims={claims} onDecided={load} />}
+        : <Invoices invoices={invoices} onExported={load} />}
     </div>
   )
 }
@@ -168,7 +164,6 @@ function Invoices({ invoices, onExported }: { invoices: Invoice[]; onExported: (
                   <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${i.paid_at ? 'bg-ok-soft text-ok' : i.paid_amount > 0 ? 'bg-warn-soft text-warn' : i.sent_at ? 'bg-accent-soft text-accent' : 'bg-wash text-muted'}`}>
                     {t(i.paid_at ? 'bill.st.paid' : i.paid_amount > 0 ? 'bill.st.part' : i.sent_at ? 'bill.st.sent' : 'bill.st.draft')}
                   </span>
-                  {i.pending_claims > 0 && <span className="ml-1.5 rounded-full bg-warn-soft px-2 py-0.5 text-xs font-medium text-warn">{t('bill.claimsBadge', { n: i.pending_claims })}</span>}
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
                     {!i.sent_at ? (
                       <>
@@ -199,61 +194,6 @@ function Invoices({ invoices, onExported }: { invoices: Invoice[]; onExported: (
       </div>
       <p className="text-xs text-muted">{t('bill.note')}</p>
       {paying && <PaymentsDialog invoice={paying} onClose={() => setPaying(null)} onChanged={() => void onExported()} />}
-    </div>
-  )
-}
-
-/** What clients say they have paid, waiting for someone to look at the bank. Confirming records the payment (the invoice may then be paid); turning it down says why, and the client reads that. */
-function Claims({ claims, onDecided }: { claims: ClaimRow[]; onDecided: () => Promise<void> }) {
-  const { t, date } = useI18n()
-  const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState<string | null>(null)
-  const [rejecting, setRejecting] = useState<string | null>(null)
-  const [why, setWhy] = useState('')
-  const [amounts, setAmounts] = useState<Record<string, string>>({})
-  async function run(id: string, path: 'confirm' | 'reject', body?: object) {
-    setBusy(id); setError(null)
-    try { await api(`/billing/claims/${id}/${path}`, { method: 'POST', body: body ? JSON.stringify(body) : undefined }); setRejecting(null); setWhy(''); await onDecided() }
-    catch (e) { setError(e instanceof ApiError ? e.message : t('sh.failed')) }
-    finally { setBusy(null) }
-  }
-  if (claims.length === 0) return <div className="rounded-2xl border border-line py-20 text-center text-muted">{t('bill.claimEmpty')}</div>
-  return (
-    <div className="space-y-3">
-      <p className="text-sm text-muted">{t('bill.claimHelp')}</p>
-      {error && <p role="alert" className="text-sm text-bad">{error}</p>}
-      <ul className="space-y-3">
-        {claims.map((c) => (
-          <li key={c.id} className="space-y-3 rounded-2xl border border-line p-4 text-sm">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <p><span className="font-semibold">{c.client}</span> · {c.invoice_no}</p>
-              <p className="text-muted">{t('bill.claimOn', { when: date(c.created_at, true) })} · {t(`bill.via.${c.via}` as const)}</p>
-            </div>
-            <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div><dt className="text-muted">{t('bill.claimSaid')}</dt><dd className="font-semibold tabular-nums">{inr.format(c.amount)}</dd></div>
-              <div><dt className="text-muted">{t('bill.claimPaidOn')}</dt><dd>{date(c.paid_on)}</dd></div>
-              <div><dt className="text-muted">{t('bill.claimRef')}</dt><dd className="font-mono">{c.reference}</dd></div>
-              <div><dt className="text-muted">{t('bill.claimBalance')}</dt><dd className="tabular-nums">{inr.format(c.balance)}</dd></div>
-            </dl>
-            {c.note && <p className="text-muted">“{c.note}”</p>}
-            {rejecting === c.id ? (
-              <form onSubmit={(e) => { e.preventDefault(); void run(c.id, 'reject', { reason: why }) }} className="flex flex-wrap items-center gap-2">
-                <input required minLength={3} maxLength={200} autoFocus value={why} onChange={(e) => setWhy(e.target.value)} placeholder={t('bill.rejectWhy')} aria-label={t('bill.rejectWhy')} className="h-10 min-w-64 flex-1 rounded-lg border border-line bg-surface px-3 outline-none focus:border-ink" />
-                <button disabled={busy === c.id || why.trim().length < 3} className="h-10 rounded-lg bg-bad px-4 font-medium text-on-solid disabled:opacity-50">{t('bill.rejectGo')}</button>
-                <button type="button" onClick={() => setRejecting(null)} className="h-10 px-3 text-muted hover:text-ink">{t('common.cancel')}</button>
-              </form>
-            ) : (
-              <div className="flex flex-wrap items-center gap-2">
-                <label className="flex items-center gap-2 text-muted">{t('bill.claimGot')}
-                  <input inputMode="decimal" value={amounts[c.id] ?? String(c.amount)} onChange={(e) => setAmounts({ ...amounts, [c.id]: e.target.value.replace(/[^\d.]/g, '') })} className="h-10 w-32 rounded-lg border border-line bg-surface px-3 text-ink tabular-nums outline-none focus:border-ink" />
-                </label>
-                <button disabled={busy === c.id} onClick={() => void run(c.id, 'confirm', { amount: amounts[c.id] ?? String(c.amount) })} className="h-10 rounded-lg bg-ink px-4 font-medium text-surface hover:opacity-90 disabled:opacity-50">{t('bill.confirm')}</button>
-                <button disabled={busy === c.id} onClick={() => { setRejecting(c.id); setWhy('') }} className="h-10 rounded-lg border border-line px-4 font-medium hover:border-ink">{t('bill.reject')}</button>
-              </div>
-            )}
-          </li>
-        ))}
-      </ul>
     </div>
   )
 }

@@ -21,7 +21,6 @@ from app.models import (
     Client,
     Invoice,
     Payment,
-    PaymentClaim,
     PodStatus,
     PodSubmission,
     Role,
@@ -75,7 +74,6 @@ class InvoiceOut(BaseModel):
     paid_at: datetime | None
     paid_amount: float
     balance: float
-    pending_claims: int = 0  # the client says they paid; billing has not looked yet
     client_has_email: bool = False  # there is an address to send the invoice to
 
 
@@ -136,8 +134,8 @@ async def create_invoice(body: CreateInvoice, user: Biller, session: Session) ->
     return _out(inv, client.name, len(trips))
 
 
-def _out(inv: Invoice, client: str, n: int, paid: Decimal = Decimal(0), claims: int = 0, has_email: bool = False) -> InvoiceOut:
-    return InvoiceOut(pending_claims=claims, client_has_email=has_email, id=str(inv.id), invoice_no=inv.invoice_no, client=client, period_label=inv.period_label,
+def _out(inv: Invoice, client: str, n: int, paid: Decimal = Decimal(0), has_email: bool = False) -> InvoiceOut:
+    return InvoiceOut(client_has_email=has_email, id=str(inv.id), invoice_no=inv.invoice_no, client=client, period_label=inv.period_label,
                       total=float(inv.total), trip_count=n, created_at=inv.created_at, exported_at=inv.exported_at,
                       sent_at=inv.sent_at, paid_at=inv.paid_at, paid_amount=float(paid), balance=float(inv.total - paid))
 
@@ -146,15 +144,13 @@ def _out(inv: Invoice, client: str, n: int, paid: Decimal = Decimal(0), claims: 
 async def list_invoices(_: Biller, session: Session) -> list[InvoiceOut]:
     counts = select(Trip.invoice_id, func.count().label("n")).group_by(Trip.invoice_id).subquery()
     paid = select(Payment.invoice_id, func.sum(Payment.amount).label("paid")).group_by(Payment.invoice_id).subquery()
-    waiting = select(PaymentClaim.invoice_id, func.count().label("c")).where(PaymentClaim.status == "pending").group_by(PaymentClaim.invoice_id).subquery()
     rows = (await session.execute(
-        select(Invoice, Client, func.coalesce(counts.c.n, 0), func.coalesce(paid.c.paid, 0), func.coalesce(waiting.c.c, 0))
+        select(Invoice, Client, func.coalesce(counts.c.n, 0), func.coalesce(paid.c.paid, 0))
         .join(Client, Client.id == Invoice.client_id).outerjoin(counts, counts.c.invoice_id == Invoice.id).outerjoin(paid, paid.c.invoice_id == Invoice.id)
-        .outerjoin(waiting, waiting.c.invoice_id == Invoice.id)
         .order_by(Invoice.created_at.desc()).limit(200)
     )).all()
     has_login = set((await session.scalars(select(User.client_id).where(User.role == Role.client, User.is_active.is_(True), User.email.is_not(None)))).all())
-    return [_out(i, c.name, n, p, w, bool(c.email) or c.id in has_login) for i, c, n, p, w in rows]
+    return [_out(i, c.name, n, p, bool(c.email) or c.id in has_login) for i, c, n, p in rows]
 
 
 async def _load(session: AsyncSession, invoice_id: uuid.UUID):
@@ -373,82 +369,6 @@ async def send_invoice(invoice_id: uuid.UUID, user: Biller, session: Session) ->
     if first:
         await safely(session, tell_parties(session, trips[0], "invoiced", invoice=inv.invoice_no, amount=f"{inv.total:,.0f}"))
     return _out(inv, client.name, len(trips), await _paid_total(session, inv.id), has_email=True)
-
-
-class ClaimOut(BaseModel):
-    id: str
-    invoice_id: str
-    invoice_no: str
-    client: str
-    amount: float
-    paid_on: date
-    reference: str
-    note: str | None
-    via: str
-    status: str
-    reject_reason: str | None
-    created_at: datetime
-    balance: float
-
-
-@router.get("/claims", response_model=list[ClaimOut])
-async def list_claims(_: Biller, session: Session, state: str = "pending") -> list[ClaimOut]:
-    q = select(PaymentClaim, Invoice, Client.name).join(Invoice, Invoice.id == PaymentClaim.invoice_id).join(Client, Client.id == Invoice.client_id)
-    if state in ("pending", "confirmed", "rejected"):
-        q = q.where(PaymentClaim.status == state)
-    rows = (await session.execute(q.order_by(PaymentClaim.created_at).limit(200))).all()
-    out = []
-    for c, inv, name in rows:
-        out.append(ClaimOut(id=str(c.id), invoice_id=str(inv.id), invoice_no=inv.invoice_no, client=name, amount=float(c.amount), paid_on=c.paid_on, reference=c.reference, note=c.note,
-                            via=c.via, status=c.status, reject_reason=c.reject_reason, created_at=c.created_at, balance=float(inv.total - await _paid_total(session, inv.id))))
-    return out
-
-
-class ConfirmIn(BaseModel):
-    amount: Decimal | None = Field(default=None, gt=0, le=100_000_000, decimal_places=2)  # what actually reached the bank, if it differs from what the client said
-
-
-class RejectIn(BaseModel):
-    reason: str = Field(min_length=3, max_length=200)  # the client reads this
-
-
-async def _pending_claim(session: AsyncSession, claim_id: uuid.UUID) -> tuple[PaymentClaim, Invoice]:
-    claim = await session.get(PaymentClaim, claim_id, with_for_update=True)
-    if claim is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Payment claim not found")
-    if claim.status != "pending":
-        raise HTTPException(status.HTTP_409_CONFLICT, f"This claim was already {claim.status}")
-    inv = await session.get(Invoice, claim.invoice_id, with_for_update=True)
-    return claim, inv
-
-
-@router.post("/claims/{claim_id}/confirm", response_model=InvoiceOut)
-async def confirm_claim(claim_id: uuid.UUID, user: Biller, session: Session, body: ConfirmIn | None = None) -> InvoiceOut:
-    """Billing has seen the money in the bank: the payment is recorded exactly as if billing had typed it in, and the client is told."""
-    claim, inv = await _pending_claim(session, claim_id)
-    amount = (body.amount if body and body.amount else None) or claim.amount
-    pay, full, paid = await record_payment(session, user, inv, amount, claim.paid_on, claim.reference)
-    await session.flush()
-    claim.status, claim.decided_by, claim.decided_at, claim.payment_id = "confirmed", user.id, datetime.now(UTC), pay.id
-    session.add(AuditLog(actor_id=user.id, action="invoice.claim_confirmed", entity="invoice", entity_id=str(inv.id), meta={"claim": str(claim.id), "amount": str(amount)}))
-    await session.commit()
-    await tell_payment(session, inv, full, amount, paid)
-    client = await session.get(Client, inv.client_id)
-    return _out(inv, client.name, len(await _invoice_trips(session, inv.id)), paid)
-
-
-@router.post("/claims/{claim_id}/reject", response_model=InvoiceOut)
-async def reject_claim(claim_id: uuid.UUID, body: RejectIn, user: Biller, session: Session) -> InvoiceOut:
-    """The money was not found: the client is told why, and can tell us again."""
-    claim, inv = await _pending_claim(session, claim_id)
-    claim.status, claim.decided_by, claim.decided_at, claim.reject_reason = "rejected", user.id, datetime.now(UTC), body.reason.strip()
-    session.add(AuditLog(actor_id=user.id, action="invoice.claim_rejected", entity="invoice", entity_id=str(inv.id), meta={"claim": str(claim.id), "reason": claim.reject_reason}))
-    await session.commit()
-    trips = await _invoice_trips(session, inv.id)
-    if trips:
-        await safely(session, tell_parties(session, trips[0], "payment_rejected", invoice=inv.invoice_no, amount=f"{claim.amount:,.0f}", why=claim.reject_reason))
-    client = await session.get(Client, inv.client_id)
-    return _out(inv, client.name, len(trips), await _paid_total(session, inv.id))
 
 
 @router.post("/invoices/{invoice_id}/payments/{payment_id}/void", response_model=InvoiceOut)

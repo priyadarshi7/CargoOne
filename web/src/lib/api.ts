@@ -152,13 +152,7 @@ export interface Invoice {
   paid_at: string | null
   paid_amount: number
   balance: number
-  pending_claims: number // the client says they paid; billing has not looked yet
   client_has_email: boolean // there is an address to send the invoice to
-}
-
-export interface ClaimRow {
-  id: string; invoice_id: string; invoice_no: string; client: string; amount: number; paid_on: string; reference: string; note: string | null
-  via: 'portal' | 'link'; status: string; reject_reason: string | null; created_at: string; balance: number
 }
 
 /** Downloads a protected file (needs the Authorization header, so a plain link would not work). */
