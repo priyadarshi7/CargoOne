@@ -153,7 +153,11 @@ export interface Invoice {
   paid_amount: number
   balance: number
   client_has_email: boolean // there is an address to send the invoice to
+  tally_pushed_at: string | null // the voucher is in Tally
+  tally_voucher_no: string | null
 }
+
+export interface TallyStatus { reachable: boolean; company: string | null; period_start: string | null; period_end: string | null; detail: string | null; url: string }
 
 /** Downloads a protected file (needs the Authorization header, so a plain link would not work). */
 export async function download(path: string, fallbackName: string): Promise<void> {

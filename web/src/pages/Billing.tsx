@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { FileCode2, FileText, Sheet } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { PaymentsDialog } from '../components/PaymentsDialog'
-import { api, ApiError, download, type Invoice, type QueueGroup } from '../lib/api'
+import { api, ApiError, download, type Invoice, type QueueGroup, type TallyStatus } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 
 const inr = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })
@@ -123,6 +123,24 @@ function Invoices({ invoices, onExported }: { invoices: Invoice[]; onExported: (
   const [error, setError] = useState<string | null>(null)
   const [paying, setPaying] = useState<Invoice | null>(null)
   const [note, setNote] = useState<string | null>(null)
+  const [tally, setTally] = useState<TallyStatus | null>(null)
+  const [ask, setAsk] = useState<{ inv: Invoice; names: string } | null>(null)
+  const [askDate, setAskDate] = useState<{ inv: Invoice; message: string; date: string; from: string; to: string } | null>(null)
+  const [pushing, setPushing] = useState<string | null>(null)
+  useEffect(() => { api<TallyStatus>('/billing/tally/status').then(setTally).catch(() => setTally(null)) }, [])
+  const push = async (inv: Invoice, createMissing = false, voucherDate?: string) => {
+    setError(null); setNote(null); setAsk(null); setAskDate(null); setPushing(inv.id)
+    try {
+      const r = await api<{ voucher_no: string; already: boolean }>(`/billing/invoices/${inv.id}/tally/push`, { method: 'POST', body: JSON.stringify({ create_missing: createMissing, voucher_date: voucherDate ?? null }) })
+      setNote(t(r.already ? 'bill.tallyAlready' : 'bill.tallyDone', { no: inv.invoice_no, voucher: r.voucher_no }))
+      await onExported()
+    } catch (e) {
+      const d = e instanceof ApiError ? (e.detail as { code?: string; missing?: { name: string }[]; message?: string; period_start?: string; period_end?: string } | string | undefined) : undefined
+      if (typeof d === 'object' && d?.code === 'ledgers_missing') setAsk({ inv, names: (d.missing ?? []).map((m) => m.name).join(', ') })
+      else if (typeof d === 'object' && d?.code === 'voucher_date') setAskDate({ inv, message: d.message ?? '', date: voucherDate ?? d.period_end ?? '', from: d.period_start ?? '', to: d.period_end ?? '' })
+      else setError(e instanceof ApiError ? e.message : t('bill.tallyFail'))
+    } finally { setPushing(null) }
+  }
   const markSent = async (inv: Invoice) => {
     setError(null)
     try { await api(`/billing/invoices/${inv.id}/sent`, { method: 'POST' }); await onExported() } catch { setError(t('sh.failed')) }
@@ -145,6 +163,30 @@ function Invoices({ invoices, onExported }: { invoices: Invoice[]; onExported: (
   const btn = 'inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-ink hover:border-ink hover:bg-wash'
   return (
     <div className="space-y-3">
+      {tally && (tally.reachable
+        ? <p className="text-sm text-muted">{t('bill.tallyUp', { company: tally.company ?? '' })}</p>
+        : <p className="text-sm text-warn">{t('bill.tallyDown', { why: tally.detail ?? '' })}</p>)}
+      {ask && (
+        <div role="alertdialog" aria-label={t('bill.tallyMakeTitle')} className="space-y-2 rounded-xl border border-line bg-wash p-4 text-sm">
+          <p>{t('bill.tallyMake', { names: ask.names })}</p>
+          <div className="flex gap-2">
+            <button className="h-9 rounded-lg bg-ink px-3.5 font-medium text-surface hover:opacity-90" onClick={() => void push(ask.inv, true)}>{t('bill.tallyMakeYes')}</button>
+            <button className="h-9 px-3 text-muted hover:text-ink" onClick={() => setAsk(null)}>{t('common.cancel')}</button>
+          </div>
+        </div>
+      )}
+      {askDate && (
+        <form role="alertdialog" aria-label={t('bill.tallyDateTitle')} onSubmit={(e) => { e.preventDefault(); void push(askDate.inv, true, askDate.date) }} className="space-y-2 rounded-xl border border-line bg-wash p-4 text-sm">
+          <p>{askDate.message}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-2">{t('bill.tallyDateLabel')}
+              <input type="date" required min={askDate.from} max={askDate.to} value={askDate.date} onChange={(e) => setAskDate({ ...askDate, date: e.target.value })} className="h-9 rounded-lg border border-line bg-surface px-3 outline-none focus:border-ink" />
+            </label>
+            <button className="h-9 rounded-lg bg-ink px-3.5 font-medium text-surface hover:opacity-90">{t('bill.tallyDateGo')}</button>
+            <button type="button" className="h-9 px-3 text-muted hover:text-ink" onClick={() => setAskDate(null)}>{t('common.cancel')}</button>
+          </div>
+        </form>
+      )}
       {error && <p role="alert" className="text-sm text-bad">{error}</p>}
       {note && <p role="status" className="text-sm text-ok">{note}</p>}
       <div className="overflow-x-auto rounded-2xl border border-line">
@@ -183,7 +225,11 @@ function Invoices({ invoices, onExported }: { invoices: Invoice[]; onExported: (
                 <td className="px-4 py-3">
                   <div className="flex gap-2">
                     <button className={btn} onClick={() => void get(i, 'pdf')}><FileText size={14} aria-hidden /> PDF</button>
-                    <button className={btn} onClick={() => void get(i, 'tally')}><FileCode2 size={14} aria-hidden /> Tally</button>
+                    <button className={btn} onClick={() => void get(i, 'tally')}><FileCode2 size={14} aria-hidden /> XML</button>
+                    <button disabled={pushing === i.id || !tally?.reachable} title={tally?.reachable ? t('bill.tallyPushHelp') : t('bill.tallyDown', { why: tally?.detail ?? '' })}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-ink px-2.5 py-1.5 text-xs font-medium text-surface hover:opacity-90 disabled:opacity-50" onClick={() => void push(i)}>
+                      {pushing === i.id ? t('common.loading') : i.tally_pushed_at ? t('bill.tallyIn', { no: i.tally_voucher_no ?? '' }) : t('bill.tallyPush')}
+                    </button>
                     <button className={btn} onClick={() => void get(i, 'csv')}><Sheet size={14} aria-hidden /> CSV</button>
                   </div>
                 </td>

@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.billing import tally_api
 from app.billing.pdf import PdfTrip, build_invoice_pdf
 from app.billing.periods import IST, financial_year, period_of
 from app.billing.tally import build_csv, build_tally_xml
@@ -75,6 +76,8 @@ class InvoiceOut(BaseModel):
     paid_amount: float
     balance: float
     client_has_email: bool = False  # there is an address to send the invoice to
+    tally_pushed_at: datetime | None = None
+    tally_voucher_no: str | None = None
 
 
 class CreateInvoice(BaseModel):
@@ -135,7 +138,7 @@ async def create_invoice(body: CreateInvoice, user: Biller, session: Session) ->
 
 
 def _out(inv: Invoice, client: str, n: int, paid: Decimal = Decimal(0), has_email: bool = False) -> InvoiceOut:
-    return InvoiceOut(client_has_email=has_email, id=str(inv.id), invoice_no=inv.invoice_no, client=client, period_label=inv.period_label,
+    return InvoiceOut(tally_pushed_at=inv.tally_pushed_at, tally_voucher_no=inv.tally_voucher_no, client_has_email=has_email, id=str(inv.id), invoice_no=inv.invoice_no, client=client, period_label=inv.period_label,
                       total=float(inv.total), trip_count=n, created_at=inv.created_at, exported_at=inv.exported_at,
                       sent_at=inv.sent_at, paid_at=inv.paid_at, paid_amount=float(paid), balance=float(inv.total - paid))
 
@@ -185,6 +188,41 @@ async def export_tally(invoice_id: uuid.UUID, user: Biller, session: Session) ->
         sales_ledger=s.tally_sales_ledger, total=inv.total, lr_numbers=[t.lr_no for t, _ in trips], company=s.tally_company)
     await _mark_exported(session, user, inv, "tally")
     return _download(xml, "application/xml", f"{inv.invoice_no}-tally.xml")
+
+
+@router.get("/tally/status")
+async def tally_status(_: Biller) -> dict:
+    return await tally_api.status()
+
+
+class PushIn(BaseModel):
+    create_missing: bool = False  # the person agreed to create the party / sales ledger in Tally
+    voucher_date: date | None = None  # booked on this date instead of the invoice's own (Tally's period and, in Educational mode, allowed days are strict)
+
+
+@router.post("/invoices/{invoice_id}/tally/push")
+async def push_to_tally(invoice_id: uuid.UUID, user: Biller, session: Session, body: PushIn | None = None) -> dict:
+    """A person pushes the invoice into Tally as one Sales voucher. Sent once: if Tally already has a voucher with this invoice number nothing is created again."""
+    inv = await session.get(Invoice, invoice_id, with_for_update=True)
+    if inv is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Invoice not found")
+    _, client, trips = await _load(session, invoice_id)
+    s = get_settings()
+    try:
+        done = await tally_api.push_invoice(invoice_no=inv.invoice_no, created_at=inv.created_at, party=client.tally_ledger or client.name, sales=s.tally_sales_ledger,
+                                            total=inv.total, lr_numbers=[t.lr_no for t, _ in trips], create_missing=bool(body and body.create_missing), voucher_date=body.voucher_date if body else None)
+    except tally_api.LedgersMissing as e:
+        raise HTTPException(status.HTTP_409_CONFLICT, {"code": "ledgers_missing", "missing": e.missing, "message": str(e)}) from None
+    except tally_api.DateRejected as e:
+        raise HTTPException(status.HTTP_409_CONFLICT, {"code": "voucher_date", "message": str(e), "period_start": e.period[0].isoformat(), "period_end": e.period[1].isoformat()}) from None
+    except tally_api.TallyError as e:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(e)) from None
+    inv.tally_pushed_at = inv.tally_pushed_at or datetime.now(UTC)
+    inv.tally_voucher_no = done["voucher_no"] or inv.tally_voucher_no
+    session.add(AuditLog(actor_id=user.id, action="invoice.tally_push", entity="invoice", entity_id=str(inv.id),
+                         meta={"company": done["company"], "voucher": done["voucher_no"], "voucher_date": body.voucher_date.isoformat() if body and body.voucher_date else None, "already": done["already"], "created_ledgers": done["created"]}))
+    await session.commit()
+    return {"voucher_no": done["voucher_no"], "already": done["already"], "created_ledgers": done["created"], "company": done["company"]}
 
 
 @router.get("/invoices/{invoice_id}/csv")

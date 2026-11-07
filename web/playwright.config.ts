@@ -31,6 +31,7 @@ export default defineConfig({
         AI_FALLBACKS: '',
         GEMINI_API_KEY: '', // never reach a real AI from tests, whatever .env says
         WHATSAPP_PROVIDER: 'mock', // never message a real phone from tests, whatever .env says
+        TALLY_URL: 'http://127.0.0.1:9', // never push into a real Tally from tests (one may be open on this machine)
         WHATSAPP_TOKEN: '',
         EMAIL_PROVIDER: 'mock', // nor email a real address
         VAPID_PUBLIC_KEY: '', // nor push-alert a real phone

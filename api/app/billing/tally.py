@@ -1,6 +1,6 @@
 """Tally Prime import files. One Sales voucher per invoice: party ledger (Dr) / freight income ledger (Cr).
 
-IMPORTANT: written to Tally's documented XML import format but NOT yet verified against Company A's Tally.
+Checked by importing into a real Tally Prime (see tally_api.py and docs/13-tally-setup.md); Company A's own ledger names are still to be confirmed.
 Ledger names (client `tally_ledger`, TALLY_SALES_LEDGER) must exist in Tally with identical spelling.
 GST is not included; the accountant adds tax in Tally or we extend this once GST treatment is agreed.
 """

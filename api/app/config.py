@@ -98,6 +98,7 @@ class Settings(BaseSettings):
     razorpay_key_id: str = ""  # Razorpay Checkout for invoices. Key id + secret both set = "Pay online" appears; use rzp_test_ keys until go-live
     razorpay_key_secret: str = ""  # a secret: .env only
     razorpay_webhook_secret: str = ""  # the secret typed in Razorpay > Webhooks (a secret: .env only); empty = the webhook is refused
+    tally_url: str = "http://localhost:9000"  # Tally Prime's HTTP port (F1 Help > Settings > Connectivity); must be reachable from the API
     tally_company: str = ""  # exact Tally company name; blank = import into the currently open company
     tally_sales_ledger: str = "Freight Income"  # must already exist in Tally
 

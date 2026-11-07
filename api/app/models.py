@@ -194,6 +194,8 @@ class Invoice(Base):
     exported_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # a person marked it as sent to the client: never automatic
     sent_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    tally_pushed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # the voucher is in Tally
+    tally_voucher_no: Mapped[str | None] = mapped_column(String(40))  # Tally's own number for it (our invoice number is its Reference)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # set once the payments recorded cover the total
     created_at: Mapped[datetime] = now()
 

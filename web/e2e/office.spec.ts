@@ -48,11 +48,14 @@ test('billing executive reviews a shortage POD, bills it and downloads PDF + Tal
   expect(pdfBytes.subarray(0, 4).toString()).toBe('%PDF')
   expect(pdfBytes.length).toBeGreaterThan(3000)
 
-  const [tally] = await Promise.all([page.waitForEvent('download'), invoiceRow.getByRole('button', { name: 'Tally' }).click()])
+  const [tally] = await Promise.all([page.waitForEvent('download'), invoiceRow.getByRole('button', { name: 'XML' }).click()])
   expect(tally.suggestedFilename()).toMatch(/\.xml$/)
   const xml = readFileSync(await tally.path(), 'utf-8')
   expect(xml).toContain('<VOUCHER VCHTYPE="Sales"')
   expect(xml).toContain('41200.00')
+  // with no Tally running, the page says so and the push button is off (the file download above still works)
+  await expect(page.getByText(/Tally is not connected/).first()).toBeVisible()
+  await expect(invoiceRow.getByRole('button', { name: 'Push to Tally' })).toBeDisabled()
 
   await expect(invoiceRow).not.toContainText('Not yet') // exported date is now stamped
 
