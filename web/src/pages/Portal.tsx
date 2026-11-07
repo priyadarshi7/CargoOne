@@ -4,7 +4,8 @@ import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { ThemeToggle } from '../components/ThemeToggle'
 import PhoneInput from '../components/PhoneInput'
 import PlaceInput from '../components/PlaceInput'
-import { api, ApiError } from '../lib/api'
+import { ClientInvoice, type InvoiceView } from '../components/ClientInvoice'
+import { api, ApiError, fetchBlob } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { LANGUAGES, useI18n, type Key, type Lang } from '../lib/i18n'
 import Account from './Account'
@@ -51,9 +52,11 @@ export default function Portal() {
   const [ships, setShips] = useState<Shipment[] | null>(null)
   const [reqs, setReqs] = useState<Req[] | null>(null)
   const [me, setMe] = useState<{ company: string } | null>(null)
+  const [invs, setInvs] = useState<InvoiceView[]>([])
   const [error, setError] = useState(false)
   useEffect(() => {
     Promise.all([api<Shipment[]>('/portal/shipments'), api<Req[]>('/portal/requests'), api<{ company: string }>('/portal/me')]).then(([s, r, m]) => { setShips(s); setReqs(r); setMe(m) }).catch(() => setError(true))
+    api<InvoiceView[]>('/portal/invoices').then(setInvs).catch(() => undefined)
   }, [])
   const open = (reqs ?? []).filter((r) => r.status === 'new' || r.status === 'accepted')
 
@@ -77,6 +80,18 @@ export default function Portal() {
                   </li>
                 ))}
               </ul>
+            </section>
+          )}
+          {invs.length > 0 && (
+            <section aria-label={t('inv.title')} className="space-y-2">
+              <h2 className="font-semibold">{t('inv.title')}</h2>
+              <div className="space-y-3">
+                {invs.map((v) => (
+                  <ClientInvoice key={v.id} inv={v} openPdf={() => fetchBlob(`/portal/invoices/${v.id}/pdf`)}
+                    claim={(b) => api<InvoiceView>(`/portal/invoices/${v.id}/claims`, { method: 'POST', body: JSON.stringify(b) })}
+                    onChange={(n) => setInvs((all) => all.map((x) => (x.id === n.id ? n : x)))} />
+                ))}
+              </div>
             </section>
           )}
           <section aria-label={t('portal.ship')} className="space-y-2">

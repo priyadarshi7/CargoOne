@@ -6,13 +6,13 @@ import { useAuth } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
 
 type Key = 'missing_pod' | 'review_waiting' | 'unbilled' | 'expenses_pending' | 'papers' | 'licences' | 'requests_new' | 'quote_declined' | 'ready_to_book' | 'quote_waiting' | 'breakdown_open' | 'late_running'
-  | 'not_started' | 'unassigned' | 'not_acknowledged' | 'delivery_issue' | 'invoice_unsent' | 'payment_overdue' | 'messages_failed'
+  | 'not_started' | 'unassigned' | 'not_acknowledged' | 'delivery_issue' | 'invoice_unsent' | 'payment_overdue' | 'messages_failed' | 'payment_claims'
 interface Item { key: Key; count: number; oldest_days: number | null; to: string; severity: 'high' | 'medium' | 'low' }
 interface Reminded { sent: number; skipped_recent: number; no_phone: number; no_driver: number; simulated: boolean }
 
 const ICON: Record<Key, LucideIcon> = { missing_pod: FileWarning, review_waiting: ScanSearch, unbilled: FileClock, expenses_pending: ReceiptText, papers: Truck, licences: IdCard, requests_new: Inbox,
   quote_declined: CircleX, ready_to_book: Inbox, quote_waiting: PhoneCall, breakdown_open: Wrench, late_running: Clock, not_started: AlarmClockOff, unassigned: UserX, not_acknowledged: Siren,
-  delivery_issue: PackageX, invoice_unsent: Send, payment_overdue: HandCoins, messages_failed: MessageSquareWarning }
+  delivery_issue: PackageX, invoice_unsent: Send, payment_overdue: HandCoins, messages_failed: MessageSquareWarning, payment_claims: HandCoins }
 const TONE = { high: 'bg-bad-soft text-bad', medium: 'bg-warn-soft text-warn', low: 'bg-wash text-muted' } as const
 
 /** The short list of things waiting on a person, shown at the top of the ops dashboard and the billing screen. */

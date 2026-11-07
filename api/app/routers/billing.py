@@ -16,10 +16,23 @@ from app.billing.tally import build_csv, build_tally_xml
 from app.config import get_settings
 from app.db import get_session
 from app.events import record
-from app.models import AuditLog, Client, Invoice, Payment, PodStatus, PodSubmission, Role, Trip, User, Vehicle
-from app.notify.service import safely
+from app.models import (
+    AuditLog,
+    Client,
+    Invoice,
+    Payment,
+    PaymentClaim,
+    PodStatus,
+    PodSubmission,
+    Role,
+    Trip,
+    User,
+    Vehicle,
+)
+from app.notify.service import safely, send_email
 from app.notify.shipment import tell_parties
 from app.security import require_roles
+from app.shipment import shipment_url
 from app.storage import Storage, get_storage
 
 router = APIRouter(prefix="/billing", tags=["billing"])
@@ -62,6 +75,8 @@ class InvoiceOut(BaseModel):
     paid_at: datetime | None
     paid_amount: float
     balance: float
+    pending_claims: int = 0  # the client says they paid; billing has not looked yet
+    client_has_email: bool = False  # there is an address to send the invoice to
 
 
 class CreateInvoice(BaseModel):
@@ -121,8 +136,8 @@ async def create_invoice(body: CreateInvoice, user: Biller, session: Session) ->
     return _out(inv, client.name, len(trips))
 
 
-def _out(inv: Invoice, client: str, n: int, paid: Decimal = Decimal(0)) -> InvoiceOut:
-    return InvoiceOut(id=str(inv.id), invoice_no=inv.invoice_no, client=client, period_label=inv.period_label,
+def _out(inv: Invoice, client: str, n: int, paid: Decimal = Decimal(0), claims: int = 0, has_email: bool = False) -> InvoiceOut:
+    return InvoiceOut(pending_claims=claims, client_has_email=has_email, id=str(inv.id), invoice_no=inv.invoice_no, client=client, period_label=inv.period_label,
                       total=float(inv.total), trip_count=n, created_at=inv.created_at, exported_at=inv.exported_at,
                       sent_at=inv.sent_at, paid_at=inv.paid_at, paid_amount=float(paid), balance=float(inv.total - paid))
 
@@ -131,12 +146,15 @@ def _out(inv: Invoice, client: str, n: int, paid: Decimal = Decimal(0)) -> Invoi
 async def list_invoices(_: Biller, session: Session) -> list[InvoiceOut]:
     counts = select(Trip.invoice_id, func.count().label("n")).group_by(Trip.invoice_id).subquery()
     paid = select(Payment.invoice_id, func.sum(Payment.amount).label("paid")).group_by(Payment.invoice_id).subquery()
+    waiting = select(PaymentClaim.invoice_id, func.count().label("c")).where(PaymentClaim.status == "pending").group_by(PaymentClaim.invoice_id).subquery()
     rows = (await session.execute(
-        select(Invoice, Client.name, func.coalesce(counts.c.n, 0), func.coalesce(paid.c.paid, 0))
+        select(Invoice, Client, func.coalesce(counts.c.n, 0), func.coalesce(paid.c.paid, 0), func.coalesce(waiting.c.c, 0))
         .join(Client, Client.id == Invoice.client_id).outerjoin(counts, counts.c.invoice_id == Invoice.id).outerjoin(paid, paid.c.invoice_id == Invoice.id)
+        .outerjoin(waiting, waiting.c.invoice_id == Invoice.id)
         .order_by(Invoice.created_at.desc()).limit(200)
     )).all()
-    return [_out(i, c, n, p) for i, c, n, p in rows]
+    has_login = set((await session.scalars(select(User.client_id).where(User.role == Role.client, User.is_active.is_(True), User.email.is_not(None)))).all())
+    return [_out(i, c.name, n, p, w, bool(c.email) or c.id in has_login) for i, c, n, p, w in rows]
 
 
 async def _load(session: AsyncSession, invoice_id: uuid.UUID):
@@ -184,9 +202,8 @@ async def export_csv(invoice_id: uuid.UUID, user: Biller, session: Session) -> R
     return _download(build_csv(rows), "text/csv", f"{inv.invoice_no}.csv")
 
 
-@router.get("/invoices/{invoice_id}/pdf")
-async def export_pdf(invoice_id: uuid.UUID, user: Biller, session: Session,
-                     storage: Annotated[Storage, Depends(get_storage)]) -> Response:
+async def invoice_pdf_bytes(session: AsyncSession, storage: Storage, invoice_id: uuid.UUID) -> tuple[Invoice, bytes]:
+    """The invoice PDF with each trip's POD photo attached: for billing, and for the client once it has been sent."""
     inv, client, trips = await _load(session, invoice_id)
     pdf_trips: list[PdfTrip] = []
     for t, v in trips:
@@ -202,8 +219,14 @@ async def export_pdf(invoice_id: uuid.UUID, user: Biller, session: Session,
             trip_code=t.trip_code, lr_no=t.lr_no, eway_bill_no=t.eway_bill_no, route=f"{t.origin} to {t.destination}",
             vehicle=v.reg_no, delivered_on=t.delivered_at.astimezone(IST).strftime("%d %b %Y") if t.delivered_at else "-",
             freight=t.freight_amount, image=image))
-    pdf = build_invoice_pdf(company=get_settings().company_name, invoice_no=inv.invoice_no, created_at=inv.created_at,
-                            client=client.name, period_label=inv.period_label, trips=pdf_trips)
+    return inv, build_invoice_pdf(company=get_settings().company_name, invoice_no=inv.invoice_no, created_at=inv.created_at,
+                                  client=client.name, period_label=inv.period_label, trips=pdf_trips)
+
+
+@router.get("/invoices/{invoice_id}/pdf")
+async def export_pdf(invoice_id: uuid.UUID, user: Biller, session: Session,
+                     storage: Annotated[Storage, Depends(get_storage)]) -> Response:
+    inv, pdf = await invoice_pdf_bytes(session, storage, invoice_id)
     session.add(AuditLog(actor_id=user.id, action="invoice.export.pdf", entity="invoice", entity_id=str(inv.id)))
     await session.commit()
     return _download(pdf, "application/pdf", f"{inv.invoice_no}.pdf")
@@ -255,26 +278,23 @@ async def list_payments(invoice_id: uuid.UUID, _: Biller, session: Session) -> l
     return [{"id": str(p.id), "amount": float(p.amount), "paid_on": p.paid_on.isoformat(), "reference": p.reference} for p in rows]
 
 
-@router.post("/invoices/{invoice_id}/payments", response_model=InvoiceOut, status_code=status.HTTP_201_CREATED)
-async def add_payment(invoice_id: uuid.UUID, body: PaymentIn, user: Biller, session: Session) -> InvoiceOut:
-    """Money received. When the payments add up to the total the invoice is paid and its trips are closed."""
-    inv = await session.get(Invoice, invoice_id, with_for_update=True)
-    if inv is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Invoice not found")
+async def record_payment(session: AsyncSession, user: User, inv: Invoice, amount: Decimal, paid_on: date, reference: str | None) -> tuple[Payment, bool, Decimal]:
+    """Money received. The checks, the payment, and (when the payments reach the total) the paid invoice and the closed trips: the one place this happens,
+    whether billing types it in or confirms what the client said. Returns the payment, whether the invoice is now paid in full, and the amount paid so far."""
     if inv.sent_at is None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Mark the invoice as sent before recording a payment")
     if inv.paid_at is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, "This invoice is already paid in full")
-    today = datetime.now(IST).date()
-    if body.paid_on > today:
+    if paid_on > datetime.now(IST).date():
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "The payment date cannot be in the future")
-    if body.paid_on < inv.created_at.astimezone(IST).date():
+    if paid_on < inv.created_at.astimezone(IST).date():
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "The payment date is before the invoice was made")
     paid = await _paid_total(session, inv.id)
-    if paid + body.amount > inv.total:
+    if paid + amount > inv.total:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, f"That is more than the balance of Rs {inv.total - paid:,.2f}")
-    session.add(Payment(invoice_id=inv.id, amount=body.amount, paid_on=body.paid_on, reference=(body.reference or "").strip() or None, recorded_by=user.id))
-    paid += body.amount
+    pay = Payment(invoice_id=inv.id, amount=amount, paid_on=paid_on, reference=(reference or "").strip() or None, recorded_by=user.id)
+    session.add(pay)
+    paid += amount
     trips = await _invoice_trips(session, inv.id)
     now = datetime.now(UTC)
     full = paid >= inv.total
@@ -285,12 +305,150 @@ async def add_payment(invoice_id: uuid.UUID, body: PaymentIn, user: Biller, sess
             record(session, t, "paid", actor=user.id, public=True, meta={"invoice": inv.invoice_no})
             record(session, t, "closed", actor=user.id)
     session.add(AuditLog(actor_id=user.id, action="invoice.payment", entity="invoice", entity_id=str(inv.id),
-                         meta={"amount": str(body.amount), "paid_on": body.paid_on.isoformat(), "reference": body.reference, "closed": full}))
-    await session.commit()
-    if full and trips:
+                         meta={"amount": str(amount), "paid_on": paid_on.isoformat(), "reference": reference, "closed": full}))
+    return pay, full, paid
+
+
+async def tell_payment(session: AsyncSession, inv: Invoice, full: bool, amount: Decimal, paid: Decimal) -> None:
+    trips = await _invoice_trips(session, inv.id)
+    if not trips:
+        return
+    if full:
         await safely(session, tell_parties(session, trips[0], "paid", invoice=inv.invoice_no))
+    else:
+        await safely(session, tell_parties(session, trips[0], "payment_part", invoice=inv.invoice_no, amount=f"{amount:,.0f}", balance=f"{inv.total - paid:,.0f}"))
+
+
+@router.post("/invoices/{invoice_id}/payments", response_model=InvoiceOut, status_code=status.HTTP_201_CREATED)
+async def add_payment(invoice_id: uuid.UUID, body: PaymentIn, user: Biller, session: Session) -> InvoiceOut:
+    """Money received. When the payments add up to the total the invoice is paid and its trips are closed."""
+    inv = await session.get(Invoice, invoice_id, with_for_update=True)
+    if inv is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Invoice not found")
+    _, full, paid = await record_payment(session, user, inv, body.amount, body.paid_on, body.reference)
+    await session.commit()
+    if full:
+        await tell_payment(session, inv, True, body.amount, paid)
     client = await session.get(Client, inv.client_id)
-    return _out(inv, client.name, len(trips), paid)
+    return _out(inv, client.name, len(await _invoice_trips(session, inv.id)), paid)
+
+
+# ---------------------------------------------------------------- the invoice goes to the client; the client says it was paid
+
+
+async def _client_emails(session: AsyncSession, client: Client) -> list[str]:
+    """The billing address if there is one; otherwise the sign-in emails of the client's own people."""
+    if client.email:
+        return [client.email]
+    return list((await session.scalars(select(User.email).where(User.role == Role.client, User.client_id == client.id, User.is_active.is_(True), User.email.is_not(None)).order_by(User.created_at))).all())
+
+
+@router.post("/invoices/{invoice_id}/send", response_model=InvoiceOut)
+async def send_invoice(invoice_id: uuid.UUID, user: Biller, session: Session) -> InvoiceOut:
+    """A person sends the invoice to the client: an email with the private link where the invoice can be viewed and downloaded, and a WhatsApp note.
+    Nothing is ever sent without this click. The invoice then counts as sent."""
+    inv = await session.get(Invoice, invoice_id, with_for_update=True)
+    if inv is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Invoice not found")
+    client = await session.get(Client, inv.client_id)
+    to = await _client_emails(session, client)
+    if not to:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "This client has no email address yet: add one under Setup, Clients")
+    trips = await _invoice_trips(session, inv.id)
+    if not trips:
+        raise HTTPException(status.HTTP_409_CONFLICT, "This invoice has no trips")
+    lang = client.language if client.language in ("en", "hi", "mr") else "en"
+    link = shipment_url(trips[0], "client")
+    for addr in to:
+        msg = await send_email(session, addr, lang, "invoice_sent", {"name": client.contact_name or client.name, "invoice": inv.invoice_no, "amount": f"{inv.total:,.0f}", "link": link},
+                               secret=link.rsplit("/", 1)[1])
+        msg.trip_id = trips[0].id
+    first = inv.sent_at is None
+    if first:
+        inv.sent_at, inv.sent_by = datetime.now(UTC), user.id
+        for t in trips:
+            record(session, t, "invoiced", actor=user.id, public=True, meta={"invoice": inv.invoice_no})
+    session.add(AuditLog(actor_id=user.id, action="invoice.sent", entity="invoice", entity_id=str(inv.id), meta={"invoice_no": inv.invoice_no, "emailed": len(to), "again": not first}))
+    await session.commit()
+    if first:
+        await safely(session, tell_parties(session, trips[0], "invoiced", invoice=inv.invoice_no, amount=f"{inv.total:,.0f}"))
+    return _out(inv, client.name, len(trips), await _paid_total(session, inv.id), has_email=True)
+
+
+class ClaimOut(BaseModel):
+    id: str
+    invoice_id: str
+    invoice_no: str
+    client: str
+    amount: float
+    paid_on: date
+    reference: str
+    note: str | None
+    via: str
+    status: str
+    reject_reason: str | None
+    created_at: datetime
+    balance: float
+
+
+@router.get("/claims", response_model=list[ClaimOut])
+async def list_claims(_: Biller, session: Session, state: str = "pending") -> list[ClaimOut]:
+    q = select(PaymentClaim, Invoice, Client.name).join(Invoice, Invoice.id == PaymentClaim.invoice_id).join(Client, Client.id == Invoice.client_id)
+    if state in ("pending", "confirmed", "rejected"):
+        q = q.where(PaymentClaim.status == state)
+    rows = (await session.execute(q.order_by(PaymentClaim.created_at).limit(200))).all()
+    out = []
+    for c, inv, name in rows:
+        out.append(ClaimOut(id=str(c.id), invoice_id=str(inv.id), invoice_no=inv.invoice_no, client=name, amount=float(c.amount), paid_on=c.paid_on, reference=c.reference, note=c.note,
+                            via=c.via, status=c.status, reject_reason=c.reject_reason, created_at=c.created_at, balance=float(inv.total - await _paid_total(session, inv.id))))
+    return out
+
+
+class ConfirmIn(BaseModel):
+    amount: Decimal | None = Field(default=None, gt=0, le=100_000_000, decimal_places=2)  # what actually reached the bank, if it differs from what the client said
+
+
+class RejectIn(BaseModel):
+    reason: str = Field(min_length=3, max_length=200)  # the client reads this
+
+
+async def _pending_claim(session: AsyncSession, claim_id: uuid.UUID) -> tuple[PaymentClaim, Invoice]:
+    claim = await session.get(PaymentClaim, claim_id, with_for_update=True)
+    if claim is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Payment claim not found")
+    if claim.status != "pending":
+        raise HTTPException(status.HTTP_409_CONFLICT, f"This claim was already {claim.status}")
+    inv = await session.get(Invoice, claim.invoice_id, with_for_update=True)
+    return claim, inv
+
+
+@router.post("/claims/{claim_id}/confirm", response_model=InvoiceOut)
+async def confirm_claim(claim_id: uuid.UUID, user: Biller, session: Session, body: ConfirmIn | None = None) -> InvoiceOut:
+    """Billing has seen the money in the bank: the payment is recorded exactly as if billing had typed it in, and the client is told."""
+    claim, inv = await _pending_claim(session, claim_id)
+    amount = (body.amount if body and body.amount else None) or claim.amount
+    pay, full, paid = await record_payment(session, user, inv, amount, claim.paid_on, claim.reference)
+    await session.flush()
+    claim.status, claim.decided_by, claim.decided_at, claim.payment_id = "confirmed", user.id, datetime.now(UTC), pay.id
+    session.add(AuditLog(actor_id=user.id, action="invoice.claim_confirmed", entity="invoice", entity_id=str(inv.id), meta={"claim": str(claim.id), "amount": str(amount)}))
+    await session.commit()
+    await tell_payment(session, inv, full, amount, paid)
+    client = await session.get(Client, inv.client_id)
+    return _out(inv, client.name, len(await _invoice_trips(session, inv.id)), paid)
+
+
+@router.post("/claims/{claim_id}/reject", response_model=InvoiceOut)
+async def reject_claim(claim_id: uuid.UUID, body: RejectIn, user: Biller, session: Session) -> InvoiceOut:
+    """The money was not found: the client is told why, and can tell us again."""
+    claim, inv = await _pending_claim(session, claim_id)
+    claim.status, claim.decided_by, claim.decided_at, claim.reject_reason = "rejected", user.id, datetime.now(UTC), body.reason.strip()
+    session.add(AuditLog(actor_id=user.id, action="invoice.claim_rejected", entity="invoice", entity_id=str(inv.id), meta={"claim": str(claim.id), "reason": claim.reject_reason}))
+    await session.commit()
+    trips = await _invoice_trips(session, inv.id)
+    if trips:
+        await safely(session, tell_parties(session, trips[0], "payment_rejected", invoice=inv.invoice_no, amount=f"{claim.amount:,.0f}", why=claim.reject_reason))
+    client = await session.get(Client, inv.client_id)
+    return _out(inv, client.name, len(trips), await _paid_total(session, inv.id))
 
 
 @router.post("/invoices/{invoice_id}/payments/{payment_id}/void", response_model=InvoiceOut)

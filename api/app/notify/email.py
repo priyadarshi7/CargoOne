@@ -44,6 +44,17 @@ EMAIL_ONLY: dict[str, dict[str, dict[str, str]]] = {
 }
 
 
+EMAIL_ONLY["invoice_sent"] = {
+    "subject": {"en": "CargoOne: invoice {invoice} for your shipments", "hi": "CargoOne: आपकी खेप का बिल {invoice}", "mr": "CargoOne: तुमच्या खेपेचे बिल {invoice}"},
+    "en": "Hello {name}, invoice {invoice} for Rs {amount} is ready.\n\nYou can view and download it, with the proof of delivery for every trip, on this private page: {link}\n\n"
+          "After you pay, you can tell us the bank reference on the same page, and we will confirm it.\n\nIf you were not expecting this, you can ignore this email.",
+    "hi": "नमस्ते {name}, बिल {invoice} (Rs {amount}) तैयार है।\n\nहर ट्रिप की डिलीवरी रसीद के साथ इसे इस निजी पेज पर देखें और डाउनलोड करें: {link}\n\n"
+          "भुगतान के बाद उसी पेज पर बैंक रेफ़रेंस बताएँ, हम उसकी पुष्टि करेंगे।\n\nअगर आपको इसकी उम्मीद नहीं थी, तो इस ईमेल को अनदेखा कर दें।",
+    "mr": "नमस्कार {name}, बिल {invoice} (Rs {amount}) तयार आहे.\n\nप्रत्येक ट्रिपच्या डिलिव्हरी पावतीसह ते या खाजगी पेजवर पहा आणि डाउनलोड करा: {link}\n\n"
+          "पैसे भरल्यावर त्याच पेजवर बँक संदर्भ कळवा, आम्ही त्याची खात्री करू.\n\nतुम्हाला याची अपेक्षा नसेल, तर हा ईमेल दुर्लक्षित करा.",
+}
+
+
 def mask_email(addr: str) -> str:
     local, _, domain = addr.partition("@")
     return f"{local[:1]}***@{domain}"[:20]

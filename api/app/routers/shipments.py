@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.billing.claims import ClaimIn, client_invoice_view, create_claim
 from app.config import get_settings
 from app.db import get_session
 from app.lateness import arrival_estimate
@@ -40,6 +41,7 @@ office = APIRouter(prefix="/trips", tags=["shipment links"])
 Session = Annotated[AsyncSession, Depends(get_session)]
 Office = Annotated[User, Depends(require_roles(Role.ops, Role.billing))]
 bad_token_limiter = RateLimiter(max_hits=30, window_s=60)
+claim_limiter = RateLimiter(max_hits=10, window_s=3600)  # per shipment page: a payment is told once, not repeatedly
 
 MONEY = {"verified", "invoiced", "paid", "closed"}  # steps the receiver is never told about
 NOTES_FOR_CLIENT = {"issue", "cancelled", "replanned"}  # the office's wording is shown to the client only, and only for these
@@ -112,10 +114,41 @@ async def page(token: str, request: Request, session: Session) -> dict:
     if aud == "client":
         out |= {"client_name": client.name if client else "", "freight_amount": float(trip.freight_amount), "consignee_name": trip.consignee_name, "eway_bill_no": trip.eway_bill_no,
                 "pod_available": trip.pod_status in (PodStatus.verified, PodStatus.billed),
-                "invoice": {"invoice_no": inv.invoice_no, "total": float(inv.total), "sent_at": inv.sent_at, "paid_at": inv.paid_at} if inv and inv.sent_at else None}
+                "invoice": await client_invoice_view(session, inv) if inv and inv.sent_at else None}
     session.add(AuditLog(actor_id=None, action="shipment.view", entity="trip", entity_id=trip.trip_code, meta={"audience": aud}))
     await session.commit()
     return out
+
+
+@public.get("/{token}/invoice")
+async def invoice_pdf(token: str, request: Request, session: Session, storage: Annotated[Storage, Depends(get_storage)]) -> Response:
+    """The invoice itself, with the proof of delivery of every trip on it: only the client's page, and only once billing has sent it."""
+    from app.routers.billing import invoice_pdf_bytes
+
+    trip, aud = await _resolve(token, request, session)
+    inv = await _invoice(session, trip)
+    if aud != "client" or inv is None or inv.sent_at is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Invoice not found")
+    _, pdf = await invoice_pdf_bytes(session, storage, inv.id)
+    session.add(AuditLog(actor_id=None, action="invoice.view", entity="invoice", entity_id=str(inv.id), meta={"via": "link"}))
+    await session.commit()
+    return Response(pdf, media_type="application/pdf", headers={"Content-Disposition": f'inline; filename="{inv.invoice_no.replace("/", "-")}.pdf"', "Cache-Control": "private, no-store"})
+
+
+@public.post("/{token}/claims", status_code=status.HTTP_201_CREATED)
+async def claim_payment(token: str, body: ClaimIn, request: Request, session: Session) -> dict:
+    """The client says they paid: billing is asked to check the bank. Nothing changes on the invoice until a person confirms."""
+    trip, aud = await _resolve(token, request, session)
+    inv = await _invoice(session, trip)
+    if aud != "client" or inv is None or inv.sent_at is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Invoice not found")
+    if claim_limiter.blocked(trip.trip_code):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many attempts. Try again later.")
+    claim_limiter.record(trip.trip_code)
+    await create_claim(session, inv, body, via="link", user_id=None)
+    session.add(AuditLog(actor_id=None, action="invoice.claim", entity="invoice", entity_id=str(inv.id), meta={"amount": str(body.amount), "via": "link"}))
+    await session.commit()
+    return await client_invoice_view(session, inv)
 
 
 @public.get("/{token}/pod")

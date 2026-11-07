@@ -34,8 +34,9 @@ One shipment has one timeline. Everyone sees the part that is theirs. This is wh
 
 ## 6. Billing
 
-- A verified proof lands in the billing queue. A person makes the invoice (a draft), sends it to the client themselves, and marks it **sent**. The system never sends an invoice.
-- The client's shipment page then shows the invoice; each step also sends a WhatsApp note.
+- A verified proof lands in the billing queue. A person makes the invoice (a draft), then clicks **Send to client** on the Invoices tab. That emails the client a private link (and a WhatsApp note), and the invoice counts as **sent**. Nothing is ever sent without that click. The email goes to the client's billing email (Setup, Clients); if that is empty, to the sign-in emails of the client's own people; with neither, the button is off and says to add one. **I sent it myself** is still there for an invoice that went out another way (it records it and sends the WhatsApp note, no email). The system never sends an invoice by itself.
+- Once sent, the client sees the invoice on their private shipment page and on their own login (Invoices): total, received, balance, the PDF with the proof of delivery of every trip on it (**View invoice**), and where their own payment notes stand. The receiver never sees money.
+- **I have paid:** the client enters the amount, the date and the bank reference (UTR or cheque number), with an optional note, on either page. That is only their word: billing sees it under **Payments to check** (and in Needs attention), looks for the reference in the bank, and either **confirms** (what actually arrived can be corrected; it is then recorded exactly like a payment billing types in, and the invoice becomes paid when the payments cover the total) or says **not found** with a reason the client reads. The client is told by WhatsApp either way. A client can have 3 notes waiting on one invoice at a time, and cannot claim more than the balance.
 - Payments are recorded against the invoice (amount, date, UTR or cheque number). Part payments are allowed; more than the balance, or a future date, is refused.
 
 ## 7. Close

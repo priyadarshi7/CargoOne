@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import ClientFrame from '../components/ClientFrame'
 import { LiveMap } from '../components/LiveMap'
-import { BASE } from '../lib/api'
+import { ClientInvoice, type InvoiceView } from '../components/ClientInvoice'
+import { ApiError, BASE } from '../lib/api'
 import { LANGUAGES, useI18n, type Key, type Lang } from '../lib/i18n'
 
 interface Step { key: string; done: boolean; at: string | null }
@@ -15,7 +16,7 @@ interface Page {
   steps: Step[]; timeline: Row[]; live: { lat: number | null; lng: number | null; seen_at: string | null; eta: string | null } | null
   delivery_code?: string
   client_name?: string; freight_amount?: number; consignee_name?: string | null; eway_bill_no?: string; pod_available?: boolean
-  invoice?: { invoice_no: string; total: number; sent_at: string; paid_at: string | null } | null
+  invoice?: InvoiceView | null
 }
 type State = { kind: 'loading' } | { kind: 'ok'; p: Page } | { kind: 'unknown' } | { kind: 'error' }
 
@@ -121,10 +122,15 @@ export default function ShipmentPage() {
       </dl>
 
       {x.invoice && (
-        <p className="rounded-xl border border-line px-4 py-3 text-sm">
-          {t('shp.invoiceSent', { no: x.invoice.invoice_no, amount: inr.format(x.invoice.total), when: date(x.invoice.sent_at) })}
-          {x.invoice.paid_at && <span className="mt-1 block font-medium text-ok">{t('shp.invoicePaid', { when: date(x.invoice.paid_at) })}</span>}
-        </p>
+        <ClientInvoice inv={x.invoice}
+          openPdf={async () => { const r = await fetch(`${BASE}/public/shipments/${encodeURIComponent(token)}/invoice`); if (!r.ok) throw new Error('invoice'); return r.blob() }}
+          claim={async (b) => {
+            const r = await fetch(`${BASE}/public/shipments/${encodeURIComponent(token)}/claims`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) })
+            const j = await r.json().catch(() => ({}))
+            if (!r.ok) throw new ApiError(r.status, typeof j.detail === 'string' ? j.detail : t('inv.claimFail'), j.detail)
+            return j as InvoiceView
+          }}
+          onChange={(v) => setState((s) => (s.kind === 'ok' ? { kind: 'ok', p: { ...s.p, invoice: v } } : s))} />
       )}
       {pod && <section className="space-y-2"><h2 className="font-semibold">{t('shp.pod')}</h2><img src={pod} alt={t('shp.pod')} className="w-full rounded-xl border border-line" /></section>}
 

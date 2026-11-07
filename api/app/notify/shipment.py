@@ -20,6 +20,8 @@ UPDATES: dict[str, dict[str, str]] = {
     "verified": {"en": "the proof of delivery has been checked and is ready to view", "hi": "डिलीवरी का सबूत जाँच लिया गया है और देखने के लिए तैयार है", "mr": "डिलिव्हरीचा पुरावा तपासला आहे आणि पाहण्यासाठी तयार आहे"},
     "invoiced": {"en": "invoice {invoice} for Rs {amount} has been issued for this shipment", "hi": "इस खेप के लिए बिल {invoice} (Rs {amount}) जारी हो गया है", "mr": "या खेपेसाठी बिल {invoice} (Rs {amount}) जारी झाले आहे"},
     "paid": {"en": "payment received for invoice {invoice}. Thank you", "hi": "बिल {invoice} का भुगतान मिल गया। धन्यवाद", "mr": "बिल {invoice} चे पैसे मिळाले. धन्यवाद"},
+    "payment_part": {"en": "we received Rs {amount} towards invoice {invoice}. Balance: Rs {balance}", "hi": "बिल {invoice} के लिए Rs {amount} मिल गए। बाकी: Rs {balance}", "mr": "बिल {invoice} साठी Rs {amount} मिळाले. बाकी: Rs {balance}"},
+    "payment_rejected": {"en": "we could not match your payment of Rs {amount} for invoice {invoice}: {why}. Please check it and tell us again", "hi": "बिल {invoice} के लिए आपका Rs {amount} का भुगतान हम मिला नहीं पाए: {why}। कृपया जाँचें और फिर बताएँ", "mr": "बिल {invoice} साठी तुमचे Rs {amount} चे पेमेंट आम्ही जुळवू शकलो नाही: {why}. कृपया तपासा आणि पुन्हा कळवा"},
     "link": {"en": "you can follow your shipment on this page", "hi": "आप अपनी खेप इस पेज पर देख सकते हैं", "mr": "तुम्ही तुमची खेप या पेजवर पाहू शकता"},
     "cancelled": {"en": "this trip has been cancelled", "hi": "यह ट्रिप रद्द कर दी गई है", "mr": "ही ट्रिप रद्द करण्यात आली आहे"},
 }
@@ -37,7 +39,7 @@ REASONS: dict[str, dict[str, str]] = {
 # Who hears about each step. The receiver never hears about money.
 AUDIENCE = {"assigned": ("client",), "replanned": ("client",), "started": ("client", "receiver"), "arrived": ("client", "receiver"), "delay": ("client", "receiver"), "breakdown": ("client", "receiver"),
             "resolved": ("client", "receiver"), "late": ("client", "receiver"), "delivered": ("client",), "verified": ("client",), "invoiced": ("client",),
-            "paid": ("client",), "cancelled": ("client", "receiver"), "link": ("client", "receiver")}
+            "paid": ("client",), "payment_part": ("client",), "payment_rejected": ("client",), "cancelled": ("client", "receiver"), "link": ("client", "receiver")}
 
 
 def audience_language(trip: Trip, client: Client | None, aud: str) -> str:

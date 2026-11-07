@@ -7,7 +7,7 @@ import PhoneInput from '../../components/PhoneInput'
 
 interface ClientRow {
   id: string; name: string; segment: string | null; billing_cycle: 'weekly' | 'fortnightly' | 'monthly' | 'per_trip'; tally_ledger: string | null
-  contact_name: string | null; contact_phone: string | null; gstin: string | null; language: 'en' | 'hi' | 'mr'; is_active: boolean; trips: number
+  contact_name: string | null; contact_phone: string | null; email: string | null; gstin: string | null; language: 'en' | 'hi' | 'mr'; is_active: boolean; trips: number
 }
 interface Invite { email_status: string; email_error: string | null; link: string | null }
 interface Login { id: string; name: string; email: string; is_active: boolean; must_change_password: boolean }
@@ -53,11 +53,11 @@ function ClientForm({ client, onClose, onSaved }: { client: ClientRow | null; on
   const { t } = useI18n()
   const [f, setF] = useState({
     name: client?.name ?? '', segment: client?.segment ?? '', billing_cycle: client?.billing_cycle ?? 'weekly', tally_ledger: client?.tally_ledger ?? '',
-    contact_name: client?.contact_name ?? '', contact_phone: client?.contact_phone ?? '', gstin: client?.gstin ?? '', language: client?.language ?? 'en', is_active: client?.is_active ?? true,
+    contact_name: client?.contact_name ?? '', contact_phone: client?.contact_phone ?? '', email: client?.email ?? '', gstin: client?.gstin ?? '', language: client?.language ?? 'en', is_active: client?.is_active ?? true,
   })
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value })
   async function save() {
-    const body = JSON.stringify({ ...f, segment: f.segment || null, tally_ledger: f.tally_ledger || null, contact_name: f.contact_name || null, contact_phone: f.contact_phone || null, gstin: f.gstin || null, ...(client ? {} : { is_active: undefined }) })
+    const body = JSON.stringify({ ...f, segment: f.segment || null, tally_ledger: f.tally_ledger || null, contact_name: f.contact_name || null, contact_phone: f.contact_phone || null, email: f.email.trim() || null, gstin: f.gstin || null, ...(client ? {} : { is_active: undefined }) })
     await api(client ? `/setup/clients/${client.id}` : '/setup/clients', { method: client ? 'PATCH' : 'POST', body })
     onSaved()
   }
@@ -78,6 +78,7 @@ function ClientForm({ client, onClose, onSaved }: { client: ClientRow | null; on
         <Field label={t('setup.client.contact')}><input className={inputCls} value={f.contact_name} onChange={set('contact_name')} /></Field>
         <PhoneInput label={t('setup.client.phone')} value={f.contact_phone} onChange={(v) => setF({ ...f, contact_phone: v })} />
       </div>
+      <Field label={t('setup.client.email')} hint={t('setup.client.emailHint')}><input className={inputCls} type="email" maxLength={160} value={f.email} onChange={set('email')} /></Field>
       <Field label={t('setup.client.lang')}>
         <select className={inputCls} value={f.language} onChange={set('language')}>
           <option value="en">English</option><option value="hi">हिन्दी</option><option value="mr">मराठी</option>

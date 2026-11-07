@@ -250,6 +250,7 @@ class ClientIn(BaseModel):
     tally_ledger: str | None = Field(default=None, max_length=160)
     contact_name: str | None = Field(default=None, max_length=120)
     contact_phone: str | None = None
+    email: str | None = Field(default=None, max_length=160, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")  # where invoices are sent
     gstin: str | None = None
     language: Literal["en", "hi", "mr"] = "en"  # what the messages about their shipments are written in
 
@@ -261,6 +262,7 @@ class ClientPatch(BaseModel):
     tally_ledger: str | None = Field(default=None, max_length=160)
     contact_name: str | None = Field(default=None, max_length=120)
     contact_phone: str | None = None
+    email: str | None = Field(default=None, max_length=160, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
     gstin: str | None = None
     language: Literal["en", "hi", "mr"] | None = None
     is_active: bool | None = None
@@ -275,7 +277,7 @@ def _gstin(value: str | None) -> str | None:
 
 def _client_out(c: Client, trips: int) -> dict:
     return {"id": str(c.id), "name": c.name, "segment": c.segment, "billing_cycle": c.billing_cycle, "tally_ledger": c.tally_ledger,
-            "contact_name": c.contact_name, "contact_phone": c.contact_phone, "gstin": c.gstin, "language": c.language, "is_active": c.is_active, "trips": trips}
+            "contact_name": c.contact_name, "contact_phone": c.contact_phone, "email": c.email, "gstin": c.gstin, "language": c.language, "is_active": c.is_active, "trips": trips}
 
 
 async def _trip_count(session: AsyncSession, client_id: uuid.UUID) -> int:
@@ -291,7 +293,7 @@ async def list_clients(_: Office, session: Session) -> list[dict]:
 @router.post("/clients", status_code=status.HTTP_201_CREATED)
 async def create_client(body: ClientIn, actor: Manager, session: Session) -> dict:
     c = Client(name=body.name.strip(), segment=body.segment or None, billing_cycle=body.billing_cycle, tally_ledger=body.tally_ledger or None,
-               contact_name=body.contact_name or None, contact_phone=clean_phone(body.contact_phone) if body.contact_phone else None, gstin=_gstin(body.gstin), language=body.language)
+               contact_name=body.contact_name or None, contact_phone=clean_phone(body.contact_phone) if body.contact_phone else None, email=(body.email or "").strip().lower() or None, gstin=_gstin(body.gstin), language=body.language)
     session.add(c)
     await _commit(session, "client", flush=True)
     await _audit(session, actor, "client.create", "client", c.id)
@@ -314,6 +316,8 @@ async def update_client(client_id: uuid.UUID, body: ClientPatch, actor: Manager,
             setattr(c, f, getattr(body, f) or None)
     if "contact_phone" in sent:
         c.contact_phone = clean_phone(body.contact_phone) if body.contact_phone else None
+    if "email" in sent:
+        c.email = (body.email or "").strip().lower() or None
     if "gstin" in sent:
         c.gstin = _gstin(body.gstin)
     if body.language is not None:
