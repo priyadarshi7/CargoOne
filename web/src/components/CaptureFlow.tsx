@@ -9,7 +9,8 @@ import { stampText } from '../lib/capture/stamp'
 import { checkPhoto, type Problem } from '../lib/capture/quality'
 import { acknowledge, enqueue, flush, getItem, type UploadResult } from '../lib/capture/queue'
 import { uploadPod } from '../lib/capture/upload'
-import { speak } from '../lib/voice'
+import { LANGUAGES, translate, type Key } from '../lib/i18n'
+import { speak, voiceText } from '../lib/voice'
 
 type Lang = User['language']
 
@@ -27,6 +28,7 @@ export interface CaptureFlowProps {
   destination: string
   lang: Lang
   backTo?: string // where the back arrow goes; omitted on the public SMS page
+  onLang?: (l: Lang) => void // the driver changed the language on this screen
 }
 
 const PROBLEM: Record<Problem, { Icon: LucideIcon; voice: string }> = {
@@ -35,11 +37,14 @@ const PROBLEM: Record<Problem, { Icon: LucideIcon; voice: string }> = {
   glare: { Icon: Sun, voice: 'retake_glare' },
   empty: { Icon: Eye, voice: 'retake_not_pod' },
 }
+const NAMES: Record<Lang, string> = { en: 'EN', hi: 'हि', mr: 'म' }
+const TIPS = ['gps_missing', 'far_from_destination', 'shortage_or_damage']
 const USE_ANYWAY: Record<Lang, string> = { en: 'Use this photo', hi: 'यही फोटो भेजें', mr: 'हाच फोटो पाठवा' }
 
 /** One screen, one action. Result is a full-screen colour + icon + voice: green = done, amber = retake/review.
  *  Shared by the logged-in driver app and the no-login SMS link page, so both behave identically. */
-export function CaptureFlow({ tripId, linkToken, destination, lang, backTo }: CaptureFlowProps) {
+export function CaptureFlow({ tripId, linkToken, destination, lang: first, backTo, onLang }: CaptureFlowProps) {
+  const [lang, setLang] = useState<Lang>(first)
   const [phase, setPhase] = useState<Phase>({ kind: 'ready' })
   const input = useRef<HTMLInputElement>(null)
 
@@ -93,11 +98,25 @@ export function CaptureFlow({ tripId, linkToken, destination, lang, backTo }: Ca
   const trigger = (cls: string, children: ReactNode) => (
     <button onClick={() => input.current?.click()} className={cls}>{children}</button>
   )
-  const back = backTo ? (
-    <Link to={backTo} aria-label="Back" className="grid h-14 w-14 place-items-center rounded-full bg-surface/70 text-ink">
-      <ArrowLeft size={28} aria-hidden />
-    </Link>
-  ) : null
+  const chips = (
+    <div className="flex gap-1.5" role="group" aria-label={translate(lang, 'drv.help.lang')}>
+      {(['en', 'hi', 'mr'] as Lang[]).map((l) => (
+        <button key={l} onClick={() => { setLang(l); onLang?.(l) }} aria-pressed={lang === l} aria-label={LANGUAGES.find(([x]) => x === l)?.[1]}
+          className={`grid h-12 w-12 place-items-center rounded-xl text-base font-semibold ${lang === l ? 'bg-ink text-surface' : 'bg-surface/70 text-ink'}`}>{NAMES[l]}</button>
+      ))}
+    </div>
+  )
+  const back = (
+    <div className="flex items-center justify-between gap-3">
+      {backTo ? (
+        <Link to={backTo} aria-label="Back" className="grid h-14 w-14 place-items-center rounded-full bg-surface/70 text-ink">
+          <ArrowLeft size={28} aria-hidden />
+        </Link>
+      ) : <span />}
+      {chips}
+    </div>
+  )
+  const say = (text: string) => <p className="text-center text-2xl font-semibold leading-snug">{text}</p>
 
   if (phase.kind === 'working') {
     return (
@@ -112,6 +131,7 @@ export function CaptureFlow({ tripId, linkToken, destination, lang, backTo }: Ca
     return (
       <Screen tone="bg-warn-soft text-warn" top={back}>
         <Icon size={160} aria-label={phase.problem} />
+        {say(voiceText(lang, voice))}
         {picker}
         {trigger('flex h-24 w-full items-center justify-center rounded-3xl bg-warn text-on-solid', <Camera size={48} aria-hidden />)}
         <div className="flex items-center gap-4">
@@ -130,6 +150,8 @@ export function CaptureFlow({ tripId, linkToken, destination, lang, backTo }: Ca
     return (
       <Screen tone={ok ? 'bg-ok-soft text-ok' : 'bg-warn-soft text-warn'} top={back}>
         <Icon size={160} aria-label={r.decision} />
+        {say(voiceText(lang, r.voice))}
+        {r.reasons.filter((x) => TIPS.includes(x)).map((x) => <p key={x} className="text-center text-lg font-medium">{translate(lang, `drv.tip.${x}` as Key)}</p>)}
         {picker}
         {retake && trigger('flex h-24 w-full items-center justify-center gap-3 rounded-3xl bg-warn text-2xl font-semibold text-on-solid', <><Camera size={40} aria-hidden /> {r.retakes_left}</>)}
         <button onClick={() => speak(lang, r.voice)} aria-label="Repeat" className="grid h-16 w-16 place-items-center rounded-full bg-surface/70">
@@ -148,6 +170,7 @@ export function CaptureFlow({ tripId, linkToken, destination, lang, backTo }: Ca
             <CircleCheck size={40} aria-hidden />
           </span>
         </div>
+        {say(voiceText(lang, 'saved_offline'))}
         <button onClick={() => speak(lang, 'saved_offline')} aria-label="Repeat" className="grid h-16 w-16 place-items-center rounded-full bg-surface/70">
           <Volume2 size={32} aria-hidden />
         </button>
@@ -159,6 +182,7 @@ export function CaptureFlow({ tripId, linkToken, destination, lang, backTo }: Ca
     return (
       <Screen tone="bg-warn-soft text-warn" top={back}>
         <TriangleAlert size={160} aria-label="Problem" />
+        {say(voiceText(lang, phase.key))}
         {picker}
         {trigger('flex h-24 w-full items-center justify-center rounded-3xl bg-warn text-on-solid', <Camera size={48} aria-hidden />)}
       </Screen>

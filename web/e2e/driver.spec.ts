@@ -1,8 +1,17 @@
 import { join } from 'node:path'
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { failOnBrowserErrors, FIXTURE, login, shot } from './helpers'
 
 test.describe.configure({ mode: 'serial' })
+
+/** The truck on the road: say it has reached, then the photo button; a trip already at the door goes straight to the photo. */
+async function openNextCapture(page: Page) {
+  const reached = page.getByRole('button', { name: /I have reached|मी पोहोचलो/ })
+  const photo = page.getByRole('link', { name: /POD/ })
+  await expect(reached.or(photo)).toBeVisible()
+  if (await reached.isVisible()) await reached.click()
+  await photo.click()
+}
 
 test('driver photographs a POD and gets a green "done" screen', async ({ page }) => {
   const noErrors = failOnBrowserErrors(page)
@@ -11,13 +20,16 @@ test('driver photographs a POD and gets a green "done" screen', async ({ page })
   await shot(page, 'driver-home')
 
   // The big button opens the next open trip (the Pune trip waiting for a retake)
-  await page.getByRole('link', { name: /POD/ }).click()
+  await page.getByRole('link', { name: /Pune/ }).click()
   await expect(page).toHaveURL(/\/driver\/trip\//)
   await shot(page, 'driver-capture-ready')
 
   await page.locator('input[type=file]').setInputFiles(FIXTURE)
   await expect(page.getByLabel('verified')).toBeVisible({ timeout: 20_000 })
   await shot(page, 'driver-result-verified')
+  await expect(page.getByText('ठीक आहे. पावती मिळाली.')).toBeVisible() // the result is written as well as spoken, in the driver's language
+  await page.getByRole('button', { name: 'हिन्दी' }).click() // and the language can be changed right here
+  await expect(page.getByText('ठीक है। रसीद मिल गई।')).toBeVisible()
 
   await page.getByRole('link', { name: 'Back' }).click()
   await expect(page).toHaveURL(/\/driver$/)
@@ -27,7 +39,7 @@ test('driver photographs a POD and gets a green "done" screen', async ({ page })
 test('offline capture is saved on the phone and uploads when the network returns', async ({ page, context }) => {
   await login(page, '9000000001', '1234')
   await page.getByRole('button', { name: 'English' }).click() // this demo driver's own language is Marathi
-  await page.getByRole('link', { name: /POD/ }).click()
+  await openNextCapture(page)
   await expect(page).toHaveURL(/\/driver\/trip\//)
 
   await context.setOffline(true)
@@ -40,7 +52,7 @@ test('offline capture is saved on the phone and uploads when the network returns
 
   await context.setOffline(false) // browser fires "online"; the queue drains by itself
   await expect(page.getByText(/waiting to send/)).toHaveCount(0, { timeout: 20_000 })
-  await expect(page.getByTitle('Done')).toHaveCount(3) // seeded TRP-66120 + the Pune trip + this offline one
+  await expect(page.getByRole('region', { name: 'Done' }).getByRole('listitem')).toHaveCount(3) // seeded TRP-66120 + the Pune trip + this offline one
   await shot(page, 'driver-home-after-sync')
 })
 
@@ -57,7 +69,7 @@ test('a driver cannot upload to a trip that is not theirs', async ({ page }) => 
 
 test('a blurry photo is caught on the phone before upload; the driver can retake or send it anyway', async ({ page }) => {
   await login(page, '9000000001', '1234')
-  await page.getByRole('link', { name: /POD/ }).click()
+  await openNextCapture(page)
   await expect(page).toHaveURL(/\/driver\/trip\//)
 
   const uploads: string[] = []

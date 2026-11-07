@@ -116,6 +116,22 @@ async def road_event(trip_id: uuid.UUID, body: RoadEvent, user: Mover, session: 
     return {"ok": True}
 
 
+@router.post("/{trip_id}/arrived")
+async def arrived(trip_id: uuid.UUID, user: Mover, session: Session) -> dict:
+    """The truck is at the delivery point. The receiver is told to have the code ready, and the office can see how long the truck then waits."""
+    trip = await _own(session, trip_id, user)
+    if trip.arrived_at is not None:
+        return {"arrived_at": trip.arrived_at}  # a retry from a phone that lost the answer
+    if trip.state != TripState.in_transit:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Arrival is reported while the trip is on the road")
+    trip.arrived_at = datetime.now(UTC)
+    record(session, trip, "arrived", actor=user.id, public=True)
+    session.add(AuditLog(actor_id=user.id, action="trip.arrived", entity="trip", entity_id=trip.trip_code))
+    await session.commit()
+    await safely(session, tell_parties(session, trip, "arrived"))
+    return {"arrived_at": trip.arrived_at}
+
+
 class Handover(BaseModel):
     code: str | None = Field(default=None, pattern=r"^\d{4}$")
     shortage_or_damage: bool = False
@@ -199,7 +215,7 @@ async def timeline(trip_id: uuid.UUID, _: Office, session: Session) -> dict:
     return {
         "acknowledged_at": trip.acknowledged_at, "loaded_at": trip.loaded_at, "has_loading_photo": bool(trip.loading_photo_key), "started_at": trip.started_at,
         "delivery_confirmed_at": trip.delivery_confirmed_at, "delivery_override": trip.delivery_override, "delivery_issue": trip.delivery_issue, "delivery_note": trip.delivery_note,
-        "eway_valid_until": trip.eway_valid_until, "closed_at": trip.closed_at,
+        "eway_valid_until": trip.eway_valid_until, "closed_at": trip.closed_at, "arrived_at": trip.arrived_at,
         "code_locked_until": trip.delivery_code_locked_until if trip.delivery_code_locked_until and trip.delivery_code_locked_until > datetime.now(UTC) else None,
         "events": [TimelineRow(kind=e.kind, at=e.at, note=e.note, public=e.public, meta=e.meta).model_dump() for e in rows],
     }

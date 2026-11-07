@@ -56,6 +56,7 @@ class DriverTripOut(TripOut):
     acknowledged_at: datetime | None
     loaded_at: datetime | None  # the truck is loaded (with a photo): until then the driver cannot start
     delivery_confirmed_at: datetime | None
+    arrived_at: datetime | None
     needs_code: bool  # the receiver's 4-digit code is still to be entered before the proof-of-delivery photo
 
 
@@ -101,8 +102,14 @@ async def my_trips(
     return [DriverTripOut(**_out(r).model_dump(), material=r[0].material, weight_tonnes=float(r[0].weight_tonnes) if r[0].weight_tonnes is not None else None,
                           packages=r[0].packages, consignee_name=r[0].consignee_name, consignee_phone=r[0].consignee_phone,
                           destination_lat=r[0].destination_lat, destination_lng=r[0].destination_lng, acknowledged_at=r[0].acknowledged_at,
-                          loaded_at=r[0].loaded_at, delivery_confirmed_at=r[0].delivery_confirmed_at,
+                          loaded_at=r[0].loaded_at, delivery_confirmed_at=r[0].delivery_confirmed_at, arrived_at=r[0].arrived_at,
                           needs_code=bool(r[0].delivery_code) and r[0].delivery_confirmed_at is None) for r in rows]
+
+
+@router.get("/office-contact")
+async def office_contact(_: Annotated[User, Depends(require_roles(Role.driver))]) -> dict:
+    """The number a driver rings when something goes wrong (OFFICE_PHONE in the settings); empty until it is set."""
+    return {"phone": get_settings().office_phone or None}
 
 
 @router.get("/{trip_id}/lr.pdf")

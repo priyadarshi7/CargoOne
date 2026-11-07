@@ -1,9 +1,12 @@
-import { Camera, CircleCheck, Clock, Eye, FileCheck2, KeyRound, MapPin, Navigation, PackageCheck, Phone, Play, TriangleAlert, RotateCcw, Volume2, XCircle, type LucideIcon } from 'lucide-react'
+import { Camera, CircleCheck, Clock, Eye, FileCheck2, Flag, KeyRound, MapPin, Navigation, PackageCheck, Phone, Play, TriangleAlert, RotateCcw, Volume2, XCircle, type LucideIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import DriverInbox from '../components/DriverInbox'
 import { DeliveryCodeForm, RoadEventForm, Sheet } from '../components/DriverSheets'
 import { compressPhoto } from '../lib/capture/compress'
+import { getPosition } from '../lib/capture/geo'
+import { stampText } from '../lib/capture/stamp'
+import { serverNow, syncClock } from '../lib/serverClock'
 import DriverShell from '../components/DriverShell'
 import StaleNote from '../components/StaleNote'
 import DriverTripDetails from '../components/DriverTripDetails'
@@ -38,23 +41,40 @@ export default function DriverHome() {
   const { user, adopt } = useAuth()
   const { t, lang } = useI18n()
   const pending = useSyncedQueue()
-  const { data: trips, stale, loaded, mutate } = useCachedApi<DriverTrip[]>('/trips/mine', user?.id ?? 'anon', pending) // refresh statuses after queued photos finish
+  const { data: trips, stale, loaded, mutate, reload } = useCachedApi<DriverTrip[]>('/trips/mine', user?.id ?? 'anon', pending) // refresh statuses after queued photos finish
+  const { data: office } = useCachedApi<{ phone: string | null }>('/trips/office-contact', user?.id ?? 'anon')
   const [params] = useSearchParams()
   const [starting, setStarting] = useState(false)
-  const [later, setLater] = useState(false)
+  const [later, setLaterState] = useState(() => { try { return localStorage.getItem('cargoone.locLater') === new Date().toDateString() } catch { return false } })
+  const setLater = (v: boolean) => { setLaterState(v); try { if (v) localStorage.setItem('cargoone.locLater', new Date().toDateString()) } catch { /* storage blocked: asked again next time */ } }
   const [toast, setToast] = useState<string | null>(null)
   const [sheet, setSheet] = useState<'deliver' | 'problem' | null>(null)
   const [saving, setSaving] = useState(false)
   const photoInput = useRef<HTMLInputElement>(null)
   const acked = useRef(new Set<string>())
 
-  const next = trips?.find((x) => OPEN.includes(x.pod_status) && x.state !== 'cancelled')
+  // What to show first: the truck on the road, then a delivery still waiting for its photo, then the earliest trip to come.
+  const rank = (x: DriverTrip) => (x.state === 'in_transit' ? 0 : x.state === 'delivered' ? 1 : 2)
+  const next = trips?.filter((x) => OPEN.includes(x.pod_status) && x.state !== 'cancelled')
+    .sort((a, b) => rank(a) - rank(b) || (a.planned_start ?? '').localeCompare(b.planned_start ?? ''))[0]
   const onRoad = trips?.find((x) => x.state === 'in_transit' && OPEN.includes(x.pod_status))
   const focus = trips?.find((x) => x.id === params.get('trip')) ?? next // a message's link opens that trip's details
   const consent = user?.tracking_consent === true
   const gps = useTracker(onRoad?.id ?? null, consent && !!onRoad)
   const loc = LOC[lang]
-  const past = trips?.filter((x) => x.id !== next?.id) ?? []
+  const others = trips?.filter((x) => x.id !== next?.id) ?? []
+  const upcoming = others.filter((x) => x.state === 'planned').sort((a, b) => (a.planned_start ?? '').localeCompare(b.planned_start ?? ''))
+  const waitingPhoto = others.filter((x) => x.state === 'delivered' && OPEN.includes(x.pod_status))
+  const finished = others.filter((x) => x.state !== 'planned' && !waitingPhoto.includes(x))
+  const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString(lang === 'en' ? 'en-IN' : `${lang}-IN`, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : t('drv.tbd'))
+
+  // Look again when the app comes back to the front or the network returns, so a change made by the office shows up without a restart.
+  useEffect(() => {
+    const again = () => { if (document.visibilityState === 'visible' && navigator.onLine) reload() }
+    document.addEventListener('visibilitychange', again)
+    window.addEventListener('online', again)
+    return () => { document.removeEventListener('visibilitychange', again); window.removeEventListener('online', again) }
+  }, [reload])
 
   async function allow() {
     await api('/tracking/consent', { method: 'POST' })
@@ -64,16 +84,20 @@ export default function DriverHome() {
 
   // The office sees that the driver has opened the job. A courtesy signal, so it is not queued: it simply tries again next time.
   useEffect(() => {
-    const x = trips?.find((v) => OPEN.includes(v.pod_status) && v.state === 'planned')
-    if (!x || x.acknowledged_at || acked.current.has(x.id) || !navigator.onLine) return
-    acked.current.add(x.id)
-    api(`/trips/${x.id}/ack`, { method: 'POST' }).then(() => mutate((all) => all.map((v) => (v.id === x.id ? { ...v, acknowledged_at: new Date().toISOString() } : v)))).catch(() => acked.current.delete(x.id))
+    if (!navigator.onLine) return
+    for (const x of trips ?? []) {
+      if (x.state !== 'planned' || x.acknowledged_at || acked.current.has(x.id)) continue
+      acked.current.add(x.id)
+      api(`/trips/${x.id}/ack`, { method: 'POST' }).then(() => mutate((all) => all.map((v) => (v.id === x.id ? { ...v, acknowledged_at: new Date().toISOString() } : v)))).catch(() => acked.current.delete(x.id))
+    }
   }, [trips, mutate])
 
   async function loadedPhoto(id: string, file: File) {
     setSaving(true)
     try {
-      const photo = await compressPhoto(file)
+      const [pos] = await Promise.all([getPosition(), syncClock()]) // the loading photo carries its date, time and place too
+      const { at, fromServer } = serverNow()
+      const photo = await compressPhoto(file, stampText(at, pos, fromServer))
       await enqueueAction('loaded', { trip_id: id }, photo) // safe on the phone first, like starting
       mutate((all) => all.map((x) => (x.id === id ? { ...x, loaded_at: new Date().toISOString() } : x)))
       const before = navigator.onLine
@@ -90,6 +114,16 @@ export default function DriverHome() {
     await flushOutbox().catch(() => undefined)
     if (!before) setToast(t('drv.savedStart'))
     setStarting(false)
+  }
+
+  async function arrive(id: string) {
+    setSaving(true)
+    await enqueueAction('arrived', { trip_id: id }) // safe on the phone first
+    mutate((all) => all.map((x) => (x.id === id ? { ...x, arrived_at: new Date().toISOString() } : x)))
+    const before = navigator.onLine
+    await flushOutbox().catch(() => undefined)
+    if (!before) setToast(t('drv.savedArrived'))
+    setSaving(false)
   }
 
   function listen(x: DriverTrip) {
@@ -115,7 +149,7 @@ export default function DriverHome() {
       <InstallBanner />
       <DriverInbox />
 
-      {onRoad && !consent && !later && (
+      {next && !consent && !later && (
         <section aria-label={loc.title} className="mb-4 space-y-3 rounded-2xl border border-line p-4">
           <p className="flex items-center gap-2 text-lg font-semibold"><MapPin size={22} aria-hidden /> {loc.title}</p>
           <p className="text-base text-muted">{loc.body}</p>
@@ -152,6 +186,9 @@ export default function DriverHome() {
               )}
             </div>
             <p className="mt-4 text-sm text-muted">{next.trip_code} · {next.vehicle}</p>
+            {next.state === 'planned' && <p className="mt-1 text-base font-medium">{t('drv.pickupAt')}: {when(next.planned_start)}</p>}
+            {next.consignee_name && <p className="mt-1 text-base">{t('drv.toRecv')}: <span className="font-semibold">{next.consignee_name}</span></p>}
+            <Steps trip={next} />
           </div>
 
           {next.state === 'planned' && !next.loaded_at ? (
@@ -177,6 +214,10 @@ export default function DriverHome() {
                 )
               })()}
             </>
+          ) : next.state === 'in_transit' && !next.arrived_at ? (
+            <button onClick={() => void arrive(next.id)} disabled={saving} className={`${big} h-24 bg-ok text-on-solid disabled:opacity-60`}>
+              <Flag size={36} aria-hidden /> <span className="text-left leading-tight">{t('drv.arrived')}<span className="block text-sm font-normal opacity-80">{t('drv.arrivedB')}</span></span>
+            </button>
           ) : next.needs_code ? (
             <button onClick={() => setSheet('deliver')} className={`${big} h-24 bg-ok text-on-solid`}>
               <KeyRound size={36} aria-hidden /> <span className="text-left leading-tight">{t('drv.deliver')}<span className="block text-sm font-normal opacity-80">{t('drv.deliverB')}</span></span>
@@ -197,6 +238,7 @@ export default function DriverHome() {
           {next.state === 'in_transit' && (
             <button onClick={() => setSheet('problem')} className={`${big} h-16 border border-line text-lg`}><TriangleAlert size={24} aria-hidden /> {t('drv.problem')}</button>
           )}
+          {office?.phone && <a href={`tel:${office.phone}`} className={`${big} h-16 border border-line text-lg`}><Phone size={24} aria-hidden /> {t('drv.callOffice')}</a>}
         </section>
       )}
 
@@ -207,25 +249,9 @@ export default function DriverHome() {
         </details>
       )}
 
-      {past.length > 0 && (
-        <section className="mt-8 space-y-3" aria-label={t('drv.past')}>
-          <h2 className="text-base font-semibold text-muted">{t('drv.past')}</h2>
-          <ul className="space-y-2.5">
-            {past.map((x) => {
-              const { icon: Icon, cls } = ICON[x.pod_status]
-              return (
-                <li key={x.id} className="flex items-center gap-4 rounded-2xl border border-line p-3.5">
-                  <span title={t(`drv.st.${x.pod_status}`)} className={`grid h-14 w-14 shrink-0 place-items-center rounded-full ${cls}`}><Icon size={28} aria-hidden /></span>
-                  <div className="min-w-0">
-                    <p className="truncate text-lg font-semibold">{x.destination}</p>
-                    <p className="truncate text-sm text-muted">{t(`drv.st.${x.pod_status}`)} · {x.trip_code}</p>
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
-        </section>
-      )}
+      <TripGroup title={t('drv.waitingPhoto')} trips={waitingPhoto} to={(x) => `/driver/trip/${x.id}`} line={(x) => `${t(`drv.st.${x.pod_status}`)} · ${x.trip_code}`} />
+      <TripGroup title={t('drv.upcoming')} trips={upcoming} line={(x) => `${when(x.planned_start)} · ${x.trip_code}`} />
+      <TripGroup title={t('drv.done')} trips={finished} line={(x) => `${x.state === 'cancelled' ? t('drv.cancelledTrip') : t(`drv.st.${x.pod_status}`)} · ${x.trip_code}`} />
       {sheet === 'deliver' && next && (
         <Sheet title={t('drv.deliver')} lang={lang} onClose={() => setSheet(null)}>
           <DeliveryCodeForm lang={lang} send={async (b) => { await api(`/trips/${next.id}/deliver`, { method: 'POST', body: JSON.stringify(b) }) }}
@@ -234,10 +260,51 @@ export default function DriverHome() {
       )}
       {sheet === 'problem' && next && (
         <Sheet title={t('drv.problem')} lang={lang} onClose={() => setSheet(null)}>
-          <RoadEventForm lang={lang} send={async (b) => { await api(`/trips/${next.id}/events`, { method: 'POST', body: JSON.stringify(b) }) }}
-            onDone={() => { setSheet(null); setToast(t('drv.pSent')) }} />
+          <RoadEventForm lang={lang} send={async (b) => { await enqueueAction('road', { trip_id: next.id, kind: b.kind, reason: b.reason, minutes: b.minutes ? String(b.minutes) : '' }); const before = navigator.onLine; await flushOutbox().catch(() => undefined); if (!before) setToast(t('drv.savedRoad')) }}
+            onDone={() => { setSheet(null); if (navigator.onLine) setToast(t('drv.pSent')) }} />
         </Sheet>
       )}
     </DriverShell>
+  )
+}
+
+/** Four dots for the four things that happen on a trip, so the driver sees where they are without reading. */
+function Steps({ trip }: { trip: DriverTrip }) {
+  const { t } = useI18n()
+  const done = [!!trip.loaded_at, trip.state === 'in_transit' || trip.state === 'delivered', !!trip.arrived_at || trip.state === 'delivered', !!trip.delivery_confirmed_at || trip.state === 'delivered']
+  const names = ['loaded', 'started', 'arrived', 'delivered'] as const
+  return (
+    <ol aria-label={trip.trip_code} className="mt-4 grid grid-cols-4 gap-2">
+      {names.map((n, i) => (
+        <li key={n} className="space-y-1.5 text-center">
+          <span className={`block h-2 rounded-full ${done[i] ? 'bg-ok' : 'bg-line'}`} />
+          <span className={`block text-xs ${done[i] ? 'font-semibold text-ok' : 'text-muted'}`}>{t(`drv.step.${n}`)}</span>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+function TripGroup({ title, trips, line, to }: { title: string; trips: DriverTrip[]; line: (x: DriverTrip) => string; to?: (x: DriverTrip) => string }) {
+  if (trips.length === 0) return null
+  return (
+    <section className="mt-8 space-y-3" aria-label={title}>
+      <h2 className="text-base font-semibold text-muted">{title}</h2>
+      <ul className="space-y-2.5">
+        {trips.map((x) => {
+          const { icon: Icon, cls } = x.state === 'cancelled' ? { icon: XCircle, cls: 'bg-wash text-muted' } : ICON[x.pod_status]
+          const body = (
+            <>
+              <span className={`grid h-14 w-14 shrink-0 place-items-center rounded-full ${cls}`}><Icon size={28} aria-hidden /></span>
+              <div className="min-w-0">
+                <p className="truncate text-lg font-semibold">{x.destination}</p>
+                <p className="truncate text-sm text-muted">{line(x)}</p>
+              </div>
+            </>
+          )
+          return <li key={x.id}>{to ? <Link to={to(x)} className="flex items-center gap-4 rounded-2xl border border-line p-3.5 active:bg-wash">{body}</Link> : <div className="flex items-center gap-4 rounded-2xl border border-line p-3.5">{body}</div>}</li>
+        })}
+      </ul>
+    </section>
   )
 }

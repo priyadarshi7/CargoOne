@@ -1,4 +1,4 @@
-import { BellOff, BellRing, Camera, CloudUpload, KeyRound, LogOut, Play, WifiOff, type LucideIcon } from 'lucide-react'
+import { BellOff, BellRing, Camera, CloudUpload, KeyRound, LogOut, Phone, Play, WifiOff, type LucideIcon } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import DriverShell from '../components/DriverShell'
@@ -7,6 +7,7 @@ import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useSyncedQueue } from '../lib/capture/sync'
 import { useI18n } from '../lib/i18n'
+import { useCachedApi } from '../lib/offline/cache'
 import { flushOutbox, useOutbox } from '../lib/offline/outbox'
 import { usePush } from '../lib/push'
 
@@ -16,7 +17,8 @@ const STEPS: { icon: LucideIcon; key: 'drv.how1' | 'drv.how2' | 'drv.how3' }[] =
 
 /** Help for a driver: three pictured steps, alerts on or off with a test, screen colour, send what is waiting, change the PIN, sign out. */
 export default function DriverHelp() {
-  const { logout } = useAuth()
+  const { user, logout } = useAuth()
+  const { data: office } = useCachedApi<{ phone: string | null }>('/trips/office-contact', user?.id ?? 'anon')
   const { t } = useI18n()
   const photos = useSyncedQueue()
   const { waiting } = useOutbox()
@@ -52,6 +54,8 @@ export default function DriverHelp() {
           ))}
         </ol>
       </section>
+
+      {office?.phone && <a href={`tel:${office.phone}`} className={`${'flex h-16 w-full items-center gap-3 rounded-2xl border border-line px-4 text-lg font-medium'} mt-8 bg-ink text-surface`}><Phone size={24} aria-hidden /> {t('drv.callOffice')}</a>}
 
       <section className="mt-8 space-y-3" aria-label={t('drv.help.alerts')}>
         <h2 className="text-base font-semibold text-muted">{t('drv.help.alerts')}</h2>

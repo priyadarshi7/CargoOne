@@ -250,6 +250,7 @@ class Trip(Base):
     planned_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     planned_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    arrived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # the driver said the truck is at the delivery point
     eway_valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # printed on the e-way bill: the load must arrive before it
     cancel_reason: Mapped[str | None] = mapped_column(String(300))
     acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # the driver opened and accepted the job

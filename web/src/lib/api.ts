@@ -83,6 +83,7 @@ export interface DriverTrip extends Trip {
   acknowledged_at: string | null
   loaded_at: string | null // the truck is loaded (photo sent): the driver can start only after this
   delivery_confirmed_at: string | null
+  arrived_at: string | null // the driver said the truck is at the delivery point
   needs_code: boolean // the receiver's 4-digit code is still to be entered
 }
 export type TripState = 'planned' | 'in_transit' | 'delivered' | 'cancelled'

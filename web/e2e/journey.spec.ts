@@ -72,6 +72,7 @@ test('a shipment from booking to delivery: the driver loads, reports a delay, th
   await shot(receiver, 'shipment-receiver-page')
 
   // --- the driver hands over: a wrong code is refused, the right one is accepted, then the photo
+  await phone.getByRole('button', { name: /I have reached/ }).click() // the truck is at the door: the receiver is told to keep the code ready
   await phone.getByRole('button', { name: /Goods reached/ }).click()
   const handover = phone.getByRole('dialog', { name: 'Goods reached' })
   const wrong = codeText === '0000' ? '1111' : '0000'
@@ -104,7 +105,7 @@ test('a shipment from booking to delivery: the driver loads, reports a delay, th
   await page.reload()
   await page.getByRole('button', { name: `Journey ${code}` }).click()
   const again = page.getByRole('dialog', { name: 'Shipment' })
-  for (const step of ['Trip booked', 'Loaded', 'On the road', 'Delay reported', 'Delivered', 'Shortage or damage noted']) {
+  for (const step of ['Trip booked', 'Loaded', 'On the road', 'Delay reported', 'Reached the delivery point', 'Delivered', 'Shortage or damage noted']) {
     await expect(again.getByText(step).first()).toBeVisible()
   }
   await again.getByRole('button', { name: /Stop every shared address/ }).click()

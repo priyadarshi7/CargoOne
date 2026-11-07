@@ -2,7 +2,7 @@ import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
 
 /** One small IndexedDB for everything a driver's phone keeps so the app still works with no network:
  *  `kv` holds the last answer of each read (trips, messages, expenses), `outbox` holds actions waiting to be sent. */
-export type OutboxKind = 'start' | 'loaded' | 'expense'
+export type OutboxKind = 'start' | 'loaded' | 'arrived' | 'road' | 'expense'
 export interface OutboxItem {
   id: string // doubles as the server's idempotency key, so a retry never saves twice
   kind: OutboxKind

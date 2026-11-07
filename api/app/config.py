@@ -93,6 +93,7 @@ class Settings(BaseSettings):
     default_branch_code: str = "MH20"  # LR prefix used when a trip has no branch
     default_origin: str = "Chhatrapati Sambhajinagar"  # used when an import row has no origin
     company_name: str = "Company A (demo)"  # printed on invoices
+    office_phone: str = ""  # shown to drivers as a one-tap call; empty hides the button
     invoice_prefix: str = "CO"
     tally_company: str = ""  # exact Tally company name; blank = import into the currently open company
     tally_sales_ledger: str = "Freight Income"  # must already exist in Tally

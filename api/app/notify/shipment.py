@@ -13,6 +13,7 @@ UPDATES: dict[str, dict[str, str]] = {
     "started": {"en": "the truck has left and your goods are on the way", "hi": "ट्रक निकल चुका है और आपका माल रास्ते में है", "mr": "ट्रक निघाला आहे आणि तुमचा माल रस्त्यात आहे"},
     "delay": {"en": "the truck is running late ({reason}, about {minutes} minutes)", "hi": "ट्रक देर से चल रहा है ({reason}, लगभग {minutes} मिनट)", "mr": "ट्रक उशिरा चालला आहे ({reason}, सुमारे {minutes} मिनिटे)"},
     "breakdown": {"en": "the truck has stopped because of a problem ({reason}). We are arranging help", "hi": "ट्रक में समस्या के कारण रुका है ({reason})। हम मदद भेज रहे हैं", "mr": "ट्रक अडचणीमुळे थांबला आहे ({reason}). आम्ही मदत पाठवत आहोत"},
+    "arrived": {"en": "the truck has reached the delivery point", "hi": "ट्रक डिलीवरी की जगह पर पहुँच गया है", "mr": "ट्रक डिलिव्हरीच्या ठिकाणी पोहोचला आहे"},
     "resolved": {"en": "the truck is moving again", "hi": "ट्रक फिर चल पड़ा है", "mr": "ट्रक पुन्हा निघाला आहे"},
     "late": {"en": "arrival is now expected around {eta}", "hi": "अब पहुँचने का अनुमान {eta} के आसपास है", "mr": "आता पोहोचण्याचा अंदाज {eta} च्या सुमारास आहे"},
     "delivered": {"en": "your goods have been delivered", "hi": "आपका माल पहुँच गया है", "mr": "तुमचा माल पोहोचला आहे"},
@@ -34,7 +35,7 @@ REASONS: dict[str, dict[str, str]] = {
     "other": {"en": "another reason", "hi": "कोई और कारण", "mr": "इतर कारण"},
 }
 # Who hears about each step. The receiver never hears about money.
-AUDIENCE = {"assigned": ("client",), "replanned": ("client",), "started": ("client", "receiver"), "delay": ("client", "receiver"), "breakdown": ("client", "receiver"),
+AUDIENCE = {"assigned": ("client",), "replanned": ("client",), "started": ("client", "receiver"), "arrived": ("client", "receiver"), "delay": ("client", "receiver"), "breakdown": ("client", "receiver"),
             "resolved": ("client", "receiver"), "late": ("client", "receiver"), "delivered": ("client",), "verified": ("client",), "invoiced": ("client",),
             "paid": ("client",), "cancelled": ("client", "receiver"), "link": ("client", "receiver")}
 

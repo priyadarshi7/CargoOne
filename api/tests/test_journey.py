@@ -163,3 +163,28 @@ async def test_a_late_truck_is_flagged_once_and_so_is_an_e_way_bill_that_will_ex
     ping["pings"][0]["recorded_at"] = (now + timedelta(seconds=20)).isoformat()
     await client.post(f"/trips/{tid}/pings", headers=driver, json=ping)
     assert [e.kind for e in await events(tid)].count("late") == 1  # not repeated on every position update
+
+
+async def test_the_driver_can_say_the_truck_has_reached_and_the_parties_are_told(client: AsyncClient, driver: dict) -> None:
+    h, trip = await my_trip(client, driver)
+    tid = trip["id"]
+    assert (await client.post(f"/trips/{tid}/arrived", headers=driver)).status_code == 409  # not on the road yet
+    await client.post(f"/trips/{tid}/loaded", headers=driver, files=LOADED)
+    await client.post(f"/trips/{tid}/start", headers=driver)
+    first = await client.post(f"/trips/{tid}/arrived", headers=driver)
+    assert first.status_code == 200 and first.json()["arrived_at"]
+    again = await client.post(f"/trips/{tid}/arrived", headers=driver)
+    assert again.json()["arrived_at"] == first.json()["arrived_at"]  # a retry changes nothing
+    assert [e.kind for e in await events(tid)].count("arrived") == 1
+    mine = next(x for x in (await client.get("/trips/mine", headers=driver)).json() if x["id"] == tid)
+    assert mine["arrived_at"] == first.json()["arrived_at"]
+    assert (await client.get(f"/trips/{tid}/timeline", headers=h)).json()["arrived_at"]
+
+
+async def test_a_driver_gets_the_office_number_only_when_it_is_set(client: AsyncClient, driver: dict, monkeypatch) -> None:
+    from app.config import get_settings
+
+    assert (await client.get("/trips/office-contact", headers=driver)).json() == {"phone": get_settings().office_phone or None}
+    monkeypatch.setattr(get_settings(), "office_phone", "+919000000001")
+    assert (await client.get("/trips/office-contact", headers=driver)).json() == {"phone": "+919000000001"}
+    assert (await client.get("/trips/office-contact", headers=await ops(client))).status_code == 403

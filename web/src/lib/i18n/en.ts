@@ -133,6 +133,7 @@ export const en = {
   "plan.consigneeEmail": "Consignee email",
   "sh.locked": "Code entry", "sh.lockedUntil": "Locked until {time}", "sh.unlock": "Unlock code entry now", "sh.unlocked": "Unlocked. The driver can enter the code again.",
   "plan.consigneeLang": "Receiver's language (for messages and their page)",
+  "ev.arrived": "Reached the delivery point", "drv.arrived": "I have reached", "drv.arrivedB": "Tell the receiver to keep the code ready", "drv.callOffice": "Call the office", "drv.tip.gps_missing": "Turn on location, then take the photo again", "drv.tip.far_from_destination": "This photo was taken away from the delivery place. The office will check it", "drv.tip.shortage_or_damage": "Shortage or damage was noted. The office will check it", "drv.step.loaded": "Loaded", "drv.step.started": "On the road", "drv.step.arrived": "Reached", "drv.step.delivered": "Delivered", "drv.upcoming": "Coming up", "drv.waitingPhoto": "Photo to send", "drv.done": "Done", "drv.cancelledTrip": "Cancelled", "drv.toRecv": "Deliver to", "drv.pickupAt": "Pickup", "drv.savedRoad": "Saved on your phone. It is sent when the network returns.", "drv.savedArrived": "Saved on your phone. The receiver is told when the network returns.",
 } as const
 
 export type Key = keyof typeof en

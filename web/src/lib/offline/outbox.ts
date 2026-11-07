@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { BASE, tokenStore } from '../api'
 import { db, newId, type OutboxItem, type OutboxKind } from './db'
 
-/** Actions a driver takes with no network (start a trip, add an expense) are saved on the phone first and sent in order
+/** Actions a driver takes with no network (start a trip, say the truck has reached, report a delay, add an expense) are saved on the phone first and sent in order
  *  when the network returns. The server treats a repeated start as a no-op and a repeated expense id as the same expense,
  *  so a retry can never do the action twice. */
 let last = 0
@@ -29,6 +29,11 @@ export async function sendItem(item: OutboxItem): Promise<void> {
   let res: Response
   if (item.kind === 'start') {
     res = await fetch(`${BASE}/trips/${encodeURIComponent(item.data.trip_id)}/start`, { method: 'POST', headers: auth })
+  } else if (item.kind === 'arrived') {
+    res = await fetch(`${BASE}/trips/${encodeURIComponent(item.data.trip_id)}/arrived`, { method: 'POST', headers: auth })
+  } else if (item.kind === 'road') {
+    const { trip_id, kind, reason, minutes } = item.data
+    res = await fetch(`${BASE}/trips/${encodeURIComponent(trip_id)}/events`, { method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify({ kind, reason, minutes: minutes ? Number(minutes) : null }) })
   } else if (item.kind === 'loaded') {
     const form = new FormData()
     if (item.photo) form.set('file', item.photo, 'loaded.webp')

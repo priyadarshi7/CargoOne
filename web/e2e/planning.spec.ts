@@ -83,7 +83,9 @@ test('ops plans a trip, a clash is flagged, then the driver starts it from the p
   await shot(phone, 'driver-start-trip')
   await phone.getByRole('button', { name: /Start trip/ }).click()
   await expect(phone.getByRole('button', { name: /Start trip/ })).toHaveCount(0)
-  await expect(phone.getByRole('button', { name: /Goods reached/ })).toBeVisible() // once on the road: hand over with the receiver's code, then the photo
+  await expect(phone.getByRole('button', { name: /I have reached/ })).toBeVisible() // once on the road: say the truck is at the door, then hand over with the receiver's code, then the photo
+  await phone.getByRole('button', { name: /I have reached/ }).click()
+  await expect(phone.getByRole('button', { name: /Goods reached/ })).toBeVisible()
   await expect(phone.getByRole('button', { name: /Delay or problem/ })).toBeVisible()
   await ctx.close()
 

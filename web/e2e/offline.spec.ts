@@ -5,7 +5,7 @@ import { login, shot } from './helpers'
 test('an expense added with no network is saved on the phone, then sent once when the network returns', async ({ page, context, request }) => {
   await login(page, '9000000066', '4821')
   await page.getByRole('button', { name: 'English' }).click()
-  await expect(page.getByRole('link', { name: /POD/ })).toBeVisible() // trips loaded and saved on the phone
+  await expect(page.getByRole('region', { name: 'Hingoli' })).toBeVisible() // trips loaded and saved on the phone
 
   await page.getByRole('link', { name: 'Expenses' }).click()
   await expect(page.getByRole('heading', { name: 'Add expense' })).toBeVisible()

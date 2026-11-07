@@ -21,12 +21,13 @@ One shipment has one timeline. Everyone sees the part that is theirs. This is wh
 ## 4. In transit
 
 - The shipment page (`/s/...`) shows progress, the timeline, the live position (rounded to about 100 m) and an arrival estimate.
-- The driver reports a delay or a truck problem in a few taps (reasons, no typing). The client and receiver are told. If the estimate passes the planned end, or the e-way bill's validity, the timeline says so, once every 3 hours.
+- The driver reports a delay or a truck problem in a few taps (reasons, no typing). The client and receiver are told. If the estimate passes the planned end, or the e-way bill's validity, the timeline says so, once every 3 hours. Delay and problem reports are saved on the phone first and sent when there is a network, like starting a trip.
 
 ## 5. Delivery
 
 - Planning requires the consignee's name, phone and email (the link and the delivery code have nowhere to go without them; imports and old trips may lack them). The receiver's link goes by WhatsApp to their phone and by email too (same link, same messages; the private part is masked in the log). Email needs the SMTP settings in `.env`. The receiver is written to in the language chosen for them on the trip (WhatsApp, email and their page); if none is set, the client's language is used.
 - The delivery photo carries its proof with it: the app adds a dark strip below the picture (never over the paper) with "CargoOne", the date and time in Indian time and the GPS position. The time is the server's clock, not the phone's (the app learns the difference when it can reach the server; offline it uses the phone clock and prints "(phone clock)"). The AI is told to ignore the strip. Loading photos and expense photos are not stamped yet.
+- Near the end the driver taps **I have reached**. The client and receiver are told the truck is at the delivery point (the receiver should have the code ready), and the office timeline shows when. It is saved on the phone first, like starting a trip. Only then does the driver's app ask for the code.
 - The receiver opens their shipment page and reads out the 4-digit **delivery code**. The driver enters it, and notes anything short or damaged. Five wrong tries lock it for 15 minutes; the office sees the lock on the shipment dialog and can lift it at once, resend the receiver link (WhatsApp and email) or deliver without the code with a reason. Only then can the proof-of-delivery photo be sent. A hired driver does the same from the upload link.
 - Only the office can deliver without the code, and must say why.
 - The AI checks the photo as before: verified straight away, or sent to a person.
@@ -71,3 +72,11 @@ Neither shipment address shows who is driving, other trips, or any phone number.
 ## Settings
 
 `ETA_SPEED_KMH` (40), `ETA_ROAD_FACTOR` (1.3), `LATE_GRACE_MIN` (30) and `START_EARLY_HOURS` (3) are in `api/app/config.py` and can be set in `.env`. The driver app shows the 3-hour start limit as a fixed value, so change both together.
+
+## The driver's phone
+
+- The home screen shows one trip with one big button: the truck on the road first, then a delivery still waiting for its photo, then the earliest trip to come. The card shows the pickup time, who receives the load and four steps (Loaded, On the road, Reached, Delivered). Below it, other trips are grouped: photo to send (tap to open), coming up (with the date), and done (cancelled trips say so).
+- The list refreshes when the app comes back to the front or the network returns. Every trip waiting to start is marked "seen" for the office, not only the first.
+- The location question is asked as soon as there is a trip, not only once the truck is moving; "Not now" lasts the day.
+- After a photo the result screen is written as well as spoken, in the driver's language, with a tip for the reasons the driver can act on (location off, taken far from the delivery place, shortage or damage noted). The driver can change the language right there (EN, हि, म). Loading photos carry the same date, time and place strip as delivery photos.
+- **Call the office** shows on the home screen and the Help tab when `OFFICE_PHONE` is set in the settings; with no number set the button is hidden.
