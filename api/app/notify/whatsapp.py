@@ -64,14 +64,13 @@ TEXT: dict[str, dict[str, str]] = {
 }
 
 
-# These are approved under one name per language (<name>, <name>_hi, <name>_mr) instead of one name with three translations.
-NAME_PER_LANGUAGE = {"shipment_update"}
-
-
 def template_name(s: Settings, template: str, lang: str = "en") -> str:
-    """The name Meta knows the template by: an explicit setting if there is one, otherwise <prefix>_<template>. Some templates carry the language as a suffix (not for English)."""
-    suffix = f"_{lang}" if template in NAME_PER_LANGUAGE and lang in ("hi", "mr") else ""
-    return getattr(s, f"whatsapp_template_{template}{suffix}", "") or f"{s.whatsapp_template_prefix}_{template}{suffix}"
+    """The name Meta knows the template by. Each language is approved under its own name: <name> for English, <name>_hi and <name>_mr for the others.
+    An explicit setting wins (whatsapp_template_<template>, and _hi / _mr for the other languages); otherwise the name is <prefix>_<template>."""
+    base = getattr(s, f"whatsapp_template_{template}", "") or f"{s.whatsapp_template_prefix}_{template}"
+    if lang in ("hi", "mr"):
+        return getattr(s, f"whatsapp_template_{template}_{lang}", "") or f"{base}_{lang}"
+    return base
 
 
 def render(template: str, lang: str, values: dict[str, str]) -> str:

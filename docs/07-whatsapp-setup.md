@@ -6,7 +6,7 @@ CargoOne sends WhatsApp messages to drivers (the app link on registration, a new
 
 1. Create a **Meta Business** account (business.facebook.com) and verify the business. Company A's legal name and a document are needed.
 2. In **developers.facebook.com** create an app of type *Business*, add the **WhatsApp** product, and add a phone number for the business. This must be a number that is **not already used on a personal WhatsApp** (a new SIM or a landline works). Verify it by the code Meta sends.
-3. In **WhatsApp Manager > Message templates** create the six templates below, in each of the three languages, category **Utility**. Copy the text exactly: the order and number of `{{n}}` variables must match what the app sends. Approval usually takes minutes to a day.
+3. In **WhatsApp Manager > Message templates** create the templates below, category **Utility**. Each template is submitted **three times, once per language, under its own name**: the plain name for English, and the name with `_hi` for Hindi and `_mr` for Marathi (for example `cargoone_trip_update`, `cargoone_trip_update_hi`, `cargoone_trip_update_mr`). That makes 18 templates. The app picks the name from the person's language; any other language gets the English one. Copy the text exactly: the order and number of `{{n}}` variables must match what the app sends. Approval usually takes minutes to a day.
 4. Create a **System User** with a permanent access token that has `whatsapp_business_messaging` permission, and note the **Phone number ID** (WhatsApp > API setup).
 5. Put these in the settings file (`.env`, never in git) and restart the API:
 
@@ -17,6 +17,7 @@ WHATSAPP_PHONE_NUMBER_ID=<phone number id>
 # optional: WHATSAPP_API_VERSION=v21.0   WHATSAPP_TEMPLATE_PREFIX=cargoone
 # a template name can be changed without code (Meta will not let you reuse a deleted name for a while):
 # WHATSAPP_TEMPLATE_WELCOME=cargoone_driver_account   (also _TRIP_ASSIGNED, _TRIP_UPDATE, _REQUEST_RECEIVED, _REQUEST_UPDATE, _SHIPMENT_UPDATE)
+# the Hindi and Marathi names have their own: WHATSAPP_TEMPLATE_WELCOME_HI, WHATSAPP_TEMPLATE_WELCOME_MR, WHATSAPP_TEMPLATE_TRIP_UPDATE_HI, ...
 ```
 
 6. Register a driver with your own phone number (and submit a test transport request) and check **Setup > Messages**: the status should say **Sent**. If it says **Failed**, the reason (Meta's error code) is shown next to it; the usual causes are a template that is not approved yet in that language, a wrong phone number ID, or an expired token.
@@ -33,19 +34,19 @@ Meta approves **Utility** only for plain notices about something that already ha
 
 Sent when a driver is registered (and when the office sends the link again). Category: **Utility**. Variables in order: {{1}} = name, {{2}} = link.
 
-**English (`en`)**
+**English (`en`), name `cargoone_driver_account`**
 
 ```
 Hello {{1}}, your driver account on CargoOne has been created by your company. Please open this link to finish your registration: {{2}} The link can be used once and expires in 72 hours.
 ```
 
-**Hindi (`hi`)**
+**Hindi (`hi`), name `cargoone_driver_account_hi`**
 
 ```
 नमस्ते {{1}}, आपकी कंपनी ने CargoOne पर आपका ड्राइवर खाता बना दिया है। अपना रजिस्ट्रेशन पूरा करने के लिए कृपया यह लिंक खोलें: {{2}} यह लिंक एक ही बार चलेगा और 72 घंटे में ख़त्म हो जाएगा।
 ```
 
-**Marathi (`mr`)**
+**Marathi (`mr`), name `cargoone_driver_account_mr`**
 
 ```
 नमस्कार {{1}}, तुमच्या कंपनीने CargoOne वर तुमचे ड्रायव्हर खाते तयार केले आहे. तुमची नोंदणी पूर्ण करण्यासाठी कृपया ही लिंक उघडा: {{2}} ही लिंक एकदाच वापरता येईल आणि 72 तासांत संपेल.
@@ -61,19 +62,19 @@ Sample values for Meta's review (use the set for the language you are submitting
 
 Sent when a trip is given to a driver. Category: **Utility**. Variables in order: {{1}} = name, {{2}} = trip_code, {{3}} = lr, {{4}} = route, {{5}} = vehicle, {{6}} = start, {{7}} = link.
 
-**English (`en`)**
+**English (`en`), name `cargoone_trip_assigned`**
 
 ```
 Hello {{1}}, a trip has been assigned to you. Trip {{2}}, LR number {{3}}. Route: {{4}}. Truck: {{5}}. Start: {{6}}. Open the trip here: {{7}} Please check the details before you leave.
 ```
 
-**Hindi (`hi`)**
+**Hindi (`hi`), name `cargoone_trip_assigned_hi`**
 
 ```
 नमस्ते {{1}}, आपको एक ट्रिप दी गई है। ट्रिप {{2}}, LR नंबर {{3}}। रूट: {{4}}। ट्रक: {{5}}। शुरू: {{6}}। ट्रिप यहाँ खोलें: {{7}} निकलने से पहले विवरण जाँच लें।
 ```
 
-**Marathi (`mr`)**
+**Marathi (`mr`), name `cargoone_trip_assigned_mr`**
 
 ```
 नमस्कार {{1}}, तुम्हाला एक ट्रिप दिली आहे. ट्रिप {{2}}, LR क्रमांक {{3}}. मार्ग: {{4}}. ट्रक: {{5}}. सुरू: {{6}}. ट्रिप येथे उघडा: {{7}} निघण्यापूर्वी तपशील तपासा.
@@ -89,19 +90,19 @@ Sample values for Meta's review (use the set for the language you are submitting
 
 Sent when the driver's trip is cancelled, moved to another driver, or its truck/time changes. Category: **Utility**. Variables in order: {{1}} = name, {{2}} = trip_code, {{3}} = change, {{4}} = link.
 
-**English (`en`)**
+**English (`en`), name `cargoone_trip_update`**
 
 ```
 Hello {{1}}, there is an update for your trip {{2}}: {{3}}. See the details here: {{4}} Please check them before you leave.
 ```
 
-**Hindi (`hi`)**
+**Hindi (`hi`), name `cargoone_trip_update_hi`**
 
 ```
 नमस्ते {{1}}, आपकी ट्रिप {{2}} में बदलाव हुआ है: {{3}}। विवरण यहाँ देखें: {{4}} निकलने से पहले जाँच लें।
 ```
 
-**Marathi (`mr`)**
+**Marathi (`mr`), name `cargoone_trip_update_mr`**
 
 ```
 नमस्कार {{1}}, तुमच्या ट्रिप {{2}} मध्ये बदल झाला आहे: {{3}}. तपशील येथे पहा: {{4}} निघण्यापूर्वी तपासा.
@@ -117,19 +118,19 @@ Sample values for Meta's review (use the set for the language you are submitting
 
 Sent to a company right after it submits the public transport request form. Category: **Utility**. Variables in order: {{1}} = name, {{2}} = reference, {{3}} = link.
 
-**English (`en`)**
+**English (`en`), name `cargoone_request_received`**
 
 ```
 Hello {{1}}, we have received your transport request {{2}}. You can follow its status here: {{3}} We will reply shortly.
 ```
 
-**Hindi (`hi`)**
+**Hindi (`hi`), name `cargoone_request_received_hi`**
 
 ```
 नमस्ते {{1}}, आपका ट्रांसपोर्ट अनुरोध {{2}} हमें मिल गया है। इसकी स्थिति यहाँ देखें: {{3}} हम जल्द जवाब देंगे।
 ```
 
-**Marathi (`mr`)**
+**Marathi (`mr`), name `cargoone_request_received_mr`**
 
 ```
 नमस्कार {{1}}, तुमची वाहतूक विनंती {{2}} आम्हाला मिळाली आहे. तिची स्थिती येथे पहा: {{3}} आम्ही लवकरच उत्तर देऊ.
@@ -145,19 +146,19 @@ Sample values for Meta's review (use the set for the language you are submitting
 
 Sent to a company when its request is accepted, booked as a trip, or declined. Category: **Utility**. Variables in order: {{1}} = name, {{2}} = reference, {{3}} = update, {{4}} = link.
 
-**English (`en`)**
+**English (`en`), name `cargoone_request_update`**
 
 ```
 Hello {{1}}, there is an update on your transport request {{2}}: {{3}}. See the details here: {{4}} Thank you for your patience.
 ```
 
-**Hindi (`hi`)**
+**Hindi (`hi`), name `cargoone_request_update_hi`**
 
 ```
 नमस्ते {{1}}, आपके ट्रांसपोर्ट अनुरोध {{2}} की जानकारी: {{3}}। विवरण यहाँ देखें: {{4}} आपके धैर्य के लिए धन्यवाद।
 ```
 
-**Marathi (`mr`)**
+**Marathi (`mr`), name `cargoone_request_update_mr`**
 
 ```
 नमस्कार {{1}}, तुमच्या वाहतूक विनंती {{2}} बद्दल माहिती: {{3}}. तपशील येथे पहा: {{4}} तुमच्या संयमाबद्दल धन्यवाद.
@@ -171,7 +172,7 @@ Sample values for Meta's review (use the set for the language you are submitting
 
 ### `cargoone_shipment_update`
 
-Sent to the client, and to the receiver (the consignee), at each step of a shipment: truck assigned, plan changed, started, running late, breakdown, moving again, delivered, proof checked, invoice issued, payment received, cancelled, and when the office sends the tracking link again. The receiver never gets the money steps. Category: **Utility**. Variables in order: {{1}} = name, {{2}} = trip_code, {{3}} = update, {{4}} = link. The `{{3}}` text is written by the app in the same language as the template (the client's language). This is the one template that is submitted **under three names**, one per language, each with just that one language: `cargoone_shipment_update` (English), `cargoone_shipment_update_hi` (Hindi) and `cargoone_shipment_update_mr` (Marathi). The app picks the name from the client's language.
+Sent to the client, and to the receiver (the consignee), at each step of a shipment: truck assigned, plan changed, started, running late, breakdown, moving again, delivered, proof checked, invoice issued, payment received, cancelled, and when the office sends the tracking link again. The receiver never gets the money steps. Category: **Utility**. Variables in order: {{1}} = name, {{2}} = trip_code, {{3}} = update, {{4}} = link. The `{{3}}` text is written by the app in the same language as the template (the client's language). 
 
 **English (`en`), name `cargoone_shipment_update`**
 
@@ -197,7 +198,7 @@ Sample values for Meta's review (use the set for the language you are submitting
 - Hindi: `अनिल मेहता` | `TRP-70012` | `ट्रक निकल चुका है और आपका माल रास्ते में है` | `https://app.example.com/s/TRP-70012.c0.abc123`
 - Marathi: `अनिल मेहता` | `TRP-70012` | `ट्रक निघाला आहे आणि तुमचा माल रस्त्यात आहे` | `https://app.example.com/s/TRP-70012.c0.abc123`
 
-Without this template every shipment message fails with Meta error `#132001` ("Template name does not exist in the translation"), and the client and receiver get nothing on WhatsApp (the receiver's email still goes). The Hindi and Marathi templates must be approved too, or clients set to those languages fail the same way. Names can be changed without code with `WHATSAPP_TEMPLATE_SHIPMENT_UPDATE`, `_HI` and `_MR`.
+Without this template every shipment message fails with Meta error `#132001` ("Template name does not exist in the translation"), and the client and receiver get nothing on WhatsApp (the receiver's email still goes). The Hindi and Marathi templates must be approved too, or clients set to those languages fail the same way. 
 
 ## What this does not do (yet)
 
