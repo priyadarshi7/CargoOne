@@ -151,21 +151,21 @@ Sample values for Meta's review: `Anil Mehta` | `REQ-1001` | `booked as trip TRP
 
 ### `cargoone_shipment_update`
 
-Sent to the client, and to the receiver (the consignee), at each step of a shipment: truck assigned, plan changed, started, running late, breakdown, moving again, delivered, proof checked, invoice issued, payment received, cancelled, and when the office sends the tracking link again. The receiver never gets the money steps. Category: **Utility**. Variables in order: {{1}} = name, {{2}} = trip_code, {{3}} = update, {{4}} = link. The `{{3}}` text is written by the app in the same language as the template (the client's language), so submit all three languages under this one name.
+Sent to the client, and to the receiver (the consignee), at each step of a shipment: truck assigned, plan changed, started, running late, breakdown, moving again, delivered, proof checked, invoice issued, payment received, cancelled, and when the office sends the tracking link again. The receiver never gets the money steps. Category: **Utility**. Variables in order: {{1}} = name, {{2}} = trip_code, {{3}} = update, {{4}} = link. The `{{3}}` text is written by the app in the same language as the template (the client's language). This is the one template that is submitted **under three names**, one per language, each with just that one language: `cargoone_shipment_update` (English), `cargoone_shipment_update_hi` (Hindi) and `cargoone_shipment_update_mr` (Marathi). The app picks the name from the client's language.
 
-**English (`en`)**
+**English (`en`), name `cargoone_shipment_update`**
 
 ```
 Hello {{1}}, there is an update on your shipment {{2}}: {{3}}. Follow it here: {{4}} Thank you for your patience.
 ```
 
-**Hindi (`hi`)**
+**Hindi (`hi`), name `cargoone_shipment_update_hi`**
 
 ```
 नमस्ते {{1}}, आपकी खेप {{2}} की जानकारी: {{3}}। यहाँ देखते रहें: {{4}} आपके धैर्य के लिए धन्यवाद।
 ```
 
-**Marathi (`mr`)**
+**Marathi (`mr`), name `cargoone_shipment_update_mr`**
 
 ```
 नमस्कार {{1}}, तुमच्या मालाची खेप {{2}} बद्दल माहिती: {{3}}. येथे पाहत रहा: {{4}} तुमच्या संयमाबद्दल धन्यवाद.
@@ -173,7 +173,7 @@ Hello {{1}}, there is an update on your shipment {{2}}: {{3}}. Follow it here: {
 
 Sample values for Meta's review: `Anil Mehta` | `TRP-70012` | `the truck has left and your goods are on the way` | `https://app.example.com/s/TRP-70012.c0.abc123`
 
-Without this template every shipment message fails with Meta error `#132001` ("Template name does not exist in the translation"), and the client and receiver get nothing on WhatsApp (the receiver's email still goes). The Hindi and Marathi translations must be approved too, or clients set to those languages fail the same way.
+Without this template every shipment message fails with Meta error `#132001` ("Template name does not exist in the translation"), and the client and receiver get nothing on WhatsApp (the receiver's email still goes). The Hindi and Marathi templates must be approved too, or clients set to those languages fail the same way. Names can be changed without code with `WHATSAPP_TEMPLATE_SHIPMENT_UPDATE`, `_HI` and `_MR`.
 
 ## What this does not do (yet)
 

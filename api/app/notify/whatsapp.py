@@ -64,9 +64,14 @@ TEXT: dict[str, dict[str, str]] = {
 }
 
 
-def template_name(s: Settings, template: str) -> str:
-    """The name Meta knows the template by: an explicit setting if there is one, otherwise <prefix>_<template>."""
-    return getattr(s, f"whatsapp_template_{template}", "") or f"{s.whatsapp_template_prefix}_{template}"
+# These are approved under one name per language (<name>, <name>_hi, <name>_mr) instead of one name with three translations.
+NAME_PER_LANGUAGE = {"shipment_update"}
+
+
+def template_name(s: Settings, template: str, lang: str = "en") -> str:
+    """The name Meta knows the template by: an explicit setting if there is one, otherwise <prefix>_<template>. Some templates carry the language as a suffix (not for English)."""
+    suffix = f"_{lang}" if template in NAME_PER_LANGUAGE and lang in ("hi", "mr") else ""
+    return getattr(s, f"whatsapp_template_{template}{suffix}", "") or f"{s.whatsapp_template_prefix}_{template}{suffix}"
 
 
 def render(template: str, lang: str, values: dict[str, str]) -> str:
@@ -118,7 +123,7 @@ class MetaWhatsApp:
         body = {
             "messaging_product": "whatsapp", "to": f"91{phone}", "type": "template",
             "template": {
-                "name": template_name(s, template), "language": {"code": lang if lang in ("en", "hi", "mr") else "en"},
+                "name": template_name(s, template, lang), "language": {"code": lang if lang in ("en", "hi", "mr") else "en"},
                 "components": [{"type": "body", "parameters": [{"type": "text", "text": meta_clean(values[k])} for k in PARAMS[template]]}],
             },
         }

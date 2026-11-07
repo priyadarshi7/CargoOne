@@ -67,6 +67,8 @@ class Settings(BaseSettings):
     whatsapp_template_request_received: str = ""
     whatsapp_template_request_update: str = ""
     whatsapp_template_shipment_update: str = ""
+    whatsapp_template_shipment_update_hi: str = ""
+    whatsapp_template_shipment_update_mr: str = ""
     onboarding_link_ttl_hours: int = 72
     vapid_public_key: str = ""  # Web Push (alerts to a driver's phone). Both keys set = live; empty = recorded only. The private key is a secret: .env only
     vapid_private_key: str = ""

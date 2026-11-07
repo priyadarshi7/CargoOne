@@ -238,3 +238,7 @@ def test_template_names_can_be_overridden_and_welcome_has_its_own_default() -> N
     assert wa.template_name(s, "welcome") == "cargoone_driver_account" and wa.template_name(s, "trip_update") == "cargoone_trip_update"
     assert wa.template_name(s.model_copy(update={"whatsapp_template_welcome": "my_name"}), "welcome") == "my_name"
     assert wa.template_name(s.model_copy(update={"whatsapp_template_prefix": "acme"}), "request_update") == "acme_request_update"
+    # the shipment update is approved as one name per language; the others keep one name for all three
+    assert [wa.template_name(s, "shipment_update", x) for x in ("en", "hi", "mr")] == ["cargoone_shipment_update", "cargoone_shipment_update_hi", "cargoone_shipment_update_mr"]
+    assert wa.template_name(s, "trip_update", "hi") == "cargoone_trip_update"
+    assert wa.template_name(s.model_copy(update={"whatsapp_template_shipment_update_hi": "my_hi"}), "shipment_update", "hi") == "my_hi"
