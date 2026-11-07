@@ -29,7 +29,7 @@ from app.models import (
     User,
     Vehicle,
 )
-from app.notify.shipment import UPDATES, tell_parties
+from app.notify.shipment import UPDATES, audience_language, tell_parties
 from app.ratelimit import RateLimiter
 from app.security import require_roles
 from app.shipment import AUDIENCES, genuine, parse, shipment_url
@@ -101,7 +101,7 @@ async def page(token: str, request: Request, session: Session) -> dict:
             live = {"lat": round(last.lat, 3) if last else None, "lng": round(last.lng, 3) if last else None, "seen_at": last.recorded_at if last else None, "eta": arrives}
 
     out: dict = {
-        "audience": aud, "company": get_settings().company_name, "language": client.language if client else "en", "trip_code": trip.trip_code, "lr_no": trip.lr_no,
+        "audience": aud, "company": get_settings().company_name, "language": audience_language(trip, client, aud), "trip_code": trip.trip_code, "lr_no": trip.lr_no,
         "origin": trip.origin, "destination": trip.destination, "vehicle": vehicle.reg_no if vehicle else "", "material": trip.material, "weight_tonnes": float(trip.weight_tonnes) if trip.weight_tonnes is not None else None,
         "packages": trip.packages, "planned_start": trip.planned_start, "planned_end": trip.planned_end, "state": trip.state.value, "cancelled": trip.state == TripState.cancelled,
         "delivered_at": trip.delivery_confirmed_at or trip.delivered_at if trip.state == TripState.delivered else None, "delivery_issue": trip.delivery_issue,
@@ -143,9 +143,9 @@ def _whatsapp(phone: str | None, text: str) -> str | None:
 
 async def _links(session: AsyncSession, trip: Trip) -> dict:
     client = await session.get(Client, trip.client_id)
-    lang = client.language if client and client.language in ("en", "hi", "mr") else "en"
     out = {}
     for aud in ("client", "receiver"):
+        lang = audience_language(trip, client, aud)
         url = shipment_url(trip, aud)
         phone = client.contact_phone if (aud == "client" and client) else trip.consignee_phone
         name = (client.contact_name or client.name) if (aud == "client" and client) else trip.consignee_name

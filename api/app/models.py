@@ -234,6 +234,7 @@ class Trip(Base):
     consignee_name: Mapped[str | None] = mapped_column(String(160))  # PII
     consignee_phone: Mapped[str | None] = mapped_column(String(20))  # PII
     consignee_email: Mapped[str | None] = mapped_column(String(160))  # PII; the shipment link goes here too
+    consignee_language: Mapped[str | None] = mapped_column(String(2))  # what the receiver's messages and page are written in; empty = the client's language
     material: Mapped[str | None] = mapped_column(String(160))  # goods description on the LR
     weight_tonnes: Mapped[Decimal | None] = mapped_column(Numeric(8, 2))
     packages: Mapped[int | None] = mapped_column(Integer)

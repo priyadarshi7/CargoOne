@@ -39,6 +39,12 @@ AUDIENCE = {"assigned": ("client",), "replanned": ("client",), "started": ("clie
             "paid": ("client",), "cancelled": ("client", "receiver"), "link": ("client", "receiver")}
 
 
+def audience_language(trip: Trip, client: Client | None, aud: str) -> str:
+    """The client reads the client's language; the receiver reads the language set for them on the trip, else the client's."""
+    lang = (trip.consignee_language if aud == "receiver" else None) or (client.language if client else "en")
+    return lang if lang in L else "en"
+
+
 def reason_text(code: str | None, lang: str) -> str:
     return REASONS.get(code or "other", REASONS["other"]).get(lang, REASONS["other"]["en"])
 
@@ -47,16 +53,15 @@ async def tell_parties(session: AsyncSession, trip: Trip, kind: str, only: str |
     client = await session.get(Client, trip.client_id)
     if client is None:
         return
-    lang = client.language if client.language in L else "en"
     vehicle = await session.get(Vehicle, trip.vehicle_id)
-    values = {"vehicle": vehicle.reg_no if vehicle else "-", "when": when_text(trip.planned_start), **{k: str(v) for k, v in fmt.items()}}
-    if "reason" in values:
-        values["reason"] = reason_text(values["reason"], lang)
-    text = UPDATES[kind][lang].format(**values)
+    facts = {"vehicle": vehicle.reg_no if vehicle else "-", "when": when_text(trip.planned_start), **{k: str(v) for k, v in fmt.items()}}
     sent: set[str] = set()
     for aud in AUDIENCE[kind]:
         if only and aud != only:
             continue
+        lang = audience_language(trip, client, aud)  # each person gets their own language
+        said = {**facts, "reason": reason_text(facts["reason"], lang)} if "reason" in facts else facts
+        text = UPDATES[kind][lang].format(**said)
         phone = client.contact_phone if aud == "client" else trip.consignee_phone
         email = None if aud == "client" else trip.consignee_email  # the receiver can also be reached by email
         name = (client.contact_name or client.name) if aud == "client" else (trip.consignee_name or "")

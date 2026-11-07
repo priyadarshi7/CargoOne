@@ -123,4 +123,5 @@ export const hi: Partial<Record<Key, string>> = {
   "req.haveLogin": "क्या आपके पास पहले से लॉगिन है?", "req.signIn": "साइन इन करें",
   "plan.consigneeEmail": "कंसाइनी का ईमेल",
   "sh.locked": "कोड डालना", "sh.lockedUntil": "{time} तक बंद", "sh.unlock": "कोड डालना अभी खोलें", "sh.unlocked": "खोल दिया। ड्राइवर फिर कोड डाल सकता है।",
+  "plan.consigneeLang": "प्राप्तकर्ता की भाषा (संदेश और उनके पेज के लिए)",
 }

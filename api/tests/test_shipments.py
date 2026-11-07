@@ -135,3 +135,18 @@ async def test_the_receiver_link_also_goes_by_email_when_the_trip_has_an_address
     after = await mails()
     assert len(after) == before + 1 and after[-1].to_masked == "r***@example.com"
     assert "/s/" in after[-1].body and after[-1].body.count("•••") == 1  # the private address is cut out of the stored copy
+
+
+async def test_the_receiver_is_written_to_in_their_own_language(client: AsyncClient, driver: dict) -> None:
+    h, tid = await on_the_road(client, driver)
+    async with SessionLocal() as s:
+        trip = await s.get(Trip, uuid.UUID(tid))
+        trip.consignee_phone, trip.consignee_email, trip.consignee_language = "9000000458", "receiver@example.com", "hi"
+        await s.commit()
+    t = await tokens(client, h, tid)
+    assert (await client.get(f"/public/shipments/{t['receiver']}")).json()["language"] == "hi"  # their page opens in Hindi
+    assert (await client.post(f"/trips/{tid}/shipment-links/send?audience=receiver", headers=h)).status_code == 200
+    async with SessionLocal() as s:
+        last = (await s.scalars(select(Message).where(Message.trip_id == uuid.UUID(tid), Message.channel == "email").order_by(Message.created_at.desc()).limit(1))).one()
+        wa = (await s.scalars(select(Message).where(Message.trip_id == uuid.UUID(tid), Message.channel == "whatsapp").order_by(Message.created_at.desc()).limit(1))).one()
+    assert "आपकी खेप" in last.body and "आप अपनी खेप इस पेज पर देख सकते हैं" in wa.body  # subject, text and WhatsApp are all Hindi

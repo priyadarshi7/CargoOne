@@ -6,7 +6,7 @@ import secrets
 import uuid
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, model_validator
@@ -96,6 +96,7 @@ class NewTrip(Coords):
     consignee_name: str = Field(min_length=2, max_length=160)  # who receives the load: needed to send the tracking link and the delivery code
     consignee_phone: str
     consignee_email: str = Field(max_length=160, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    consignee_language: Literal["en", "hi", "mr"] | None = None  # what the receiver reads; empty = the client's language
     request_id: uuid.UUID | None = None  # the accepted transport request this trip fulfils
     force: bool = False
 
@@ -248,7 +249,7 @@ async def create_trip(body: NewTrip, user: Planner, session: Session) -> dict:
         trip_code=code, client_id=body.client_id, vehicle_id=body.vehicle_id, driver_id=body.driver_id, branch_id=body.branch_id,
         material=(body.material or "").strip() or None, weight_tonnes=body.weight_tonnes, packages=body.packages,
         consignee_name=body.consignee_name.strip(), consignee_phone=clean_phone(body.consignee_phone),
-        consignee_email=body.consignee_email.strip().lower(),
+        consignee_email=body.consignee_email.strip().lower(), consignee_language=body.consignee_language,
         lr_no=lr_no, eway_bill_no=body.eway_bill_no, origin=(body.origin or get_settings().default_origin).strip(),
         destination=body.destination.strip(), freight_amount=body.freight_amount, pod_status=PodStatus.pending, state=TripState.planned,
         planned_start=body.planned_start, planned_end=body.planned_end, eway_valid_until=body.eway_valid_until,

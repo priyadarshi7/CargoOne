@@ -132,6 +132,7 @@ export const en = {
   "req.haveLogin": "Already a client with a login?", "req.signIn": "Sign in",
   "plan.consigneeEmail": "Consignee email",
   "sh.locked": "Code entry", "sh.lockedUntil": "Locked until {time}", "sh.unlock": "Unlock code entry now", "sh.unlocked": "Unlocked. The driver can enter the code again.",
+  "plan.consigneeLang": "Receiver's language (for messages and their page)",
 } as const
 
 export type Key = keyof typeof en
