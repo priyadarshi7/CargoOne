@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.billing import razorpay
 from app.billing.periods import IST
 from app.models import Invoice, Payment, PaymentClaim
 
@@ -58,5 +59,5 @@ async def client_invoice_view(session: AsyncSession, inv: Invoice) -> dict:
     claims = (await session.scalars(select(PaymentClaim).where(PaymentClaim.invoice_id == inv.id).order_by(PaymentClaim.created_at.desc()).limit(5))).all()
     pays = (await session.scalars(select(Payment).where(Payment.invoice_id == inv.id).order_by(Payment.paid_on, Payment.created_at))).all()
     return {"id": str(inv.id), "invoice_no": inv.invoice_no, "period_label": inv.period_label, "total": float(inv.total), "sent_at": inv.sent_at, "paid_at": inv.paid_at,
-            "paid_amount": float(paid), "balance": float(inv.total - paid), "claims": [claim_out(c) for c in claims],
+            "paid_amount": float(paid), "balance": float(inv.total - paid), "can_pay_online": razorpay.configured() and inv.paid_at is None and inv.total > paid, "claims": [claim_out(c) for c in claims],
             "payments": [{"amount": float(p.amount), "paid_on": p.paid_on.isoformat(), "reference": p.reference} for p in pays]}

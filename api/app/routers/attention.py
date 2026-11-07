@@ -17,6 +17,7 @@ from app.models import (
     ExpenseStatus,
     Invoice,
     Message,
+    OnlinePayment,
     PaymentClaim,
     PodStatus,
     Role,
@@ -108,6 +109,7 @@ async def attention(_: Viewer, session: Session) -> dict:
     overdue_n, overdue_oldest = (await session.execute(select(func.count(), func.min(Invoice.sent_at)).where(
         Invoice.sent_at.is_not(None), Invoice.paid_at.is_(None), Invoice.sent_at <= now - timedelta(days=PAYMENT_DUE_DAYS)))).one()
 
+    review_pay_n, review_pay_oldest = (await session.execute(select(func.count(), func.min(OnlinePayment.paid_at)).where(OnlinePayment.status == "review"))).one()  # money taken online that no longer fits its invoice
     claims_n, claims_oldest = (await session.execute(select(func.count(), func.min(PaymentClaim.created_at)).where(PaymentClaim.status == "pending"))).one()  # a client says they paid
 
     # a note to a client or driver that did not go out
@@ -140,6 +142,7 @@ async def attention(_: Viewer, session: Session) -> dict:
         {"key": "delivery_issue", "count": short_n, "oldest_days": _age_days(short_oldest, now), "to": "/office/trips", "severity": "medium"},
         {"key": "invoice_unsent", "count": unsent_n, "oldest_days": _age_days(unsent_oldest, now), "to": "/office/billing", "severity": "medium"},
         {"key": "payment_claims", "count": claims_n, "oldest_days": _age_days(claims_oldest, now), "to": "/office/billing", "severity": "high"},
+        {"key": "online_review", "count": review_pay_n, "oldest_days": _age_days(review_pay_oldest, now), "to": "/office/billing", "severity": "high"},
         {"key": "payment_overdue", "count": overdue_n, "oldest_days": _age_days(overdue_oldest, now), "to": "/office/billing", "severity": "high"},
         {"key": "messages_failed", "count": failed_n, "oldest_days": None, "to": "/office/setup?tab=messages", "severity": "medium"},
         {"key": "missing_pod", "count": miss_n, "oldest_days": _age_days(miss_oldest, now), "to": "/office", "severity": "high"},

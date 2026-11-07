@@ -229,6 +229,31 @@ class PaymentClaim(Base):
     created_at: Mapped[datetime] = now()
 
 
+class OnlinePayment(Base):
+    """One Razorpay order for an invoice. A payment is applied once: the Razorpay payment id is unique, so the checkout return, the webhook and a retry can all arrive and only one counts."""
+    __tablename__ = "online_payments"
+    id: Mapped[uuid.UUID] = pk()
+    invoice_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("invoices.id", ondelete="CASCADE"), index=True)
+    order_id: Mapped[str] = mapped_column(String(40), unique=True)
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    status: Mapped[str] = mapped_column(String(10), default="created", server_default="created")  # created | paid | review (money taken but it no longer fits the invoice)
+    provider_payment_id: Mapped[str | None] = mapped_column(String(40), unique=True)
+    payment_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))  # the payment recorded on the invoice
+    method: Mapped[str | None] = mapped_column(String(20))
+    note: Mapped[str | None] = mapped_column(String(200))
+    created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    created_at: Mapped[datetime] = now()
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class WebhookEvent(Base):
+    """Razorpay sends the same event more than once; the id is remembered so each is handled once."""
+    __tablename__ = "webhook_events"
+    event_id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    kind: Mapped[str] = mapped_column(String(40))
+    received_at: Mapped[datetime] = now()
+
+
 class Trip(Base):
     __tablename__ = "trips"
     __table_args__ = (

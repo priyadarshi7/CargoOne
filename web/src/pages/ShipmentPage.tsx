@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import ClientFrame from '../components/ClientFrame'
 import { LiveMap } from '../components/LiveMap'
-import { ClientInvoice, type InvoiceView } from '../components/ClientInvoice'
+import { ClientInvoice, type Checkout, type InvoiceView } from '../components/ClientInvoice'
 import { ApiError, BASE } from '../lib/api'
 import { LANGUAGES, useI18n, type Key, type Lang } from '../lib/i18n'
 
@@ -62,6 +62,12 @@ export default function ShipmentPage() {
   if (state.kind === 'unknown') return <Msg icon={<LinkIcon size={40} className="text-bad" />} text={t('shp.unknown')} />
   if (state.kind === 'error') return <Msg icon={<Clock size={40} className="text-accent" />} text={t('shp.error')} />
   const x = state.p
+  async function post<T>(path: string, body: unknown): Promise<T> {
+    const r = await fetch(`${BASE}/public/shipments/${encodeURIComponent(token)}/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    const j = await r.json().catch(() => ({}))
+    if (!r.ok) throw new ApiError(r.status, typeof j.detail === 'string' ? j.detail : t('inv.payUnavailable'), j.detail)
+    return j as T
+  }
 
   const eta = x.live?.eta ? date(x.live.eta, true) : null
   const headline = x.cancelled ? t('shp.h.cancelled')
@@ -129,6 +135,10 @@ export default function ShipmentPage() {
             const j = await r.json().catch(() => ({}))
             if (!r.ok) throw new ApiError(r.status, typeof j.detail === 'string' ? j.detail : t('inv.claimFail'), j.detail)
             return j as InvoiceView
+          }}
+          online={{
+            start: () => post<Checkout>('pay', {}),
+            confirm: (r) => post<InvoiceView>('pay/confirm', r),
           }}
           onChange={(v) => setState((s) => (s.kind === 'ok' ? { kind: 'ok', p: { ...s.p, invoice: v } } : s))} />
       )}

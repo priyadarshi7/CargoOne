@@ -33,6 +33,7 @@ from app.routers import (
     shipments,
     tracking,
     trips,
+    webhooks,
 )
 
 settings = get_settings()
@@ -82,3 +83,4 @@ app.include_router(push.router)
 app.include_router(onboard.router)
 app.include_router(requests.public)
 app.include_router(requests.office)
+app.include_router(webhooks.router)

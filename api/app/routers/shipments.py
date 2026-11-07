@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.billing import online
 from app.billing.claims import ClaimIn, client_invoice_view, create_claim
 from app.config import get_settings
 from app.db import get_session
@@ -148,6 +149,29 @@ async def claim_payment(token: str, body: ClaimIn, request: Request, session: Se
     await create_claim(session, inv, body, via="link", user_id=None)
     session.add(AuditLog(actor_id=None, action="invoice.claim", entity="invoice", entity_id=str(inv.id), meta={"amount": str(body.amount), "via": "link"}))
     await session.commit()
+    return await client_invoice_view(session, inv)
+
+
+async def _payable(token: str, request: Request, session: AsyncSession) -> Invoice:
+    trip, aud = await _resolve(token, request, session)
+    inv = await _invoice(session, trip)
+    if aud != "client" or inv is None or inv.sent_at is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Invoice not found")
+    if claim_limiter.blocked("pay:" + trip.trip_code):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many attempts. Try again later.")
+    claim_limiter.record("pay:" + trip.trip_code)
+    return inv
+
+
+@public.post("/{token}/pay")
+async def pay_online(token: str, request: Request, session: Session) -> dict:
+    return await online.start(session, await _payable(token, request, session), None)
+
+
+@public.post("/{token}/pay/confirm")
+async def pay_online_confirm(token: str, body: online.Returned, request: Request, session: Session) -> dict:
+    inv = await _payable(token, request, session)
+    await online.finish(session, inv, body)
     return await client_invoice_view(session, inv)
 
 

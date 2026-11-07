@@ -6,21 +6,37 @@ import { useI18n } from '../lib/i18n'
 export interface Claim { id: string; amount: number; paid_on: string; reference: string; status: 'pending' | 'confirmed' | 'rejected'; reject_reason: string | null }
 export interface InvoiceView {
   id: string; invoice_no: string; period_label: string | null; total: number; sent_at: string; paid_at: string | null
-  paid_amount: number; balance: number; claims: Claim[]; payments: { amount: number; paid_on: string; reference: string | null }[]
+  paid_amount: number; balance: number; can_pay_online: boolean; claims: Claim[]; payments: { amount: number; paid_on: string; reference: string | null }[]
 }
+export interface Checkout { key_id: string; order_id: string; amount: number; currency: string; name: string; description: string; prefill_name: string }
+export interface Returned { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }
+export interface OnlinePay { start: () => Promise<Checkout>; confirm: (r: Returned) => Promise<InvoiceView> }
 export interface ClaimBody { amount: string; paid_on: string; reference: string; note: string | null }
 
 const inr = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 })
 const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 10)
+type RazorpayCtor = new (o: Record<string, unknown>) => { open: () => void; on: (e: string, f: () => void) => void }
+function loadCheckout(): Promise<RazorpayCtor> {
+  const have = (window as unknown as { Razorpay?: RazorpayCtor }).Razorpay
+  if (have) return Promise.resolve(have)
+  return new Promise((ok, no) => {
+    const s = document.createElement('script')
+    s.src = 'https://checkout.razorpay.com/v1/checkout.js'
+    s.onload = () => ok((window as unknown as { Razorpay: RazorpayCtor }).Razorpay)
+    s.onerror = () => no(new Error('checkout'))
+    document.head.appendChild(s)
+  })
+}
 const field = 'h-11 w-full rounded-lg border border-line bg-surface px-3.5 text-sm outline-none focus:border-ink'
 
 /** One invoice as its client sees it: what is due, what billing has received, the PDF with the proof of delivery, and "I have paid" (billing then checks the bank).
  *  The same card is used on the client's own login and on their private shipment page. */
-export function ClientInvoice({ inv, openPdf, claim, onChange }: { inv: InvoiceView; openPdf: () => Promise<Blob>; claim: (b: ClaimBody) => Promise<InvoiceView>; onChange: (v: InvoiceView) => void }) {
+export function ClientInvoice({ inv, openPdf, claim, online, onChange }: { inv: InvoiceView; openPdf: () => Promise<Blob>; claim: (b: ClaimBody) => Promise<InvoiceView>; online?: OnlinePay; onChange: (v: InvoiceView) => void }) {
   const { t, date } = useI18n()
   const [form, setForm] = useState<{ amount: string; paid_on: string; reference: string; note: string } | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const waiting = inv.claims.filter((c) => c.status === 'pending')
   const status = inv.paid_at ? 'paid' : inv.paid_amount > 0 ? 'part' : 'due'
   const tone = { paid: 'bg-ok-soft text-ok', part: 'bg-warn-soft text-warn', due: 'bg-accent-soft text-accent' }[status]
@@ -33,6 +49,25 @@ export function ClientInvoice({ inv, openPdf, claim, onChange }: { inv: InvoiceV
       if (tab) tab.location.href = url
       else window.location.href = url
     } catch { tab?.close(); setError(t('inv.openFail')) }
+  }
+
+  async function payNow() {
+    if (!online) return
+    setBusy(true); setError(null); setNotice(null)
+    try {
+      const [Razorpay, order] = await Promise.all([loadCheckout(), online.start()])
+      const box = new Razorpay({
+        key: order.key_id, order_id: order.order_id, amount: order.amount, currency: order.currency, name: order.name, description: order.description, prefill: { name: order.prefill_name },
+        handler: (r: Returned) => {
+          void online.confirm(r).then((v) => { onChange(v); setNotice(t('inv.paidOnline')) })
+            .catch(() => setNotice(t('inv.paidCheck'))) // the money moved; the page just could not hear back, and billing's side catches up on its own
+            .finally(() => setBusy(false))
+        },
+        modal: { ondismiss: () => setBusy(false) },
+      })
+      box.on('payment.failed', () => setError(t('inv.payFailed')))
+      box.open()
+    } catch (err) { setBusy(false); setError(err instanceof ApiError ? err.message : t('inv.payUnavailable')) }
   }
 
   async function submit(e: FormEvent) {
@@ -72,6 +107,9 @@ export function ClientInvoice({ inv, openPdf, claim, onChange }: { inv: InvoiceV
 
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={() => void view()} className="inline-flex h-10 items-center gap-2 rounded-lg border border-line px-3.5 font-medium hover:border-ink hover:bg-wash"><FileText size={16} aria-hidden /> {t('inv.view')}</button>
+        {online && inv.can_pay_online && !form && (
+          <button type="button" disabled={busy} onClick={() => void payNow()} className="h-10 rounded-lg bg-accent px-3.5 font-medium text-surface hover:opacity-90 disabled:opacity-60">{busy ? t('common.loading') : t('inv.payOnline', { amount: inr.format(inv.balance) })}</button>
+        )}
         {!inv.paid_at && !form && waiting.length < 3 && (
           <button type="button" onClick={() => setForm({ amount: String(inv.balance), paid_on: today(), reference: '', note: '' })} className="h-10 rounded-lg bg-ink px-3.5 font-medium text-surface hover:opacity-90">{t('inv.pay')}</button>
         )}
@@ -92,6 +130,7 @@ export function ClientInvoice({ inv, openPdf, claim, onChange }: { inv: InvoiceV
           </div>
         </form>
       )}
+      {notice && <p role="status" className="text-ok">{notice}</p>}
       {error && <p role="alert" className="text-bad">{error}</p>}
     </section>
   )

@@ -12,6 +12,7 @@ from pydantic import Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.billing import online
 from app.billing.claims import ClaimIn, client_invoice_view, create_claim
 from app.billing.periods import IST
 from app.db import get_session
@@ -102,6 +103,20 @@ async def claim_payment(invoice_id: uuid.UUID, body: ClaimIn, user: Member, sess
     await create_claim(session, inv, body, via="portal", user_id=user.id)
     session.add(AuditLog(actor_id=user.id, action="invoice.claim", entity="invoice", entity_id=str(inv.id), meta={"amount": str(body.amount), "via": "portal"}))
     await session.commit()
+    return await client_invoice_view(session, inv)
+
+
+@router.post("/invoices/{invoice_id}/pay")
+async def pay_online(invoice_id: uuid.UUID, user: Member, session: Session) -> dict:
+    """Opens a Razorpay order for what is left on the invoice."""
+    return await online.start(session, await _my_invoice(session, user, invoice_id), user.id)
+
+
+@router.post("/invoices/{invoice_id}/pay/confirm")
+async def pay_online_confirm(invoice_id: uuid.UUID, body: online.Returned, user: Member, session: Session) -> dict:
+    """The Razorpay pop-up came back: the payment is checked and applied once."""
+    inv = await _my_invoice(session, user, invoice_id)
+    await online.finish(session, inv, body)
     return await client_invoice_view(session, inv)
 
 

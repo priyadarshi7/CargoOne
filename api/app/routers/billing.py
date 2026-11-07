@@ -278,7 +278,7 @@ async def list_payments(invoice_id: uuid.UUID, _: Biller, session: Session) -> l
     return [{"id": str(p.id), "amount": float(p.amount), "paid_on": p.paid_on.isoformat(), "reference": p.reference} for p in rows]
 
 
-async def record_payment(session: AsyncSession, user: User, inv: Invoice, amount: Decimal, paid_on: date, reference: str | None) -> tuple[Payment, bool, Decimal]:
+async def record_payment(session: AsyncSession, user: User | None, inv: Invoice, amount: Decimal, paid_on: date, reference: str | None) -> tuple[Payment, bool, Decimal]:
     """Money received. The checks, the payment, and (when the payments reach the total) the paid invoice and the closed trips: the one place this happens,
     whether billing types it in or confirms what the client said. Returns the payment, whether the invoice is now paid in full, and the amount paid so far."""
     if inv.sent_at is None:
@@ -292,7 +292,7 @@ async def record_payment(session: AsyncSession, user: User, inv: Invoice, amount
     paid = await _paid_total(session, inv.id)
     if paid + amount > inv.total:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, f"That is more than the balance of Rs {inv.total - paid:,.2f}")
-    pay = Payment(invoice_id=inv.id, amount=amount, paid_on=paid_on, reference=(reference or "").strip() or None, recorded_by=user.id)
+    pay = Payment(invoice_id=inv.id, amount=amount, paid_on=paid_on, reference=(reference or "").strip() or None, recorded_by=user.id if user else None)
     session.add(pay)
     paid += amount
     trips = await _invoice_trips(session, inv.id)
@@ -302,9 +302,9 @@ async def record_payment(session: AsyncSession, user: User, inv: Invoice, amount
         inv.paid_at = now
         for t in trips:
             t.closed_at = now
-            record(session, t, "paid", actor=user.id, public=True, meta={"invoice": inv.invoice_no})
-            record(session, t, "closed", actor=user.id)
-    session.add(AuditLog(actor_id=user.id, action="invoice.payment", entity="invoice", entity_id=str(inv.id),
+            record(session, t, "paid", actor=user.id if user else None, public=True, meta={"invoice": inv.invoice_no})
+            record(session, t, "closed", actor=user.id if user else None)
+    session.add(AuditLog(actor_id=user.id if user else None, action="invoice.payment", entity="invoice", entity_id=str(inv.id),
                          meta={"amount": str(amount), "paid_on": paid_on.isoformat(), "reference": reference, "closed": full}))
     return pay, full, paid
 

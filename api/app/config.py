@@ -95,6 +95,9 @@ class Settings(BaseSettings):
     company_name: str = "Company A (demo)"  # printed on invoices
     office_phone: str = ""  # shown to drivers as a one-tap call; empty hides the button
     invoice_prefix: str = "CO"
+    razorpay_key_id: str = ""  # Razorpay Checkout for invoices. Key id + secret both set = "Pay online" appears; use rzp_test_ keys until go-live
+    razorpay_key_secret: str = ""  # a secret: .env only
+    razorpay_webhook_secret: str = ""  # the secret typed in Razorpay > Webhooks (a secret: .env only); empty = the webhook is refused
     tally_company: str = ""  # exact Tally company name; blank = import into the currently open company
     tally_sales_ledger: str = "Freight Income"  # must already exist in Tally
 
