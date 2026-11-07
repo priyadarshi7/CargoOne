@@ -5,7 +5,7 @@ test('a visitor sees the landing page and can start a request', async ({ page })
   await page.goto('/')
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Move the load')
   await expect(page.getByRole('heading', { name: 'Three steps, no phone tag.' })).toBeVisible()
-  await page.waitForTimeout(3500) // let the route finish drawing before the picture
+  await page.waitForTimeout(3500) // let the truck settle on the road before the picture
   await shot(page, 'landing')
   await page.getByRole('main').getByRole('link', { name: 'Request transport' }).first().click()
   await expect(page).toHaveURL(/\/request$/)

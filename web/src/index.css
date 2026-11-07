@@ -24,8 +24,7 @@
 /* Chart colours that differ by theme (ordinal blue ramp, one-series line). Light steps are the validated palette. */
 :root {
   /* Landing hero scene: pale sky, soft hills, road, truck */
-  --sky-top: #bcd7f1; --sky-bottom: #f6fafe;
-  --scene-cloud: #ffffff; --scene-hill-far: #d5e5f5; --scene-hill-near: #c3d9ee; --scene-road: #2b2b30; --scene-lane: #f3f3f4;
+  --scene-hill-far: #d5e5f5; --scene-hill-near: #c3d9ee; --scene-road: #2b2b30; --scene-lane: #f3f3f4;
   --scene-window: #cfe2f4; --scene-light: #f6c453; --scene-hub: #f3f3f4;
   --truck-body: #ffffff; --truck-line: #0e0e10; --truck-cab: #1d1d21;
   --ramp-0: #86b6ef; --ramp-1: #3987e5; --ramp-2: #1c5cab; --ramp-3: #0d366b;
@@ -36,8 +35,7 @@
 /* Dark theme: its own steps, not an inversion. Solid buttons switch to dark text so contrast holds. */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --sky-top: #17181b; --sky-bottom: #0c0c0d;
-  --scene-cloud: #ffffff0f; --scene-hill-far: #1a1b1e; --scene-hill-near: #202125; --scene-road: #1a1a1d; --scene-lane: #4b4b52;
+  --scene-hill-far: #1a1b1e; --scene-hill-near: #202125; --scene-road: #1a1a1d; --scene-lane: #4b4b52;
   --scene-window: #3a3d44; --scene-light: #e8b755; --scene-hub: #c9c9ce;
   --truck-body: #26262a; --truck-line: #e9e9ec; --truck-cab: #3a3a40;
   --color-ink: #f3f3f4;
@@ -126,14 +124,9 @@ dialog {
 
 
 /* Landing hero scene. The truck drives left to right, clouds drift, wheels turn. Reduced motion: everything is still (rule above). */
-.sky { background: linear-gradient(to bottom, var(--sky-top), var(--sky-bottom) 78%); }
-.scene-truck { transform: translateX(560px); animation: scene-drive 20s linear infinite; }
+.scene-truck { transform: translateX(560px); animation: scene-drive 24s linear infinite; animation-delay: -9s; }
 .scene-wheel { transform-box: fill-box; transform-origin: center; animation: scene-spin 0.7s linear infinite; }
 .scene-lane { animation: scene-lane 1.2s linear infinite; }
-.scene-cloud { animation: scene-drift 90s linear infinite alternate; }
-.scene-cloud-b { animation-duration: 120s; }
-.scene-cloud-c { animation-duration: 75s; }
-@keyframes scene-drive { from { transform: translateX(-380px); } to { transform: translateX(1500px); } }
+@keyframes scene-drive { from { transform: translateX(-480px); } to { transform: translateX(1500px); } }
 @keyframes scene-spin { to { transform: rotate(-360deg); } }
-@keyframes scene-lane { to { stroke-dashoffset: -48; } }
-@keyframes scene-drift { from { transform: translateX(-40px); } to { transform: translateX(120px); } }
+@keyframes scene-lane { to { stroke-dashoffset: -68; } }
