@@ -108,10 +108,10 @@ async def test_delivery_needs_the_receivers_code_and_a_wrong_one_is_counted(clie
         assert (await client.post(f"/trips/{tid}/deliver", headers=driver, json={"code": wrong})).status_code == 422
     assert (await client.post(f"/trips/{tid}/deliver", headers=driver, json={"code": wrong})).status_code == 422  # fifth: locks
     assert (await client.post(f"/trips/{tid}/deliver", headers=driver, json={"code": code})).status_code == 429  # even the right code waits out the lock
-    async with SessionLocal() as s:
-        t = await s.get(Trip, uuid.UUID(tid))
-        t.delivery_code_locked_until = None
-        await s.commit()
+    assert (await client.get(f"/trips/{tid}/timeline", headers=h)).json()["code_locked_until"]  # the office can see the lock
+    assert (await client.post(f"/trips/{tid}/delivery-code/unlock", headers=driver)).status_code == 403  # the driver cannot lift it
+    assert (await client.post(f"/trips/{tid}/delivery-code/unlock", headers=h)).status_code == 200
+    assert (await client.get(f"/trips/{tid}/timeline", headers=h)).json()["code_locked_until"] is None
     assert (await client.post(f"/trips/{tid}/deliver", headers=driver, json={"code": code, "shortage_or_damage": True})).status_code == 422  # say what
     done = await client.post(f"/trips/{tid}/deliver", headers=driver, json={"code": code, "shortage_or_damage": True, "note": "2 cartons wet"})
     assert done.status_code == 200

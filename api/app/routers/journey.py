@@ -177,6 +177,18 @@ class TimelineRow(BaseModel):
     meta: dict | None
 
 
+@router.post("/{trip_id}/delivery-code/unlock")
+async def unlock_code(trip_id: uuid.UUID, user: Annotated[User, Depends(require_roles(Role.ops))], session: Session) -> dict:
+    """After too many wrong codes the driver waits 15 minutes; the office can lift that at once (the receiver is standing there). The code itself stays the same."""
+    trip = await session.get(Trip, trip_id)
+    if trip is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Trip not found")
+    trip.delivery_code_tries, trip.delivery_code_locked_until = 0, None
+    session.add(AuditLog(actor_id=user.id, action="delivery.code_unlocked", entity="trip", entity_id=trip.trip_code))
+    await session.commit()
+    return {"code_locked_until": None}
+
+
 @router.get("/{trip_id}/timeline")
 async def timeline(trip_id: uuid.UUID, _: Office, session: Session) -> dict:
     """For the office: every step of the trip in order, and where each driver-side step stands."""
@@ -188,5 +200,6 @@ async def timeline(trip_id: uuid.UUID, _: Office, session: Session) -> dict:
         "acknowledged_at": trip.acknowledged_at, "loaded_at": trip.loaded_at, "has_loading_photo": bool(trip.loading_photo_key), "started_at": trip.started_at,
         "delivery_confirmed_at": trip.delivery_confirmed_at, "delivery_override": trip.delivery_override, "delivery_issue": trip.delivery_issue, "delivery_note": trip.delivery_note,
         "eway_valid_until": trip.eway_valid_until, "closed_at": trip.closed_at,
+        "code_locked_until": trip.delivery_code_locked_until if trip.delivery_code_locked_until and trip.delivery_code_locked_until > datetime.now(UTC) else None,
         "events": [TimelineRow(kind=e.kind, at=e.at, note=e.note, public=e.public, meta=e.meta).model_dump() for e in rows],
     }

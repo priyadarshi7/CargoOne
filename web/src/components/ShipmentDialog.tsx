@@ -7,10 +7,10 @@ interface Row { kind: string; at: string; note: string | null; public: boolean; 
 interface Timeline {
   acknowledged_at: string | null; loaded_at: string | null; has_loading_photo: boolean; started_at: string | null
   delivery_confirmed_at: string | null; delivery_override: string | null; delivery_issue: boolean; delivery_note: string | null
-  eway_valid_until: string | null; closed_at: string | null; events: Row[]
+  eway_valid_until: string | null; closed_at: string | null; code_locked_until: string | null; events: Row[]
 }
 
-interface Link { url: string; to: string | null; has_phone: boolean; whatsapp: string | null }
+interface Link { url: string; to: string | null; has_phone: boolean; has_email?: boolean; whatsapp: string | null }
 interface Links { client: Link; receiver: Link; views: { client: number; receiver: number }; sent_status?: string | null }
 
 /** The office's view of one shipment: where each step stands, the timeline in order, the loading photo, the addresses to share, and (for ops) delivering without the receiver's code. */
@@ -45,6 +45,13 @@ export function ShipmentDialog({ trip, canAct, canShare, onClose }: { trip: Trip
   async function retire() {
     setBusy(true); setError(null)
     try { setLinks(await api<Links>(`/trips/${trip.id}/shipment-links/retire`, { method: 'POST' })); setNote(t('sh.retired')) }
+    catch (err) { setError(err instanceof ApiError ? err.message : t('sh.failed')) }
+    finally { setBusy(false) }
+  }
+
+  async function unlock() {
+    setBusy(true); setError(null)
+    try { await api(`/trips/${trip.id}/delivery-code/unlock`, { method: 'POST' }); setNote(t('sh.unlocked')); await load() }
     catch (err) { setError(err instanceof ApiError ? err.message : t('sh.failed')) }
     finally { setBusy(false) }
   }
@@ -87,8 +94,10 @@ export function ShipmentDialog({ trip, canAct, canShare, onClose }: { trip: Trip
               {stat(t('sh.seen'), tl.acknowledged_at ? date(tl.acknowledged_at, true) : t('sh.notYet'), !!tl.acknowledged_at)}
               {stat(t('sh.loadedAt'), tl.loaded_at ? date(tl.loaded_at, true) : t('sh.notYet'), !!tl.loaded_at)}
               {stat(t('sh.code'), tl.delivery_confirmed_at ? t('sh.confirmed') : t('sh.waiting'), !!tl.delivery_confirmed_at)}
+              {tl.code_locked_until && stat(t('sh.locked'), t('sh.lockedUntil', { time: date(tl.code_locked_until, true) }), false)}
               {tl.eway_valid_until && stat(t('sh.ewayUntil'), date(tl.eway_valid_until, true), new Date(tl.eway_valid_until).getTime() > Date.now())}
             </dl>
+            {canAct && tl.code_locked_until && <button disabled={busy} onClick={() => void unlock()} className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium hover:border-accent hover:text-accent disabled:opacity-50">{t('sh.unlock')}</button>}
             {tl.has_loading_photo && <button onClick={() => void photo()} className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium hover:border-accent hover:text-accent">{t('sh.photo')}</button>}
 
             {tl.events.length === 0 ? <p className="text-sm text-muted">{t('sh.empty')}</p> : (
@@ -124,9 +133,9 @@ export function ShipmentDialog({ trip, canAct, canShare, onClose }: { trip: Trip
                   <input readOnly aria-label={`${t(`sh.${aud}`)} link`} value={links[aud].url} onFocus={(e) => e.currentTarget.select()} className="w-full rounded-lg border border-line px-3 py-2 font-mono text-xs outline-none" />
                   <button type="button" onClick={() => void copy(aud, links[aud].url)} className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 hover:border-accent">{copied === aud ? <Check size={16} aria-hidden /> : <Copy size={16} aria-hidden />} {copied === aud ? t('ul.copied') : t('ul.copy')}</button>
                 </div>
-                {links[aud].has_phone ? (
+                {links[aud].has_phone || links[aud].has_email ? (
                   <div className="flex flex-wrap gap-2">
-                    <a href={links[aud].whatsapp ?? undefined} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs font-medium hover:border-accent hover:text-accent"><MessageCircle size={14} aria-hidden /> {t('sh.wa')}</a>
+                    {links[aud].has_phone && <a href={links[aud].whatsapp ?? undefined} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs font-medium hover:border-accent hover:text-accent"><MessageCircle size={14} aria-hidden /> {t('sh.wa')}</a>}
                     <button type="button" disabled={busy} onClick={() => void send(aud)} className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs font-medium hover:border-accent hover:text-accent disabled:opacity-50"><Send size={14} aria-hidden /> {t('sh.send')}</button>
                   </div>
                 ) : <p className="text-xs text-muted">{t('sh.noPhone')}</p>}
