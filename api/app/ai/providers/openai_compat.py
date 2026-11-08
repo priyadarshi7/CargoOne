@@ -7,6 +7,7 @@ import asyncio
 import base64
 import json
 import re
+from collections.abc import Callable
 
 import httpx
 
@@ -38,13 +39,18 @@ def _json_in(text: str) -> dict:
 
 class OpenAICompatProvider:
     def __init__(self, name: str, url: str, key: str, model: str, timeout_s: float = 60.0, transport: httpx.AsyncBaseTransport | None = None,
-                 backoff_s: tuple[float, ...] = (4.0, 12.0, 30.0)) -> None:
+                 backoff_s: tuple[float, ...] = (4.0, 12.0, 30.0), ocr: Callable[[bytes], list] | None = None) -> None:
+        self._ocr = ocr  # a document reader (glm-ocr): its text goes in the prompt beside the photo
         self.name, self._url, self._key, self._model, self._timeout, self._transport, self._backoff = name, url.rstrip("/"), key, model, timeout_s, transport, backoff_s
 
     async def extract(self, image: bytes, mime: str, expected_lr_no: str) -> PodExtraction:
         if not self._key:
             raise ProviderError(f"{self.name}: no API key configured")
         prompt = POD_PROMPT.format(expected_lr_no=expected_lr_no) + "\n\n" + SHAPE
+        if self._ocr is not None:
+            lines = await asyncio.to_thread(self._ocr, image)
+            prompt += ("\n\nA text reader already read this paper. Its lines, in page order (a goods-table row reads: no., good, printed packages, "
+                       "printed weight, then what the receiver wrote):\n" + "\n".join(f"{ln.id}: {ln.text}" for ln in lines))
         body = {
             "model": self._model, "temperature": 0, "max_tokens": 1200, "response_format": {"type": "json_object"},
             "messages": [{"role": "user", "content": [

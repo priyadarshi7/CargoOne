@@ -43,6 +43,8 @@ TAGS = {
     "S16": ["remark", "false-alarm"], "S17": ["multi-item"], "S18": ["multi-item", "quantity"], "S19": ["multi-item", "quantity", "remark"],
     "S20": ["multi-item", "hard"], "S21": ["multi-item", "weight"], "S22": ["multi-item", "hard"],
 }
+TRANSIENT = re.compile(r"http (?:429|5\d\d)|network error|unusable output|not running")  # a busy or rate-limited service: wait and ask again
+WAIT_S = 65  # a per-minute limit has cleared by then
 FIELDS = ("lr_no", "stamp", "signature", "date", "quantity", "items", "total", "remarks", "shortage_flag")
 
 
@@ -136,23 +138,30 @@ def classify(e: Expect, got_decision: str) -> str:
     return "different"  # safe, but not what was expected (a retake where a person should look, or the reverse)
 
 
-async def run(provider, photos: Path, out: Path, label: str, pace: float, require_quantity: bool = False) -> None:
+async def run(provider, photos: Path, out: Path, label: str, pace: float, require_quantity: bool = False, waits: int = 0) -> None:
     key = load_key()
     done = json.loads(out.read_text(encoding="utf-8")) if out.exists() else {"label": label, "provider": provider.name, "cases": {}}
     files = sorted(p for p in photos.iterdir() if p.suffix.lower() in (".jpg", ".jpeg", ".png"))
     for p in files:
         exp = expectation(p.stem, key)
-        if exp is None or p.stem in done["cases"]:
+        if exp is None or (p.stem in done["cases"] and not done["cases"][p.stem]["error"]):  # a photo that failed last time is tried again
             continue
         e, cond, tags = exp
         mime = "image/png" if p.suffix.lower() == ".png" else "image/jpeg"
         started = time.perf_counter()
         error = None
         got: PodExtraction | None = None
-        try:
-            got = await provider.extract(p.read_bytes(), mime, e.lr_trip)
-        except ProviderError as ex:
-            error = str(ex)[:160]
+        for attempt in range(waits + 1):
+            try:
+                got = await provider.extract(p.read_bytes(), mime, e.lr_trip)
+                error = None
+                break
+            except ProviderError as ex:
+                error = str(ex)[:160]
+                if attempt == waits or not TRANSIENT.search(error):
+                    break  # a refusal (a key, billing, a wrong model name) will not get better by waiting
+                print(f"{p.stem:12} not available ({error}); waiting {WAIT_S} s and trying again ({attempt + 1}/{waits})", flush=True)
+                await asyncio.sleep(WAIT_S)
         ms = int((time.perf_counter() - started) * 1000)
         if got is not None:
             verdict = decide(got, expected_lr_no=e.lr_trip, retake_count=0, expected_packages=e.packages, expected_weight_tonnes=e.weight,
@@ -206,6 +215,7 @@ def main() -> None:
     ap.add_argument("--title", default=None, help="the name shown on the dashboard (default: the label)")
     ap.add_argument("--require-quantity", action="store_true", help="a booked quantity that was not found on the receipt goes to review")
     ap.add_argument("--rescore", default=None, help="label of an earlier run to judge again with the current rules instead of running a model")
+    ap.add_argument("--waits", type=int, default=None, help="how many times to wait and retry a photo when the service is busy or rate limited (default 10 for a cloud model, 0 for local)")
     ap.add_argument("--note", default="", help="one line saying what changed in this run")
     ap.add_argument("--pace", type=float, default=0, help="seconds to wait between photos (free tiers are rate limited)")
     ap.add_argument("--results", default=str(KEY.parent / "results"))
@@ -228,7 +238,8 @@ def main() -> None:
         if (warm := getattr(provider, "warm", None)) is not None:
             await warm()
         path = out / f"{a.label}.json"
-        await run(provider, Path(a.photos), path, a.title or a.label, a.pace, a.require_quantity)
+        await run(provider, Path(a.photos), path, a.title or a.label, a.pace, a.require_quantity,
+                  a.waits if a.waits is not None else (0 if a.provider in ("local", "mock") else 10))
         meta = json.loads(path.read_text(encoding="utf-8"))
         meta.update(model=s.ollama_model if a.provider == "local" else s.gemini_model if a.provider == "gemini" else s.groq_model if a.provider == "groq" else a.provider,
                     when=time.strftime("%Y-%m-%d %H:%M"), note=a.note)
