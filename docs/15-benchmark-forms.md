@@ -77,11 +77,16 @@ Each run is saved in `docs/benchmark/results/<label>.json` and is resumable. The
 
 **What the tab counts.** *Unsafe*: a sheet that should not be verified (missing stamp or signature, wrong LR, a shortage or different quantity) would have been. It must be 0. *Needless retake*: a good sheet sent back. *Safe, but different*: sent to a person where a retake was expected, or the reverse. Photo-condition shots and the judgement-call sheets (S14, S15, S22) accept more than one answer.
 
-## Results so far (local Qwen3-VL 4B, 28 photos)
-| Run | Pass rate | Unsafe | Needless |
-|---|---|---|---|
-| Run 1 (first prompt and rules) | 67.9% | 5 | 2 |
-| Run 2 (current code) | 71.4% | 3 | 3 |
-| Run 2 with `POD_REQUIRE_QUANTITY` on (same readings) | 64.3% | 2 | 6 |
+## Results so far (28 photos)
+| Run | Model | Pass rate | Unsafe | Needless |
+|---|---|---|---|---|
+| Qwen3-VL 4B, run 1 (first prompt and rules) | local, Ollama + OCR | 67.9% | 5 | 2 |
+| Qwen3-VL 4B, run 2 (current code) | local, Ollama + OCR | 71.4% | 3 | 3 |
+| Qwen3-VL 4B, run 2 with `POD_REQUIRE_QUANTITY` (same readings) | local | 64.3% | 2 | 6 |
+| **Qwen3.8 27B on Groq** (LR-aware prompt) | cloud, free tier | **89.3%** | 2 | 1 |
 
-Run 2 still verified S03 (the consignor's and driver's signatures were taken for the receiver's), S10 (the quantity was not found) and S13 (a Marathi shortage remark was misread). The model is sensitive to its prompt: a longer instruction about which signature counts made it stop reading the quantity altogether, so that wording was reverted. Turning on `POD_REQUIRE_QUANTITY` (a booked quantity that the reader cannot find goes to a person) removes one more unsafe case at the price of more reviews of good sheets; it is off by default and is your call. A larger model (Gemini needs an API key) has not been tried.
+**Local 4B.** Run 2 still verified S03 (the consignor's and driver's signatures were taken for the receiver's), S10 (the quantity was not found) and S13 (a Marathi shortage remark was misread). The model is sensitive to its prompt: a longer instruction about which signature counts made it stop reading the quantity altogether, so that wording was reverted. `POD_REQUIRE_QUANTITY` (a booked quantity that the reader cannot find goes to a person) removes one more unsafe case at the price of more reviews of good sheets; it is off by default.
+
+**Groq, Qwen3.8 27B.** Much better on every field. It still verified S01_cut (a corner of the sheet cut off, which it called readable) and S13 (the Marathi remark was misread, so the shortage was not flagged). The free tier allows 7,000 input tokens a minute, about 3 photos a minute, so a run takes about 10 minutes and it cannot serve real traffic; a paid plan is needed for that.
+
+**Not run yet.** Gemini 2.5 Flash: the key works but Google answers "the free tier is not available for this project", so billing has to be switched on in AI Studio. Local Ollama models (Qwen3-VL 7B, MiniCPM-V 4.5, Llama 3.2 Vision 11B, glm-ocr) are not installed on this machine yet, and drive C: has under 9 GB free.

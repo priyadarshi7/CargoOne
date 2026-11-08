@@ -200,6 +200,7 @@ def main() -> None:
     ap.add_argument("--photos", required=True)
     ap.add_argument("--provider", default="local", help="local | gemini | mock")
     ap.add_argument("--ollama-model", default=None)
+    ap.add_argument("--model", default=None, help="the cloud model to use (gemini or groq); default: the one in settings")
     ap.add_argument("--label", required=True)
     ap.add_argument("--title", default=None, help="the name shown on the dashboard (default: the label)")
     ap.add_argument("--require-quantity", action="store_true", help="a booked quantity that was not found on the receipt goes to review")
@@ -211,6 +212,8 @@ def main() -> None:
     s = get_settings()
     if a.ollama_model:
         s = s.model_copy(update={"ollama_model": a.ollama_model})
+    if a.model:
+        s = s.model_copy(update={"gemini_model" if a.provider == "gemini" else "groq_model": a.model})
     out = Path(a.results)
     out.mkdir(parents=True, exist_ok=True)
     if a.rescore:
@@ -224,7 +227,7 @@ def main() -> None:
         path = out / f"{a.label}.json"
         await run(provider, Path(a.photos), path, a.title or a.label, a.pace, a.require_quantity)
         meta = json.loads(path.read_text(encoding="utf-8"))
-        meta.update(model=a.ollama_model or (s.ollama_model if a.provider == "local" else s.gemini_model if a.provider == "gemini" else a.provider),
+        meta.update(model=s.ollama_model if a.provider == "local" else s.gemini_model if a.provider == "gemini" else s.groq_model if a.provider == "groq" else a.provider,
                     when=time.strftime("%Y-%m-%d %H:%M"), note=a.note)
         path.write_text(json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8")
 

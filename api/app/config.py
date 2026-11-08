@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     google_maps_server_key: str = ""  # Places API (New) + Geocoding API; used only by this server, never sent to a browser
     google_maps_browser_key: str = ""  # Maps JavaScript API; shown to browsers by design, so restrict it to this site's addresses in Google Cloud
     places_provider: str = "auto"  # auto (google if a server key exists) | google | photon
+    groq_api_key: str = ""  # Groq (OpenAI-compatible chat API); vision models read the photo
+    groq_model: str = "qwen/qwen3.8-27b"
+    groq_url: str = "https://api.groq.com/openai/v1"
     ollama_url: str = "http://localhost:11434"  # the local vision model runs here (Ollama)
     ollama_model: str = "qwen3-vl:4b"
     local_ai_timeout_s: float = 120.0  # a laptop GPU needs longer than a cloud model; first call also loads the model

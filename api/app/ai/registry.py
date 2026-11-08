@@ -7,6 +7,7 @@ from app.ai.base import PodExtraction, ProviderError, VisionProvider
 from app.ai.providers.gemini import GeminiProvider
 from app.ai.providers.local import LocalProvider
 from app.ai.providers.mock import MockProvider
+from app.ai.providers.openai_compat import OpenAICompatProvider
 from app.config import Settings, get_settings
 
 log = logging.getLogger("cargoone.ai")
@@ -33,9 +34,11 @@ def build_provider(name: str, s: Settings) -> VisionProvider:
         return MockProvider()
     if name == "gemini":
         return GeminiProvider(s.gemini_api_key, s.gemini_model, s.ai_timeout_s)
+    if name == "groq":
+        return OpenAICompatProvider("groq", s.groq_url, s.groq_api_key, s.groq_model, s.local_ai_timeout_s)
     if name == "local":
         return LocalProvider(s.ollama_url, s.ollama_model, s.local_ai_timeout_s, s.ocr_langs, s.ocr_models, s.ocr_engine)
-    raise ValueError(f"Unknown AI provider '{name}' (available: mock, gemini, local)")
+    raise ValueError(f"Unknown AI provider '{name}' (available: mock, gemini, groq, local)")
 
 
 def build_chain(s: Settings | None = None) -> list[VisionProvider]:

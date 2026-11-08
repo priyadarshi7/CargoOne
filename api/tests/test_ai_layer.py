@@ -152,3 +152,33 @@ async def test_mock_scripted_scenario_answers_unlabeled_photos(monkeypatch: pyte
     monkeypatch.setattr("app.ai.providers.mock.get_settings", lambda: Settings(mock_scenario="shortage"))
     ex = await MockProvider().extract(plain, "image/jpeg", LR)
     assert ex.lr_no == LR and ex.shortage_or_damage is True
+
+
+async def test_groq_style_provider_reads_a_json_reply_and_reports_failures_by_status_only() -> None:
+    import json as _json
+
+    import httpx
+
+    from app.ai.base import ProviderError
+    from app.ai.providers.openai_compat import OpenAICompatProvider
+
+    reply = {"is_document": True, "readable": True, "lr_no": "LR/X/1", "consignee_stamp_present": True, "signature_present": False, "confidence": 0.9, "shortage_or_damage": False}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = _json.loads(request.content)
+        assert request.headers["authorization"] == "Bearer k" and body["messages"][0]["content"][1]["image_url"]["url"].startswith("data:image/jpeg;base64,")
+        return httpx.Response(200, json={"choices": [{"message": {"content": "```json\n" + _json.dumps(reply) + "\n```"}}]})
+
+    ok = OpenAICompatProvider("groq", "https://x.test/v1", "k", "m", transport=httpx.MockTransport(handler))
+    got = await ok.extract(b"\xff\xd8", "image/jpeg", "LR/X/1")
+    assert got.lr_no == "LR/X/1" and got.signature_present is False
+
+    def refuse(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(401, json={"error": {"message": "the document says LR/X/1"}})
+
+    bad = OpenAICompatProvider("groq", "https://x.test/v1", "k", "m", transport=httpx.MockTransport(refuse))
+    with pytest.raises(ProviderError) as e:
+        await bad.extract(b"\xff\xd8", "image/jpeg", "LR/X/1")
+    assert str(e.value) == "groq http 401"
+    with pytest.raises(ProviderError, match="no API key"):
+        await OpenAICompatProvider("groq", "https://x.test/v1", "", "m").extract(b"x", "image/jpeg", "LR")
