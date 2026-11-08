@@ -249,7 +249,7 @@ function Advances({ canGive }: { canGive: boolean }) {
   const load = useCallback(() => api<Settle>('/finance/settlement').then(setS).catch(() => setMsg({ ok: false, text: t('exp.error') })), [t])
   useEffect(() => {
     void load()
-    if (canGive) api<{ drivers: { id: string; name: string }[] }>('/planning/refs').then((r) => { setDrivers(r.drivers); setForm((f) => ({ ...f, driver_id: r.drivers[0]?.id ?? '' })) }).catch(() => undefined)
+    if (canGive) api<{ drivers: { id: string; name: string }[] }>('/planning/refs').then((r) => { setDrivers(r.drivers); setForm((f) => ({ ...f, driver_id: f.driver_id || (r.drivers[0]?.id ?? '') })) }).catch(() => undefined)
   }, [load, canGive])
 
   async function give(e: FormEvent) {

@@ -84,9 +84,9 @@ test('in the map picker, searching jumps the map and keeps the searched place; t
 
   await picker.getByRole('combobox', { name: 'Search for an area, street or landmark' }).fill('waluj')
   await picker.getByRole('option', { name: /Waluj MIDC/ }).click()
-  const zoom = await page.evaluate(() => (window as unknown as { __fakeMap: { zoom: number; center: { lat: number } } }).__fakeMap)
-  expect(zoom.zoom).toBe(17) // zoomed in on the place
-  expect(zoom.center.lat).toBe(19.8601) // the map is on the place
+  const fakeMap = () => page.evaluate(() => (window as unknown as { __fakeMap: { zoom: number; center: { lat: number } } }).__fakeMap)
+  await expect.poll(async () => (await fakeMap()).zoom).toBe(17) // zoomed in on the place (the map moves a moment after the click)
+  expect((await fakeMap()).center.lat).toBe(19.8601) // the map is on the place
   const reverseCalls = seen.reverse.length
   await expect(picker.getByText('Waluj MIDC', { exact: true })).toBeVisible()
   await page.waitForTimeout(500) // the map settles on the place: the address of the pin is NOT looked up again over the searched place's name

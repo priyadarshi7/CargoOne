@@ -64,6 +64,8 @@ test('a hired driver does the whole journey from a private link, with the networ
   const started = phone.waitForResponse((r) => r.url().includes('/start') && r.ok())
   await phone.getByRole('button', { name: /Start trip/ }).click()
   await started
+  await expect(phone.getByRole('button', { name: /Start trip/ })).toHaveCount(0) // the phone has shown the trip on the road before the network drops
+  await expect(phone.getByRole('button', { name: /Delay or problem/ })).toBeVisible()
 
   // --- the network drops: the delay report and "reached" are kept on the phone
   await ctx.setOffline(true)
