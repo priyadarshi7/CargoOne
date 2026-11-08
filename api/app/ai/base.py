@@ -20,6 +20,14 @@ class Box(BaseModel):
     source: str = "ocr"  # ocr: found by the text reader | vlm: pointed out by the vision model
 
 
+class PodItem(BaseModel):
+    """One line the receiver wrote for what actually arrived (a load can carry several goods, each with its own weight or count)."""
+
+    name: str | None = None
+    quantity: float | None = Field(default=None, ge=0)
+    unit: str | None = Field(default=None, description="as written: t, kg, quintal, bags, cartons ...")
+
+
 class PodExtraction(BaseModel):
     """What a vision model reads off the photo. The image stays the source of truth;
     humans may correct these fields in the review queue."""
@@ -30,7 +38,9 @@ class PodExtraction(BaseModel):
     consignee_stamp_present: bool = False
     signature_present: bool = False
     delivery_date: str | None = Field(default=None, description="ISO yyyy-mm-dd if visible")
-    quantity_received: str | None = None
+    quantity_received: str | None = Field(default=None, description="What the receiver wrote as received, as written; with several goods, all lines in one text")
+    items: list[PodItem] = Field(default_factory=list, description="The received quantity line by line when the receiver wrote more than one good")
+    total_quantity: str | None = Field(default=None, description="The total the receiver wrote, only when a total is written (e.g. '4 t')")
     remarks: str | None = Field(default=None, description="Handwritten remarks, verbatim")
     shortage_or_damage: bool = Field(default=False, description="Remarks mention shortage/damage/leakage/broken")
     confidence: float = Field(ge=0, le=1)

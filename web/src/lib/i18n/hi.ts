@@ -134,4 +134,5 @@ export const hi: Partial<Record<Key, string>> = {
   "land.nav.lang": "भाषाएँ", "land.route.pickup": "लोडिंग", "land.route.delivery": "डिलीवरी", "land.c.pickup": "लोडिंग शहर", "land.c.delivery": "डिलीवरी शहर", "land.c.material": "माल", "land.c.weight": "वज़न", "land.c.date": "तारीख", "land.c.accepted": "आपका अनुरोध स्वीकार हो गया", "land.c.follow": "ट्रक को देखें", "land.c.receipt": "रसीद खोलें", "land.why.sub": "हर अनुरोध का एक निजी पेज। यह पहले फ़ॉर्म से लेकर हस्ताक्षरित रसीद तक आपके माल के साथ चलता है, इसलिए किसी को फ़ोन करके पूछना नहीं पड़ता।",
   "ul.name": "ड्राइवर का नाम (वैकल्पिक)", "ul.smsOk": "ड्राइवर को SMS भेज दिया गया।", "ul.smsSim": "ड्राइवर के लिए SMS कतार में है (इस संस्करण में नकली, कुछ भेजा नहीं जाता)। लिंक खुद साझा करें।", "ul.smsFail": "SMS नहीं गया: {why} नीचे का लिंक सही है, उसे खुद साझा करें।",
   "reason.quantity_mismatch": "मात्रा बुकिंग से अलग है",
+  "reason.quantity_unclear": "कई माल या इकाइयाँ: मात्रा जाँचें",
 }

@@ -24,7 +24,7 @@ from typing import ClassVar
 import httpx
 from PIL import Image, ImageOps
 
-from app.ai.base import Box, PodExtraction, ProviderError
+from app.ai.base import Box, PodExtraction, PodItem, ProviderError
 
 log = logging.getLogger("cargoone.ai")
 
@@ -60,7 +60,9 @@ Answer ONLY with JSON. Rules:
 - stamp_present: a company / consignee rubber stamp or seal is on the receiving block. stamp_box: [x1,y1,x2,y2] around it on the photo, each 0 to 1000 (left, top, right, bottom). null if none.
 - signature_present: true if there is ANY handwritten pen mark by the receiver in the receiving block: a signature, initials, a squiggle or a scribble, even if you cannot read it or it looks crude. Printed text and the round stamp are not signatures. signature_box: the same kind of box around it. null if none.
 - delivery_date: date of receipt as yyyy-mm-dd, null if not visible. date_lines: ids of its lines.
-- quantity_received: as written (e.g. "54 cartons"), null if not visible. quantity_lines: ids.
+- quantity_received: what the receiver wrote as received, as written (e.g. "54 cartons"; for several goods "Cement 2.5 t, Sand 1.5 t"), null if not visible. quantity_lines: ids. Not the booked quantity printed above.
+- items: when the receiver wrote more than one good, one {{"name","quantity","unit"}} per line (quantity a number, unit as written); empty list otherwise.
+- total_quantity: the total the receiver wrote (e.g. "4 t") only if one is written, else null. Never add lines up yourself.
 - remarks: any handwritten remark, word for word, null if none. remarks_lines: ids.
 - shortage_or_damage: true if the remarks mention shortage, short, damage, leakage, broken, wet, torn (or the Hindi/Marathi words).
 - confidence: 0 to 1 for the whole answer; lower when handwriting is unclear.
@@ -77,6 +79,9 @@ SCHEMA = {
         "signature_present": {"type": "boolean"}, "signature_box": {"type": ["array", "null"], "items": {"type": "number"}},
         "delivery_date": {"type": ["string", "null"]}, "date_lines": {"type": "array", "items": {"type": "integer"}},
         "quantity_received": {"type": ["string", "null"]}, "quantity_lines": {"type": "array", "items": {"type": "integer"}},
+        "items": {"type": "array", "items": {"type": "object", "properties": {
+            "name": {"type": ["string", "null"]}, "quantity": {"type": ["number", "null"]}, "unit": {"type": ["string", "null"]}}}},
+        "total_quantity": {"type": ["string", "null"]},
         "remarks": {"type": ["string", "null"]}, "remarks_lines": {"type": "array", "items": {"type": "integer"}},
         "shortage_or_damage": {"type": "boolean"}, "confidence": {"type": "number"},
         "issues": {"type": "array", "items": {"type": "string"}},
@@ -356,6 +361,21 @@ def remarks_from_text(lines: list[Line]) -> list[Line]:
     return found[:3]
 
 
+def _text(v: object) -> str | None:
+    return v.strip()[:60] or None if isinstance(v, str) else None
+
+
+def _items(raw: object) -> list[PodItem]:
+    """The model's per-good lines, kept only when they are well formed: a bad line is dropped, never guessed."""
+    out: list[PodItem] = []
+    for it in raw[:12] if isinstance(raw, list) else []:
+        if not isinstance(it, dict):
+            continue
+        q = it.get("quantity")
+        out.append(PodItem(name=_text(it.get("name")), quantity=float(q) if isinstance(q, (int, float)) and not isinstance(q, bool) and q >= 0 else None, unit=_text(it.get("unit"))))
+    return out
+
+
 def merge(raw: dict, lines: list[Line], expected_lr_no: str) -> PodExtraction:
     by_id = {ln.id: ln for ln in lines}
     boxes: list[Box] = []
@@ -427,7 +447,7 @@ def merge(raw: dict, lines: list[Line], expected_lr_no: str) -> PodExtraction:
         issues.append("little text found")
     return PodExtraction(
         is_document=bool(raw.get("is_document")), readable=readable, lr_no=lr_no, consignee_stamp_present=stamp,
-        signature_present=sign, delivery_date=delivery, quantity_received=qty, remarks=remarks,
+        signature_present=sign, delivery_date=delivery, quantity_received=qty, items=_items(raw.get("items")), total_quantity=_text(raw.get("total_quantity")), remarks=remarks,
         shortage_or_damage=shortage, confidence=conf, issues=issues, boxes=boxes,
     )
 

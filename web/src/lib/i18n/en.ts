@@ -143,6 +143,7 @@ export const en = {
   "land.nav.lang": "Languages", "land.route.pickup": "Pickup", "land.route.delivery": "Delivery", "land.c.pickup": "Pickup city", "land.c.delivery": "Delivery city", "land.c.material": "Material", "land.c.weight": "Weight", "land.c.date": "Date", "land.c.accepted": "Your request is accepted", "land.c.follow": "Follow the truck", "land.c.receipt": "Open the receipt", "land.why.sub": "One private page for each request. It follows your load from the first form to the signed receipt, so nobody has to call to ask.",
   "ul.name": "Driver's name (optional)", "ul.smsOk": "SMS sent to the driver.", "ul.smsSim": "SMS queued to the driver (simulated in this build, nothing is really sent). Share the link yourself.", "ul.smsFail": "The SMS did not go: {why} The link below is good, so share it yourself.",
   "reason.quantity_mismatch": "Quantity differs from the booking",
+  "reason.quantity_unclear": "Several goods or units: check the quantity",
 } as const
 
 export type Key = keyof typeof en

@@ -1,38 +1,55 @@
 # Benchmarking the POD reader on real paper
 
-`docs/benchmark/lr_forms.pdf` has 16 sample Lorry Receipts (fake names and numbers). The top part is typed; the **Receiver's acknowledgement** at the bottom is empty. Print it single-sided on A4, fill each sheet as below, photograph it with a phone, and run every photo through each model.
+`docs/benchmark/lr_forms.pdf` has 22 sample Lorry Receipts, one per page. Each page is the app's own printed LR (the same layout as the PDF the app issues from a trip), with fake names and numbers. The typed part carries the LR number, parties, route, goods, packages and weight. The **receiver's part is empty**: date received, quantity / weight received, remarks, and the stamp and signature boxes. Print single-sided on A4, fill each sheet as below, photograph it with a phone, and run every photo through each model.
 
-Regenerate with `.venv/Scripts/python -m app.devtools.lr_form ../docs/benchmark` from `api/`. `answers.csv` holds the same table plus the expected stamp, signature, date, quantity and remark; the decisions are computed by the app's own rules (`pod/decision.py`), so they stay in step if the rules change.
+**LR numbers** follow the app's format, `LR/<branch>/<financial year>/<serial>` (for example `LR/MH20/26-27/900001`). The serials start at 900001, far above anything the app will issue, so a test sheet cannot be mistaken for a real one. To run a photo through the app itself, create a trip whose LR number is the one on the sheet; to run it through the evaluation harness, pass that number as the expected LR.
+
+Regenerate with `.venv/Scripts/python -m app.devtools.lr_form ../docs/benchmark` from `api/`. `answers.csv` holds the same table plus the expected stamp, signature, date, quantity text, line items, total and remark. The decisions in it are computed by the app's own rules (`pod/decision.py`), so they stay in step if the rules change.
+
+## Where the received weight is written
+In the **goods table** on the LR. It has one row per good (number, goods, booked packages, booked weight) and a bold **RECEIVED** column with an empty cell beside every row, plus a **Total** row whose received cell is for the total. The receiver writes what actually arrived against each good, then the total. **Remarks** is only for shortage or damage. The reader returns the whole text, each row (name, number, unit) and the written total; the app adds the rows up and compares them with the booked total weight (or package count).
 
 ## How to fill
-- Use a real rubber stamp if you have one; otherwise draw a box and write "Om Sai Building Supplies - Received" in blue ink. Stamp inside the **Consignee's stamp** box.
-- Sign with a different person or a different pen on a few sheets (blue and black ink, one scribbled signature).
-- "Today" means today's date in any style you like (`8/11/26`, `08-11-2026`, `८.११.२६`). Vary it.
-- Sheets S05 (wrong LR): the trip's LR is `BM-1099`, but the paper says `BM-1005`.
+- Use a real rubber stamp if you have one; otherwise draw a box and write "Om Sai Building Supplies - Received" in blue ink. Stamp inside the **Consignee signature, name and stamp** box.
+- Sign with a different person or pen on a few sheets (blue and black ink, one scribbled signature).
+- "Date" means today's date in any style you like (`8/11/26`, `08-11-2026`, `८.११.२६`). Vary it.
+- The goods are booked with one total: 2.5 t / 50 bags (S01 to S16), 18 t / 6 coils (S09, S10), 4 t for two goods (S17 to S21: PPC Cement 2.5 t and River Sand 1.5 t), and 50 packages / 4 t for mixed units (S22: Cement 50 packages 2.5 t, Sand 1.5 t).
 
-| Sheet | Fill in by hand | App should |
-|---|---|---|
-| S01 | Stamp, sign, write today's date, write 50 bags. No remark. | verified |
-| S02 | Sign and write date + 50 bags. Do NOT stamp. | retake requested (stamp missing) |
-| S03 | Stamp and write date + 50 bags. Do NOT sign. | retake requested (signature missing) |
-| S04 | Fill nothing at all in the receiver part. | retake requested (stamp missing signature missing) |
-| S05 | Fill everything correctly (as S01). The trip's LR is BM-1099, but this paper says another number. | retake requested (lr mismatch) |
-| S06 | Stamp, sign, date. Quantity 44 bags. Remark: Short 6 bags | needs review (shortage or damage quantity mismatch) |
-| S07 | Stamp, sign, date. Quantity 50 bags. Remark: 2 bags torn / damaged | needs review (shortage or damage) |
-| S08 | Stamp, sign, date. Quantity 40 bags. NO remark. | needs review (quantity mismatch) |
-| S09 | Stamp, sign, date. Quantity 18000 kg. No remark. | verified |
-| S10 | Stamp, sign, date. Quantity 16000 kg. No remark. | needs review (quantity mismatch) |
-| S11 | Stamp, sign, quantity 50 bags. Leave the date blank. | verified |
-| S12 | Stamp, sign, date, 50 bags. Remark in Hindi: 3 बोरी फटी हुई है | needs review (shortage or damage) |
-| S13 | Stamp, sign, date, 50 bags. Remark in Marathi: २ गोणी ओल्या झाल्या | needs review (shortage or damage) |
-| S14 | Press the stamp lightly so it comes out pale, and let it run off the edge of the box. Sign, date, 50 bags. | verified * |
-| S15 | Stamp over your signature AND over the date and quantity lines. Left-handed scribble is fine. 50 bags. | verified * |
-| S16 | Stamp, sign, date, 50 bags. Remark: Received OK, thanks | verified |
+| Sheet | Case | Write and do by hand | The app should |
+|---|---|---|---|
+| S01 | Clean, everything right | Write the date, 50 bags, then stamp and sign. | verified |
+| S02 | No stamp | Write the date and 50 bags, sign. Do NOT stamp. | retake requested (stamp missing) |
+| S03 | No signature | Write the date and 50 bags, stamp. Do NOT sign. | retake requested (signature missing) |
+| S04 | Receiver part left empty | Fill nothing at all in the receiver part. | retake requested (stamp missing signature missing) |
+| S05 | Wrong LR number | Fill everything correctly (as S01). The trip's LR ends 900099, but this paper carries another number. | retake requested (lr mismatch) |
+| S06 | Shortage remark and short count | Date, quantity 44 bags, remark: Short 6 bags. Stamp, sign. | needs review (shortage or damage quantity mismatch) |
+| S07 | Damage remark, full count | Date, quantity 50 bags, remark: 2 bags torn / damaged. Stamp, sign. | needs review (shortage or damage) |
+| S08 | Short count, nobody wrote a remark | Date, quantity 40 bags, NO remark. Stamp, sign. | needs review (quantity mismatch) |
+| S09 | Weighed load, kg matches | Date, quantity 18000 kg. Stamp, sign. | verified |
+| S10 | Weighed load, kg is much less | Date, quantity 16000 kg, no remark. Stamp, sign. | needs review (quantity mismatch) |
+| S11 | Date left blank | Quantity 50 bags. Stamp, sign. Leave the date blank. | verified |
+| S12 | Remark in Hindi handwriting | Date, 50 bags, remark in Hindi: 3 बोरी फटी हुई है. Stamp, sign. | needs review (shortage or damage) |
+| S13 | Remark in Marathi handwriting | Date, 50 bags, remark in Marathi: २ गोणी ओल्या झाल्या. Stamp, sign. | needs review (shortage or damage) |
+| S14 | Faint, half-cut stamp | Date, 50 bags, sign. Press the stamp lightly so it is pale, and let it run off the edge of its box. | verified * |
+| S15 | Messy: stamp over the signature and date | Date, 50 bags, sign, then stamp OVER the signature, the date and the quantity. | verified * |
+| S16 | A remark that is NOT a problem | Date, 50 bags, remark: Received OK, thanks. Stamp, sign. | verified |
+| S17 | Two goods, each weight written, total matches | Date. Received column: row 1 write 2.5 t, row 2 write 1.5 t, Total received 4 t. Stamp, sign. | verified |
+| S18 | Two goods, one short, honest total | Date. Received: row 1 2.5 t, row 2 1.0 t, total 3.5 t. No remark. Stamp, sign. | needs review (quantity mismatch) |
+| S19 | Two goods, one short, with a remark | Date. Received: row 1 2.5 t, row 2 1.0 t, total 3.5 t. Remark: Sand short 0.5 t. Stamp, sign. | needs review (shortage or damage quantity mismatch) |
+| S20 | Two goods, lines do not add up to the total | Date. Received: row 1 2.5 t, row 2 1.5 t, total 5 t (a wrong total, as a rushed receiver might write). Stamp, sign. | needs review (quantity unclear) |
+| S21 | Two goods in kilograms | Date. Received: row 1 2500 kg, row 2 1500 kg, total 4000 kg. Stamp, sign. | verified |
+| S22 | Two goods in different units | Date. Received: row 1 50 bags, row 2 1.5 t, leave the total blank. Stamp, sign. | needs review (quantity unclear) * |
 
 \* A person could reasonably decide either way; the expectation is a recommendation, so read those results by eye.
 
+## Several goods
+The booking holds one total, not a list per good. The app compares the received lines, added up, with it:
+- All lines in weight units (t, kg, quintal): the tonnes are added and compared with the booked weight (5% either way is fine).
+- All lines counts (bags, cartons): the counts are added and compared with the booked packages.
+- Lines that do not add up to the written total, mixed units, an unreadable line, or "48/50": **quantity unclear**, so a person looks at the photo. It is never a retake.
+
 ## Photo conditions (use sheet S01, or any verified sheet)
-Photograph S01 each of these ways. The first four should still verify; the last four should ask for a retake or send it to a person.
+Photograph S01 each of these ways. The first three should still verify; the rest should ask for a retake or go to a person.
 
 | Photo | Expected |
 |---|---|
@@ -46,4 +63,4 @@ Photograph S01 each of these ways. The first four should still verify; the last 
 | Something that is not a POD (a table, a wall) | retake (not a POD) |
 
 ## What to record for each photo
-The model, what it read for each field against `answers.csv`, the decision the app gave, the time taken, and the cost. The three numbers that matter most are in `docs/06-ai-evaluation.md`: unsafe errors must be zero, then needless retakes, then field accuracy.
+The model, what it read for each field against `answers.csv`, the decision the app gave, the time taken, and the cost. The measures that matter most are in `docs/06-ai-evaluation.md`: unsafe errors must be zero, then needless retakes, then field accuracy.

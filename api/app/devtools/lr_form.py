@@ -1,231 +1,157 @@
 """Printable Lorry Receipt sheets for benchmarking the POD reader on real paper.
 
-Prints one A4 page per test case. The consignor part is typed (like a real LR); the receiver's part at the bottom
-is left empty on purpose: a person fills it by hand (stamp, signature, date, quantity, remark) as the guide says,
-then photographs the sheet. `answers.csv` holds what a perfect reader should find and what the app should then do.
+Each page is the app's own LR (`app.lrdoc`), numbered like the app numbers them (LR/<branch>/<financial year>/<serial>), with the
+receiver's part left empty: a person fills it by hand (quantity or weight received, remarks, stamp, signature) as the guide says, then
+photographs the sheet. The serials start at 900001, far above anything the app will issue, so a test sheet can never be mistaken for a real LR.
+`answers.csv` holds what a perfect reader should find and what the app should then do.
 ALL NAMES, NUMBERS AND GSTINS ARE FAKE.
 
-Run: .venv/Scripts/python -m app.devtools.lr_form ../docs/benchmark
+Run (from api/): .venv/Scripts/python -m app.devtools.lr_form ../docs/benchmark
 """
 import csv
 import sys
 from dataclasses import dataclass
+from datetime import UTC, datetime
+from decimal import Decimal
 from pathlib import Path
 
 from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen.canvas import Canvas
+from reportlab.lib.units import mm
+from reportlab.platypus import PageBreak, SimpleDocTemplate
 
-from app.ai.base import PodExtraction
+from app.ai.base import PodExtraction, PodItem
+from app.billing.periods import financial_year
+from app.config import get_settings
+from app.lr import lr_format
+from app.lrdoc import LrData, LrItem, lr_story
 from app.pod.decision import decide
 
-W, H = A4
-M = 26  # page margin
-INK = (0.1, 0.1, 0.1)
-GRID = (0.45, 0.45, 0.45)
+FIRST_SERIAL = 900001
+WRONG_TRIP_SERIAL = 900099  # the trip's number on the "wrong LR" sheet, which is not the number printed on the paper
+ISSUED = datetime(2026, 11, 3, 9, 30, tzinfo=UTC)
+
+
+@dataclass(frozen=True)
+class Booking:
+    material: str
+    packages: int | None
+    weight_tonnes: float
+    origin: str
+    destination: str
+    rows: tuple[tuple[str, int | None, float], ...] = ()  # (good, packages, tonnes) when the load has several goods
+
+
+BOOKINGS = {
+    "bags": Booking("PPC Cement 50 kg bags", 50, 2.5, "Chhatrapati Sambhajinagar", "Ahilyanagar"),
+    "coils": Booking("MS Coils (HR)", 6, 18.0, "Jalna", "Pune - Chakan"),
+    "two": Booking("PPC Cement + River Sand", None, 4.0, "Chhatrapati Sambhajinagar", "Beed", (("PPC Cement", None, 2.5), ("River Sand", None, 1.5))),
+    "mixed": Booking("PPC Cement + River Sand", 50, 4.0, "Chhatrapati Sambhajinagar", "Beed", (("PPC Cement", 50, 2.5), ("River Sand", None, 1.5))),
+}
 
 
 @dataclass(frozen=True)
 class Sheet:
     id: str
     title: str
-    do: str  # what the person fills in by hand
+    do: str  # what the person writes and does by hand
     stamp: bool = True
     sign: bool = True
-    date: str | None = "today"  # what to write; None = leave blank
-    qty: str | None = "match"  # "match" = the booked quantity; None = leave blank; or the exact text
+    date: bool = True  # False = leave the date blank
+    cargo: str = "bags"
+    qty: str | None = "50 bags"  # the quantity text as written; None = left blank
+    items: tuple[tuple[str, float, str], ...] = ()  # the same, line by line, when several goods
+    total: str | None = None  # the written total, when there is one
     remark: str | None = None
-    printed_lr: str | None = None  # defaults to BM-10<nn>
-    expected_lr: str | None = None  # the trip's LR when it differs from the sheet (wrong-LR case)
-    cargo: str = "bags"  # "bags" (counted) or "coils" (weighed)
-    judgement: bool = False  # a human could reasonably decide either way; the expectation is a recommendation
-    flags_shortage: bool = False  # does the remark mean shortage or damage
+    wrong_lr: bool = False  # the paper carries a different number from the trip's
+    shortage_remark: bool = False
+    judgement: bool = False  # a person could reasonably decide either way: the expectation is a recommendation
 
-
-CARGO = {
-    "bags": {"goods": "PPC Cement 50 kg bags", "packages": 50, "unit": "Bags", "weight": 2.5, "invoice": "INV/26-27/0412", "route": ("Chhatrapati Sambhajinagar", "Ahilyanagar")},
-    "coils": {"goods": "MS Coils (HR)", "packages": 6, "unit": "Coils", "weight": 18.0, "invoice": "INV/26-27/0977", "route": ("Jalna", "Pune - Chakan")},
-}
 
 SHEETS = [
-    Sheet("S01", "Clean, everything right", "Stamp, sign, write today's date, write 50 bags. No remark.", stamp=True, sign=True),
-    Sheet("S02", "No stamp", "Sign and write date + 50 bags. Do NOT stamp.", stamp=False),
-    Sheet("S03", "No signature", "Stamp and write date + 50 bags. Do NOT sign.", sign=False),
-    Sheet("S04", "Receiver part left empty", "Fill nothing at all in the receiver part.", stamp=False, sign=False, date=None, qty=None),
-    Sheet("S05", "Wrong LR number", "Fill everything correctly (as S01). The trip's LR is BM-1099, but this paper says another number.", expected_lr="BM-1099"),
-    Sheet("S06", "Shortage remark and short count", "Stamp, sign, date. Quantity 44 bags. Remark: Short 6 bags", qty="44 bags", remark="Short 6 bags", flags_shortage=True),
-    Sheet("S07", "Damage remark, full count", "Stamp, sign, date. Quantity 50 bags. Remark: 2 bags torn / damaged", remark="2 bags torn / damaged", flags_shortage=True),
-    Sheet("S08", "Short count, nobody wrote a remark", "Stamp, sign, date. Quantity 40 bags. NO remark.", qty="40 bags"),
-    Sheet("S09", "Weighed load, kg matches", "Stamp, sign, date. Quantity 18000 kg. No remark.", cargo="coils", qty="18000 kg"),
-    Sheet("S10", "Weighed load, kg is much less", "Stamp, sign, date. Quantity 16000 kg. No remark.", cargo="coils", qty="16000 kg"),
-    Sheet("S11", "Date left blank", "Stamp, sign, quantity 50 bags. Leave the date blank.", date=None),
-    Sheet("S12", "Remark in Hindi handwriting", "Stamp, sign, date, 50 bags. Remark in Hindi: 3 बोरी फटी हुई है", remark="3 बोरी फटी हुई है", flags_shortage=True),
-    Sheet("S13", "Remark in Marathi handwriting", "Stamp, sign, date, 50 bags. Remark in Marathi: २ गोणी ओल्या झाल्या", remark="२ गोणी ओल्या झाल्या", flags_shortage=True),
-    Sheet("S14", "Faint, half-cut stamp", "Press the stamp lightly so it comes out pale, and let it run off the edge of the box. Sign, date, 50 bags.", judgement=True),
-    Sheet("S15", "Messy: stamp over the signature and date", "Stamp over your signature AND over the date and quantity lines. Left-handed scribble is fine. 50 bags.", judgement=True),
-    Sheet("S16", "A remark that is NOT a problem", "Stamp, sign, date, 50 bags. Remark: Received OK, thanks", remark="Received OK, thanks"),
+    Sheet("S01", "Clean, everything right", "Write the date, 50 bags, then stamp and sign."),
+    Sheet("S02", "No stamp", "Write the date and 50 bags, sign. Do NOT stamp.", stamp=False),
+    Sheet("S03", "No signature", "Write the date and 50 bags, stamp. Do NOT sign.", sign=False),
+    Sheet("S04", "Receiver part left empty", "Fill nothing at all in the receiver part.", stamp=False, sign=False, date=False, qty=None),
+    Sheet("S05", "Wrong LR number", "Fill everything correctly (as S01). The trip's LR ends 900099, but this paper carries another number.", wrong_lr=True),
+    Sheet("S06", "Shortage remark and short count", "Date, quantity 44 bags, remark: Short 6 bags. Stamp, sign.", qty="44 bags", remark="Short 6 bags", shortage_remark=True),
+    Sheet("S07", "Damage remark, full count", "Date, quantity 50 bags, remark: 2 bags torn / damaged. Stamp, sign.", remark="2 bags torn / damaged", shortage_remark=True),
+    Sheet("S08", "Short count, nobody wrote a remark", "Date, quantity 40 bags, NO remark. Stamp, sign.", qty="40 bags"),
+    Sheet("S09", "Weighed load, kg matches", "Date, quantity 18000 kg. Stamp, sign.", cargo="coils", qty="18000 kg"),
+    Sheet("S10", "Weighed load, kg is much less", "Date, quantity 16000 kg, no remark. Stamp, sign.", cargo="coils", qty="16000 kg"),
+    Sheet("S11", "Date left blank", "Quantity 50 bags. Stamp, sign. Leave the date blank.", date=False),
+    Sheet("S12", "Remark in Hindi handwriting", "Date, 50 bags, remark in Hindi: 3 बोरी फटी हुई है. Stamp, sign.", remark="3 बोरी फटी हुई है", shortage_remark=True),
+    Sheet("S13", "Remark in Marathi handwriting", "Date, 50 bags, remark in Marathi: २ गोणी ओल्या झाल्या. Stamp, sign.", remark="२ गोणी ओल्या झाल्या", shortage_remark=True),
+    Sheet("S14", "Faint, half-cut stamp", "Date, 50 bags, sign. Press the stamp lightly so it is pale, and let it run off the edge of its box.", judgement=True),
+    Sheet("S15", "Messy: stamp over the signature and date", "Date, 50 bags, sign, then stamp OVER the signature, the date and the quantity.", judgement=True),
+    Sheet("S16", "A remark that is NOT a problem", "Date, 50 bags, remark: Received OK, thanks. Stamp, sign.", remark="Received OK, thanks"),
+    Sheet("S17", "Two goods, each weight written, total matches", "Date. Received column: row 1 write 2.5 t, row 2 write 1.5 t, Total received 4 t. Stamp, sign.", cargo="two",
+          qty="Cement 2.5 t, Sand 1.5 t, Total 4 t", items=(("Cement", 2.5, "t"), ("Sand", 1.5, "t")), total="4 t"),
+    Sheet("S18", "Two goods, one short, honest total", "Date. Received: row 1 2.5 t, row 2 1.0 t, total 3.5 t. No remark. Stamp, sign.", cargo="two",
+          qty="Cement 2.5 t, Sand 1.0 t, Total 3.5 t", items=(("Cement", 2.5, "t"), ("Sand", 1.0, "t")), total="3.5 t"),
+    Sheet("S19", "Two goods, one short, with a remark", "Date. Received: row 1 2.5 t, row 2 1.0 t, total 3.5 t. Remark: Sand short 0.5 t. Stamp, sign.", cargo="two",
+          qty="Cement 2.5 t, Sand 1.0 t, Total 3.5 t", items=(("Cement", 2.5, "t"), ("Sand", 1.0, "t")), total="3.5 t", remark="Sand short 0.5 t", shortage_remark=True),
+    Sheet("S20", "Two goods, lines do not add up to the total", "Date. Received: row 1 2.5 t, row 2 1.5 t, total 5 t (a wrong total, as a rushed receiver might write). Stamp, sign.", cargo="two",
+          qty="Cement 2.5 t, Sand 1.5 t, Total 5 t", items=(("Cement", 2.5, "t"), ("Sand", 1.5, "t")), total="5 t"),
+    Sheet("S21", "Two goods in kilograms", "Date. Received: row 1 2500 kg, row 2 1500 kg, total 4000 kg. Stamp, sign.", cargo="two",
+          qty="Cement 2500 kg, Sand 1500 kg, Total 4000 kg", items=(("Cement", 2500, "kg"), ("Sand", 1500, "kg")), total="4000 kg"),
+    Sheet("S22", "Two goods in different units", "Date. Received: row 1 50 bags, row 2 1.5 t, leave the total blank. Stamp, sign.", cargo="mixed",
+          qty="Cement 50 bags, Sand 1.5 t", items=(("Cement", 50, "bags"), ("Sand", 1.5, "t")), judgement=True),
 ]
 
 
-def booked(sh: Sheet) -> dict:
-    return CARGO[sh.cargo]
+def _lr(serial: int) -> str:
+    return lr_format(get_settings().default_branch_code.upper(), financial_year(ISSUED), serial)
 
 
-def lr_of(i: int, sh: Sheet) -> str:
-    return sh.printed_lr or f"BM-{1000 + i + 1}"
+def trips_lr(i: int, sh: Sheet) -> str:
+    return _lr(WRONG_TRIP_SERIAL if sh.wrong_lr else FIRST_SERIAL + i)
 
 
-def qty_text(sh: Sheet) -> str | None:
-    if sh.qty == "match":
-        return f"{booked(sh)['packages']} {booked(sh)['unit'].lower()}"
-    return sh.qty
+def paper_lr(i: int, sh: Sheet) -> str:
+    return _lr(FIRST_SERIAL + 100 + i if sh.wrong_lr else FIRST_SERIAL + i)
 
 
-def expected_extraction(i: int, sh: Sheet) -> PodExtraction:
+def expected_extraction(sh: Sheet, lr: str) -> PodExtraction:
     return PodExtraction(
-        is_document=True, readable=True, lr_no=lr_of(i, sh), consignee_stamp_present=sh.stamp, signature_present=sh.sign,
-        delivery_date=None if sh.date is None else "(today)", quantity_received=qty_text(sh), remarks=sh.remark,
-        shortage_or_damage=sh.flags_shortage, confidence=0.95,
+        is_document=True, readable=True, lr_no=lr, consignee_stamp_present=sh.stamp, signature_present=sh.sign,
+        delivery_date="(today)" if sh.date else None, quantity_received=sh.qty, total_quantity=sh.total,
+        items=[PodItem(name=n, quantity=q, unit=u) for n, q, u in sh.items], remarks=sh.remark, shortage_or_damage=sh.shortage_remark, confidence=0.95,
     )
 
 
 def verdict(i: int, sh: Sheet):
-    b = booked(sh)
-    return decide(expected_extraction(i, sh), expected_lr_no=sh.expected_lr or lr_of(i, sh), retake_count=0,
-                  expected_packages=b["packages"], expected_weight_tonnes=b["weight"])
+    b = BOOKINGS[sh.cargo]
+    return decide(expected_extraction(sh, paper_lr(i, sh)), expected_lr_no=trips_lr(i, sh), retake_count=0,
+                  expected_packages=b.packages, expected_weight_tonnes=b.weight_tonnes)
 
 
-# --- drawing -----------------------------------------------------------------------------------------------
-
-def box(c: Canvas, x: float, y: float, w: float, h: float, label: str = "", value: str = "", *, big: bool = False) -> None:
-    c.setStrokeColorRGB(*GRID)
-    c.setLineWidth(0.8)
-    c.rect(x, y, w, h)
-    if label:
-        c.setFont("Helvetica", 6.8)
-        c.setFillColorRGB(0.35, 0.35, 0.35)
-        c.drawString(x + 4, y + h - 9, label.upper())
-    if value:
-        c.setFillColorRGB(*INK)
-        c.setFont("Helvetica-Bold" if big else "Helvetica", 15 if big else 10.5)
-        c.drawString(x + 5, y + 6 if h < 30 else y + h / 2 - 8, value)
-
-
-def page(c: Canvas, i: int, sh: Sheet) -> None:
-    b = booked(sh)
-    lr = lr_of(i, sh)
-    origin, dest = b["route"]
-    c.setStrokeColorRGB(*INK)
-    c.setLineWidth(1.6)
-    c.rect(M, M, W - 2 * M, H - 2 * M)
-    x0, wid = M + 6, W - 2 * M - 12
-
-    # header
-    c.setFillColorRGB(*INK)
-    c.setFont("Helvetica-Bold", 22)
-    c.drawString(x0 + 2, H - M - 32, "DEMO ROADLINES")
-    c.setFont("Helvetica", 8)
-    c.drawString(x0 + 2, H - M - 45, "Full Truck Load Contractors  |  Fleet Owners & Transport Agents")
-    c.drawString(x0 + 2, H - M - 56, "Plot 14, MIDC Waluj, Chhatrapati Sambhajinagar 431136")
-    c.drawString(x0 + 2, H - M - 67, "Ph 0240-0000000  |  GSTIN 27AAAAA0000A1Z5 (sample)")
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(x0 + 2, H - M - 85, "LORRY RECEIPT / CONSIGNMENT NOTE")
-    c.setFont("Helvetica", 8)
-    c.drawString(x0 + 2, H - M - 97, "CONSIGNEE'S COPY (to be returned with the signed receipt)")
-
-    top = H - M - 108
-    # LR number
-    box(c, x0 + wid - 190, H - M - 100, 190, 44, "LR No.", lr, big=True)
-
-    # consignment details
-    y = top - 36
-    rows = [
-        [("Date of LR", "03-11-2026"), ("Vehicle no.", "MH 20 GC 4821"), ("Driver", "Ramesh Yadav")],
-        [("From", origin), ("To", dest), ("Freight", "To be billed")],
-    ]
-    for row in rows:
-        cw = wid / 3
-        for k, (lab, val) in enumerate(row):
-            box(c, x0 + k * cw, y, cw, 32, lab, val)
-        y -= 32
-    box(c, x0, y - 32, wid / 2, 32, "Consignor (sender)", "Shree Samarth Traders, Waluj")
-    box(c, x0 + wid / 2, y - 32, wid / 2, 32, "Consignee (receiver)", "Om Sai Building Supplies")
-    y -= 32
-    box(c, x0, y - 32, wid / 2, 32, "Invoice no.", b["invoice"])
-    box(c, x0 + wid / 2, y - 32, wid / 2, 32, "E-way bill no.", "281 0 4417 2209")
-    y -= 32
-
-    # goods table
-    cols = [("Packages", 70), ("Kind", 70), ("Description of goods", wid - 70 - 70 - 90 - 90), ("Actual weight", 90), ("Said to contain", 90)]
-    x = x0
-    c.setFont("Helvetica-Bold", 8)
-    for name, cw in cols:
-        box(c, x, y - 18, cw, 18)
-        c.setFillColorRGB(*INK)
-        c.setFont("Helvetica-Bold", 8)
-        c.drawString(x + 4, y - 12, name.upper())
-        x += cw
-    y -= 18
-    vals = [str(b["packages"]), b["unit"], b["goods"], f"{b['weight']:.2f} t", "As per invoice"]
-    x = x0
-    for (name, cw), v in zip(cols, vals):
-        box(c, x, y - 34, cw, 34)
-        c.setFont("Helvetica-Bold", 11)
-        c.setFillColorRGB(*INK)
-        c.drawString(x + 5, y - 22, v)
-        x += cw
-    y -= 34
-    c.setFont("Helvetica", 6.5)
-    c.setFillColorRGB(0.35, 0.35, 0.35)
-    c.drawString(x0 + 2, y - 10, "Goods are carried at owner's risk. Subject to Chhatrapati Sambhajinagar jurisdiction. Please check the goods before signing.")
-    y -= 20
-
-    # receiver's acknowledgement (left empty for hand filling)
-    c.setStrokeColorRGB(*INK)
-    c.setLineWidth(1.4)
-    c.line(x0, y, x0 + wid, y)
-    c.setFillColorRGB(*INK)
-    c.setFont("Helvetica-Bold", 11)
-    c.drawString(x0 + 2, y - 15, "RECEIVER'S ACKNOWLEDGEMENT")
-    c.setFont("Helvetica", 8.5)
-    c.drawString(x0 + 2, y - 28, "Received the above goods in good order and condition, except as noted below.")
-    y -= 36
-    half = wid * 0.54
-    rowh = 58
-    for lab in ("Date received", "Quantity received"):
-        box(c, x0, y - rowh, half, rowh, lab)
-        y -= rowh
-    box(c, x0, y - 3 * rowh, half, 3 * rowh, "Remarks (shortage / damage, if any)")
-    c.setStrokeColorRGB(0.8, 0.8, 0.8)
-    c.setLineWidth(0.6)
-    for k in range(1, 3):
-        c.line(x0 + 6, y - k * rowh, x0 + half - 6, y - k * rowh)
-    # stamp and signature boxes to the right, as tall as the three boxes on the left together
-    rx, rw = x0 + half + 6, wid - half - 6
-    top_y = y + 2 * rowh
-    box(c, rx, top_y - 170, rw, 170, "Consignee's stamp")
-    box(c, rx, top_y - 5 * rowh, rw, 5 * rowh - 170, "Receiver's name and signature")
-
-    c.setFont("Helvetica", 6.5)
-    c.setFillColorRGB(0.35, 0.35, 0.35)
-    c.drawString(x0 + 2, M + 8, "Transporter's copy: LR book  |  Consignor's copy  |  Consignee's copy (this)")
+def data(i: int, sh: Sheet) -> LrData:
+    b = BOOKINGS[sh.cargo]
+    return LrData(company="Demo Roadlines", lr_no=paper_lr(i, sh), trip_code=f"TRP-B{i + 1:03d}", issued_at=ISSUED, branch=get_settings().default_branch_code.upper(),
+                  origin=b.origin, destination=b.destination, consignor="Shree Samarth Traders, Waluj", consignee="Om Sai Building Supplies",
+                  vehicle="MH20 GC 4821", driver="Ramesh Yadav", driver_phone="9876500000", material=b.material, packages=b.packages,
+                  weight_tonnes=Decimal(str(b.weight_tonnes)), eway_bill_no="281044172209", planned_start=None,
+                  items=[LrItem(n, p, Decimal(str(w))) for n, p, w in b.rows] or None)
 
 
 def build(out: Path) -> None:
     out.mkdir(parents=True, exist_ok=True)
-    c = Canvas(str(out / "lr_forms.pdf"), pagesize=A4)
-    c.setTitle("Lorry Receipt benchmark sheets (sample data)")
+    doc = SimpleDocTemplate(str(out / "lr_forms.pdf"), pagesize=A4, leftMargin=16 * mm, rightMargin=16 * mm, topMargin=14 * mm, bottomMargin=12 * mm,
+                            title="Lorry Receipt benchmark sheets (sample data)")
+    story: list = []
     for i, sh in enumerate(SHEETS):
-        page(c, i, sh)
-        c.showPage()
-    c.save()
+        story += [*lr_story(data(i, sh)), PageBreak()]
+    doc.build(story[:-1])
     with open(out / "answers.csv", "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["sheet", "case", "lr_on_paper", "trips_expected_lr", "booked", "write_by_hand", "expected_stamp", "expected_signature",
-                    "expected_date", "expected_quantity", "expected_remark", "expected_decision", "expected_reasons", "judgement_call"])
+                    "expected_date", "expected_quantity_text", "expected_items", "expected_total", "expected_remark", "expected_decision",
+                    "expected_reasons", "judgement_call"])
         for i, sh in enumerate(SHEETS):
-            b, v = booked(sh), verdict(i, sh)
-            w.writerow([sh.id, sh.title, lr_of(i, sh), sh.expected_lr or lr_of(i, sh), f"{b['packages']} {b['unit'].lower()} / {b['weight']} t",
-                        sh.do, sh.stamp, sh.sign, "blank" if sh.date is None else "today", qty_text(sh) or "blank", sh.remark or "none",
+            b, v = BOOKINGS[sh.cargo], verdict(i, sh)
+            booked = f"{b.packages or '-'} packages / {b.weight_tonnes} t"
+            w.writerow([sh.id, sh.title, paper_lr(i, sh), trips_lr(i, sh), booked, sh.do, sh.stamp, sh.sign, "today" if sh.date else "blank",
+                        sh.qty or "blank", "; ".join(f"{n} {q:g} {u}" for n, q, u in sh.items), sh.total or "", sh.remark or "none",
                         v.decision.value, " ".join(v.reasons), "yes" if sh.judgement else ""])
 
 

@@ -65,6 +65,9 @@ def _gemini_schema() -> dict:
         "consignee_stamp_present": {"type": "BOOLEAN"}, "signature_present": {"type": "BOOLEAN"},
         "delivery_date": {"type": "STRING", "nullable": True},
         "quantity_received": {"type": "STRING", "nullable": True},
+        "items": {"type": "ARRAY", "items": {"type": "OBJECT", "properties": {
+            "name": {"type": "STRING", "nullable": True}, "quantity": {"type": "NUMBER", "nullable": True}, "unit": {"type": "STRING", "nullable": True}}}},
+        "total_quantity": {"type": "STRING", "nullable": True},
         "remarks": {"type": "STRING", "nullable": True},
         "shortage_or_damage": {"type": "BOOLEAN"}, "confidence": {"type": "NUMBER"},
         "issues": {"type": "ARRAY", "items": {"type": "STRING"}},

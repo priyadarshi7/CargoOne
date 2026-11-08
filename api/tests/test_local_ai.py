@@ -229,3 +229,11 @@ async def test_a_stamp_and_signature_without_a_place_are_looked_for_again() -> N
     res = await LocalProvider("", "", 1, ocr=lambda _: LINES, vlm=vlm, locate=locate).extract(png(), "image/jpeg", "LR-88134")
     assert asked == ["stamp", "signature"] and by_field(res)["stamp"].x == pytest.approx(0.48)
     assert "signature" not in by_field(res) and res.signature_present  # present is still the model's call; only the box is missing
+
+
+def test_item_lines_from_the_model_are_kept_only_when_well_formed() -> None:
+    from app.ai.providers.local import _items
+
+    got = _items([{"name": "Cement", "quantity": 2.5, "unit": "t"}, {"name": "Sand", "quantity": "lots", "unit": "t"}, "junk", {"quantity": True}])
+    assert [(i.name, i.quantity, i.unit) for i in got] == [("Cement", 2.5, "t"), ("Sand", None, "t"), (None, None, None)]
+    assert _items(None) == [] and _items("x") == []

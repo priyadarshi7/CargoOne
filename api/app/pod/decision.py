@@ -40,25 +40,76 @@ def _norm(s: str | None) -> str:
     return re.sub(r"[^A-Z0-9]", "", (s or "").upper())
 
 
-_NUM = re.compile(r"\d+(?:[.,]\d+)?")
-_WEIGHT_UNIT = re.compile(r"\b(?:kgs?|kilo\w*|qtl|quintals?|mt|tonnes?|tons?|t)\b|टन|किलो|क्विंटल", re.IGNORECASE)
+_UNIT = r"kgs?|kilo\w*|qtl|quintals?|mt|tonnes?|tons?|t|टन|किलो|क्विंटल"
+_LINE = re.compile(rf"(\d+(?:\.\d+)?)\s*({_UNIT}\b|[^\W\d_]+)?", re.IGNORECASE)
+_WEIGHT_WORD = re.compile(rf"^(?:{_UNIT})$", re.IGNORECASE)
+_TOTAL = re.compile(r"\b(?:grand\s+)?total\b|कुल|एकूण", re.IGNORECASE)
+_RATIO = re.compile(r"\d\s*/\s*\d")
 
 
-def quantity_differs(received: str | None, *, packages: int | None, weight_tonnes: float | None, weight_tolerance: float = 0.05) -> bool:
-    """True only when the receipt clearly states a count or weight that is different from what was booked.
-    Anything that cannot be read as one plain number (a range, two numbers, words only) is not a mismatch: the reviewer still sees the text."""
-    nums = _NUM.findall((received or "").replace(",", "")) if received else []
-    if len(nums) != 1:
-        return False
-    value = float(nums[0])
-    unit = _WEIGHT_UNIT.search(received or "")
-    if unit:
-        if not weight_tonnes:
-            return False
-        word = unit.group(0).lower()
-        tonnes = value / 1000 if word.startswith("k") or word == "किलो" else value / 10 if word in ("qtl", "क्विंटल") or word.startswith("quintal") else value
-        return abs(tonnes - weight_tonnes) > weight_tonnes * weight_tolerance
-    return bool(packages) and value != packages
+def _tonnes(value: float, word: str) -> float:
+    w = word.lower()
+    if w.startswith("k") or w == "किलो":
+        return value / 1000
+    if w in ("qtl", "क्विंटल") or w.startswith("quintal"):
+        return value / 10
+    return value
+
+
+def _line(value: float, unit: str | None) -> tuple[str, float]:
+    """('weight', tonnes) for a weight unit, otherwise ('count', the number): bags, cartons, coils or no unit at all."""
+    if unit and _WEIGHT_WORD.match(unit.strip()):
+        return "weight", _tonnes(value, unit.strip())
+    return "count", value
+
+
+def _from_text(text: str) -> list[tuple[str, float]]:
+    return [_line(float(v), u or None) for v, u in _LINE.findall(re.sub(r"(?<=\d),(?=\d{3}\b)", "", text))]
+
+
+def _reduce(lines: list[tuple[str, float]]) -> tuple[str, float] | None:
+    """One figure for a list of lines: every line a weight (add the tonnes) or every line a count (add the counts). Mixed lists have none."""
+    kinds = {k for k, _ in lines}
+    return (kinds.pop(), sum(v for _, v in lines)) if len(kinds) == 1 else None
+
+
+def _worse(a: float, b: float, tol: float) -> bool:
+    return abs(a - b) > max(b * tol, 1e-9)
+
+
+def quantity_flag(ex: PodExtraction, *, packages: int | None, weight_tonnes: float | None, tol: float = 0.05) -> str | None:
+    """Compares what the receiver wrote with the booking, which holds ONE total (a weight, a package count, or both).
+    - quantity_mismatch: the receipt clearly gives a total that is different from the booked one.
+    - quantity_unclear: several goods or mixed units that cannot be reduced to one comparable figure, or lines that do not add up to the
+      written total. A person looks at the photo; nothing is retaken.
+    Nothing is flagged when nothing was booked to compare with, or when nothing was read."""
+    if not packages and not weight_tonnes:
+        return None
+    lines: list[tuple[str, float]] = [_line(i.quantity, i.unit) for i in ex.items if i.quantity is not None]
+    if len(lines) < len(ex.items):  # a line whose number was not read
+        return "quantity_unclear"
+    stated: tuple[str, float] | None = None
+    text = ex.total_quantity or ex.quantity_received or ""
+    if ex.total_quantity and (nums := _from_text(ex.total_quantity)) and len(nums) == 1:
+        stated = nums[0]
+    elif not lines and text:
+        if _RATIO.search(text):
+            return "quantity_unclear"  # "48/50": which one is the received count?
+        if (m := _TOTAL.search(text)) and (tail := _from_text(text[m.end():])):
+            stated, lines = tail[0], _from_text(text[:m.start()])
+        else:
+            lines = _from_text(text)
+    if stated is None and not lines:
+        return None
+    total = stated or _reduce(lines)
+    if stated and lines and (summed := _reduce(lines)) and summed[0] == stated[0] and _worse(summed[1], stated[1], tol):
+        return "quantity_unclear"  # the lines do not add up to the written total
+    if total is None:
+        return "quantity_unclear"
+    kind, value = total
+    if kind == "weight":
+        return "quantity_mismatch" if weight_tonnes and _worse(value, weight_tonnes, tol) else None
+    return "quantity_mismatch" if packages and value != packages else None
 
 
 def decide(ex: PodExtraction, *, expected_lr_no: str, retake_count: int,
@@ -86,8 +137,8 @@ def decide(ex: PodExtraction, *, expected_lr_no: str, retake_count: int,
     review: list[str] = list(place_reasons or [])  # where the photo was taken is checked by the caller; a person looks when it is off
     if ex.shortage_or_damage:
         review.append("shortage_or_damage")
-    if quantity_differs(ex.quantity_received, packages=expected_packages, weight_tonnes=expected_weight_tonnes):
-        review.append("quantity_mismatch")  # the receipt says a different count or weight than was booked: a person decides if it is a real shortage
+    if flag := quantity_flag(ex, packages=expected_packages, weight_tonnes=expected_weight_tonnes):
+        review.append(flag)  # a different total than booked, or several goods that cannot be compared: a person decides
     if ex.confidence < threshold:
         review.append("low_confidence")
     if review:

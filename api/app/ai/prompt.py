@@ -9,7 +9,11 @@ Return ONLY JSON matching the schema. Rules:
 - consignee_stamp_present: a company / consignee rubber stamp or seal is visible on the receiving block.
 - signature_present: a handwritten signature or initials of the receiver is visible.
 - delivery_date: date of receipt as ISO yyyy-mm-dd, or null if not visible.
-- quantity_received: quantity as written (e.g. "240 bags", "54 cartons"), or null.
+- quantity_received: what the receiver wrote as received (in the RECEIVED column of the goods table, or a quantity line), as written (e.g. "240 bags", "54 cartons", or for several goods
+  "Cement 2.5 t, Sand 1.5 t"), or null. This is the RECEIVED quantity written by the receiver, not the booked quantity printed above.
+- items: when the receiver wrote more than one good, one entry per line: name, quantity (a number) and unit (t, kg, quintal,
+  bags, cartons, as written). Empty when there is only one quantity or none. Do not add the booked/printed quantities.
+- total_quantity: the total the receiver wrote (e.g. "4 t"), only if a total is actually written, else null. Never add up lines yourself.
 - remarks: any handwritten remark verbatim (e.g. "short by 6 cartons"), or null.
 - shortage_or_damage: true if remarks mention shortage, short, damage, damaged, leakage, broken, wet, torn
   (also Hindi/Marathi equivalents such as kam, toot, phoot, nuksan).

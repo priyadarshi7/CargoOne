@@ -1,6 +1,6 @@
 import pytest
 
-from app.ai.base import PodExtraction
+from app.ai.base import PodExtraction, PodItem
 from app.pod.decision import Decision, Voice, decide
 
 LR = "LR-88120"
@@ -74,7 +74,7 @@ def test_a_paper_with_no_delivery_date_is_still_verified_when_everything_else_ch
 
 
 @pytest.mark.parametrize(("got", "differs"), [
-    ("50 bags", False), ("50", False), ("40 bags", True), ("1,200", True), ("50 / 52", False),
+    ("50 bags", False), ("50", False), ("40 bags", True), ("1,200", True),
     ("10 t", False), ("10.3 tonnes", False), ("9 MT", True), ("10000 kg", False), ("8000 kg", True),
 ])
 def test_quantity_is_compared_with_the_booking(got: str, differs: bool) -> None:
@@ -91,3 +91,35 @@ def test_quantity_is_compared_with_the_booking(got: str, differs: bool) -> None:
 def test_quantity_is_not_checked_when_nothing_was_booked_or_nothing_was_read() -> None:
     assert run(ex(quantity_received="40 bags")).decision == Decision.verified
     assert decide(ex(quantity_received=None), expected_lr_no=LR, retake_count=0, expected_packages=50).decision == Decision.verified
+
+
+def multi(items: list[tuple[str, float | None, str]], total: str | None = None, text: str | None = None, **book) -> list[str]:
+    e = ex(items=[PodItem(name=n, quantity=q, unit=u) for n, q, u in items], total_quantity=total, quantity_received=text)
+    return decide(e, expected_lr_no=LR, retake_count=0, **book).reasons
+
+
+def test_several_goods_are_added_up_and_compared_with_the_booked_total() -> None:
+    sand = [("Cement", 2.5, "t"), ("Sand", 1.5, "t")]
+    assert multi(sand, expected_weight_tonnes=4.0) == []
+    assert multi(sand, total="4 t", expected_weight_tonnes=4.0) == []
+    assert multi([("Cement", 2.5, "t"), ("Sand", 1000, "kg")], expected_weight_tonnes=4.0) == ["quantity_mismatch"]  # 3.5 t arrived
+    assert multi([("Cement", 25, "bags"), ("Sand", 25, "bags")], expected_packages=50) == []
+    assert multi([("Cement", 25, "bags"), ("Sand", 20, "bags")], expected_packages=50) == ["quantity_mismatch"]
+
+
+def test_several_goods_that_cannot_be_compared_go_to_a_person_without_a_retake() -> None:
+    assert multi([("Cement", 50, "bags"), ("Sand", 1.5, "t")], expected_packages=50, expected_weight_tonnes=4.0) == ["quantity_unclear"]
+    assert multi([("Cement", 2.5, "t"), ("Sand", 1.5, "t")], total="5 t", expected_weight_tonnes=5.0) == ["quantity_unclear"]  # lines do not add up to the total
+    assert multi([("Cement", 2.5, "t"), ("Sand", None, "t")], expected_weight_tonnes=4.0) == ["quantity_unclear"]
+    assert multi([], text="48/50", expected_packages=50) == ["quantity_unclear"]
+
+
+def test_several_goods_written_as_one_line_of_text_work_too() -> None:
+    assert multi([], text="Cement 2.5 t, Sand 1.5 t", expected_weight_tonnes=4.0) == []
+    assert multi([], text="Cement 2.5 t, Sand 1.5 t. Total 4 t", expected_weight_tonnes=4.0) == []
+    assert multi([], text="Cement 2.5 t, Sand 1.0 t, Total 3.5 t", expected_weight_tonnes=4.0) == ["quantity_mismatch"]
+    assert multi([], text="1,200 bags", expected_packages=1200) == []
+
+
+def test_nothing_is_flagged_when_nothing_was_booked() -> None:
+    assert multi([("Cement", 2.5, "t"), ("Sand", 1.5, "t")]) == []
