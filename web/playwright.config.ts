@@ -2,6 +2,7 @@ import { defineConfig, devices } from '@playwright/test'
 
 /** E2E runs against its OWN stack: API on :8001 with a throw-away `cargoone_e2e` database (recreated each run)
  *  and the scripted mock AI, plus a Vite dev server on :5174. Your dev servers and data are never touched. */
+process.env.TZ = 'Asia/Kolkata' // the business runs on IST: the tests' clock, the browser's and the server's agree wherever this runs (a UTC runner did not)
 const API_PORT = 8001
 const WEB_PORT = 5174
 
