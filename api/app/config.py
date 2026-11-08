@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     ollama_url: str = "http://localhost:11434"  # the local vision model runs here (Ollama)
     ollama_model: str = "qwen3-vl:4b"
     local_ai_timeout_s: float = 120.0  # a laptop GPU needs longer than a cloud model; first call also loads the model
+    ollama_ocr_model: str = "glm-ocr"  # the text reader when OCR_ENGINE=glm (a document model run through Ollama)
     ocr_engine: str = "rapid"  # rapid: PaddleOCR models on ONNX Runtime (fast, uses the GPU) | paddle: PaddlePaddle itself (CPU, slow, reads Devanagari)
     ocr_models: str = "mobile"  # mobile (fast) | server (heavier, a little more exact)
     ocr_langs: str = "en"  # PaddleOCR language packs, comma separated (en, devanagari)

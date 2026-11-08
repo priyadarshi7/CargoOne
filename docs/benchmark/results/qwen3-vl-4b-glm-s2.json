@@ -1,0 +1,2055 @@
+{
+ "label": "Qwen3-VL 4B + glm-ocr",
+ "provider": "local",
+ "cases": {
+  "S01_angle": {
+   "photo": "S01_angle.jpeg",
+   "sheet": "S01",
+   "cond": "angle",
+   "title": "Clean sheet, held at an angle",
+   "tags": [
+    "photo-condition"
+   ],
+   "do": "Write the date, 50 bags, then stamp and sign.",
+   "judgement": false,
+   "expected": {
+    "decision": "verified",
+    "accept": [
+     "verified"
+    ],
+    "reasons": [],
+    "lr": "LR/MH20/26-27/900001",
+    "trip_lr": "LR/MH20/26-27/900001",
+    "stamp": true,
+    "signature": true,
+    "date": "2026-11-08",
+    "quantity": "50 bags",
+    "items": [],
+    "total": null,
+    "remarks": "",
+    "booked": {
+     "packages": 50,
+     "weight_t": 2.5
+    }
+   },
+   "got": {
+    "is_document": true,
+    "readable": true,
+    "lr_no": "LR/MH20/26-27/900001",
+    "consignee_stamp_present": true,
+    "signature_present": true,
+    "delivery_date": "2026-11-08",
+    "quantity_received": "50 bags",
+    "items": [
+     {
+      "name": "PPC Cement 50 kg bags",
+      "quantity": 50.0,
+      "unit": "bags"
+     }
+    ],
+    "total_quantity": null,
+    "remarks": "Consignor signature Driver signature Consignee signature, name and stamp (on delivery)",
+    "shortage_or_damage": false,
+    "confidence": 0.9,
+    "issues": []
+   },
+   "decision": "verified",
+   "reasons": [],
+   "status": "pass",
+   "error": null,
+   "ms": 34464,
+   "fields": {
+    "lr_no": true,
+    "stamp": true,
+    "signature": true,
+    "date": true,
+    "quantity": true,
+    "items": null,
+    "total": null,
+    "remarks": false,
+    "shortage_flag": true
+   }
+  },
+  "S01_blur": {
+   "photo": "S01_blur.jpeg",
+   "sheet": "S01",
+   "cond": "blur",
+   "title": "Clean sheet, out of focus",
+   "tags": [
+    "photo-condition"
+   ],
+   "do": "Write the date, 50 bags, then stamp and sign.",
+   "judgement": false,
+   "expected": {
+    "decision": "retake_requested",
+    "accept": [
+     "retake_requested"
+    ],
+    "reasons": [
+     "unreadable"
+    ],
+    "lr": "LR/MH20/26-27/900001",
+    "trip_lr": "LR/MH20/26-27/900001",
+    "stamp": true,
+    "signature": true,
+    "date": "2026-11-08",
+    "quantity": "50 bags",
+    "items": [],
+    "total": null,
+    "remarks": "",
+    "booked": {
+     "packages": 50,
+     "weight_t": 2.5
+    }
+   },
+   "got": {
+    "is_document": true,
+    "readable": false,
+    "lr_no": null,
+    "consignee_stamp_present": true,
+    "signature_present": true,
+    "delivery_date": null,
+    "quantity_received": null,
+    "items": [],
+    "total_quantity": null,
+    "remarks": null,
+    "shortage_or_damage": false,
+    "confidence": 0.2,
+    "issues": [
+     "blurry text",
+     "signature unclear",
+     "little text found"
+    ]
+   },
+   "decision": "retake_requested",
+   "reasons": [
+    "unreadable"
+   ],
+   "status": "pass",
+   "error": null,
+   "ms": 31818,
+   "fields": {
+    "lr_no": null,
+    "stamp": null,
+    "signature": null,
+    "date": null,
+    "quantity": null,
+    "items": null,
+    "total": null,
+    "remarks": null,
+    "shortage_flag": null
+   }
+  },
+  "S01_crumple": {
+   "photo": "S01_crumple.jpeg",
+   "sheet": "S01",
+   "cond": "crumple",
+   "title": "Clean sheet, crumpled, shadow",
+   "tags": [
+    "photo-condition"
+   ],
+   "do": "Write the date, 50 bags, then stamp and sign.",
+   "judgement": false,
+   "expected": {
+    "decision": "verified",
+    "accept": [
+     "needs_review",
+     "verified"
+    ],
+    "reasons": [],
+    "lr": "LR/MH20/26-27/900001",
+    "trip_lr": "LR/MH20/26-27/900001",
+    "stamp": true,
+    "signature": true,
+    "date": "2026-11-08",
+    "quantity": "50 bags",
+    "items": [],
+    "total": null,
+    "remarks": "",
+    "booked": {
+     "packages": 50,
+     "weight_t": 2.5
+    }
+   },
+   "got": {
+    "is_document": true,
+    "readable": true,
+    "lr_no": "LR/MH20/26-27/900001",
+    "consignee_stamp_present": true,
+    "signature_present": true,
+    "delivery_date": "2026-11-08",
+    "quantity_received": "50 bags",
+    "items": [
+     {
+      "name": "PPC Cement 50 kg bags",
+      "quantity": 50.0,
+      "unit": "bags"
+     }
+    ],
+    "total_quantity": null,
+    "remarks": "Consignor signature Driver signature Consignee signature, name and stamp (on delivery)",
+    "shortage_or_damage": false,
+    "confidence": 0.9,
+    "issues": []
+   },
+   "decision": "verified",
+   "reasons": [],
+   "status": "pass",
+   "error": null,
+   "ms": 36575,
+   "fields": {
+    "lr_no": true,
+    "stamp": true,
+    "signature": true,
+    "date": true,
+    "quantity": true,
+    "items": null,
+    "total": null,
+    "remarks": false,
+    "shortage_flag": true
+   }
+  },
+  "S01_cut": {
+   "photo": "S01_cut.jpeg",
+   "sheet": "S01",
+   "cond": "cut",
+   "title": "Clean sheet, corner cut off",
+   "tags": [
+    "photo-condition"
+   ],
+   "do": "Write the date, 50 bags, then stamp and sign.",
+   "judgement": false,
+   "expected": {
+    "decision": "retake_requested",
+    "accept": [
+     "retake_requested"
+    ],
+    "reasons": [],
+    "lr": "LR/MH20/26-27/900001",
+    "trip_lr": "LR/MH20/26-27/900001",
+    "stamp": true,
+    "signature": true,
+    "date": "2026-11-08",
+    "quantity": "50 bags",
+    "items": [],
+    "total": null,
+    "remarks": "",
+    "booked": {
+     "packages": 50,
+     "weight_t": 2.5
+    }
+   },
+   "got": {
+    "is_document": true,
+    "readable": false,
+    "lr_no": "LR/MH20/26-27/900001",
+    "consignee_stamp_present": true,
+    "signature_present": true,
+    "delivery_date": "2026-11-08",
+    "quantity_received": "50 bags",
+    "items": [
+     {
+      "name": "PPC Cement 50 kg bags",
+      "quantity": 50.0,
+      "unit": "bags"
+     }
+    ],
+    "total_quantity": null,
+    "remarks": "Consignor signature Driver signature",
+    "shortage_or_damage": false,
+    "confidence": 0.8,
+    "issues": [
+     "handwriting unclear for some fields"
+    ]
+   },
+   "decision": "retake_requested",
+   "reasons": [
+    "unreadable"
+   ],
+   "status": "pass",
+   "error": null,
+   "ms": 35393,
+   "fields": {
+    "lr_no": null,
+    "stamp": null,
+    "signature": null,
+    "date": null,
+    "quantity": null,
+    "items": null,
+    "total": null,
+    "remarks": null,
+    "shortage_flag": null
+   }
+  },
+  "S01_dim": {
+   "photo": "S01_dim.jpeg",
+   "sheet": "S01",
+   "cond": "dim",
+   "title": "Clean sheet, dim room",
+   "tags": [
+    "photo-condition"
+   ],
+   "do": "Write the date, 50 bags, then stamp and sign.",
+   "judgement": false,
+   "expected": {
+    "decision": "verified",
+    "accept": [
+     "verified"
+    ],
+    "reasons": [],
+    "lr": "LR/MH20/26-27/900001",
+    "trip_lr": "LR/MH20/26-27/900001",
+    "stamp": true,
+    "signature": true,
+    "date": "2026-11-08",
+    "quantity": "50 bags",
+    "items": [],
+    "total": null,
+    "remarks": "",
+    "booked": {
+     "packages": 50,
+     "weight_t": 2.5
+    }
+   },
+   "got": {
+    "is_document": true,
+    "readable": true,
+    "lr_no": "LR/MH20/26-27/900001",
+    "consignee_stamp_present": true,
+    "signature_present": true,
+    "delivery_date": "2026-11-08",
+    "quantity_received": "50 bags",
+    "items": [
+     {
+      "name": "PPC Cement 50 kg bags",
+      "quantity": 50.0,
+      "unit": "bags"
+     }
+    ],
+    "total_quantity": null,
+    "remarks": "Consignor signature Driver signature Consignee signature, name and stamp (on delivery)",
+    "shortage_or_damage": false,
+    "confidence": 0.9,
+    "issues": []
+   },
+   "decision": "verified",
+   "reasons": [],
+   "status": "pass",
+   "error": null,
+   "ms": 36974,
+   "fields": {
+    "lr_no": true,
+    "stamp": true,
+    "signature": true,
+    "date": true,
+    "quantity": true,
+    "items": null,
+    "total": null,
+    "remarks": false,
+    "shortage_flag": true
+   }
+  },
+  "S01_flat": {
+   "photo": "S01_flat.jpeg",
+   "sheet": "S01",
+   "cond": "flat",
+   "title": "Clean sheet, flat, daylight",
+   "tags": [
+    "photo-condition"
+   ],
+   "do": "Write the date, 50 bags, then stamp and sign.",
+   "judgement": false,
+   "expected": {
+    "decision": "verified",
+    "accept": [
+     "verified"
+    ],
+    "reasons": [],
+    "lr": "LR/MH20/26-27/900001",
+    "trip_lr": "LR/MH20/26-27/900001",
+    "stamp": true,
+    "signature": true,
+    "date": "2026-11-08",
+    "quantity": "50 bags",
+    "items": [],
+    "total": null,
+    "remarks": "",
+    "booked": {
+     "packages": 50,
+     "weight_t": 2.5
+    }
+   },
+   "got": {
+    "is_document": true,
+    "readable": true,
+    "lr_no": "LR/MH20/26-27/900001",
+    "consignee_stamp_present": true,
+    "signature_present": true,
+    "delivery_date": "2026-11-08",
+    "quantity_received": "50 bags",
+    "items": [
+     {
+      "name": "PPC Cement 50 kg bags",
+      "quantity": 50.0,
+      "unit": "bags"
+     }
+    ],
+    "total_quantity": null,
+    "remarks": "Consignor signature Driver signature Consignee signature, name and stamp (on delivery)",
+    "shortage_or_damage": false,
+    "confidence": 0.9,
+    "issues": []
+   },
+   "decision": "verified",
+   "reasons": [],
+   "status": "pass",
+   "error": null,
+   "ms": 36706,
+   "fields": {
+    "lr_no": true,
+    "stamp": true,
+    "signature": true,
+    "date": true,
+    "quantity": true,
+    "items": null,
+    "total": null,
+    "remarks": false,
+    "shortage_flag": true
+   }
+  },
+  "S01_glare": {
+   "photo": "S01_glare.jpeg",
+   "sheet": "S01",
+   "cond": "glare",
+   "title": "Clean sheet, glare across the stamp",
+   "tags": [
+    "photo-condition"
+   ],
+   "do": "Write the date, 50 bags, then stamp and sign.",
+   "judgement": false,
+   "expected": {
+    "decision": "verified",
+    "accept": [
+     "needs_review",
+     "verified"
+    ],
+    "reasons": [],
+    "lr": "LR/MH20/26-27/900001",
+    "trip_lr": "LR/MH20/26-27/900001",
+    "stamp": true,
+    "signature": true,
+    "date": "2026-11-08",
+    "quantity": "50 bags",
+    "items": [],
+    "total": null,
+    "remarks": "",
+    "booked": {
+     "packages": 50,
+     "weight_t": 2.5
+    }
+   },
+   "got": {
+    "is_document": true,
+    "readable": true,
+    "lr_no": "LR/MH20/26-27/900001",
+    "consignee_stamp_present": true,
+    "signature_present": true,
+    "delivery_date": "2026-11-08",
+    "quantity_received": "50 bags",
+    "items": [
+     {
+      "name": "PPC Cement 50 kg bags",
+      "quantity": 50.0,
+      "unit": "bags"
+     }
+    ],
+    "total_quantity": null,
+    "remarks": "Consignor signature Driver signature Consignee signature, name and stamp (on delivery)",
+    "shortage_or_damage": false,
+    "confidence": 0.9,
+    "issues": []
+   },
+   "decision": "verified",
+   "reasons": [],
+   "status": "pass",
+   "error": null,
+   "ms": 35035,
+   "fields": {
+    "lr_no": true,
+    "stamp": true,
+    "signature": true,
+    "date": true,
+    "quantity": true,
+    "items": null,
+    "total": null,
+    "remarks": false,
+    "shortage_flag": true
+   }
+  },
+  "S02": {
+   "photo": "S02.jpeg",
+   "sheet": "S02",
+   "cond": "flat",
+   "title": "No stamp",
+   "tags": [
+    "stamp"
+   ],
+   "do": "Write the date and 50 bags, sign. Do NOT stamp.",
+   "judgement": false,
+   "expected": {
+    "decision": "retake_requested",
+    "accept": [
+     "retake_requested"
+    ],
+    "reasons": [
+     "stamp_missing"
+    ],
+    "lr": "LR/MH20/26-27/900002",
+    "trip_lr": "LR/MH20/26-27/900002",
+    "stamp": false,
+    "signature": true,
+    "date": "2026-11-08",
+    "quantity": "50 bags",
+    "items": [],
+    "total": null,
+    "remarks": "",
+    "booked": {
+     "packages": 50,
+     "weight_t": 2.5
+    }
+   },
+   "got": {
+    "is_document": true,
+    "readable": true,
+    "lr_no": "LR/MH20/26-27/900002",
+    "consignee_stamp_present": false,
+    "signature_present": true,
+    "delivery_date": "2026-11-08",
+    "quantity_received": "50 bags",
+    "items": [
+     {
+      "name": "PPC Cement 50 kg bags",
+      "quantity": 50.0,
+      "unit": "bags"
+     }
+    ],
+    "total_quantity": null,
+    "remarks": "Consignor signature Driver signature Consignee signature, name and stamp (on delivery)",
+    "shortage_or_damage": false,
+    "confidence": 0.9,
+    "issues": []
+   },
+   "decision": "retake_requested",
+   "reasons": [
+    "stamp_missing"
+   ],
+   "status": "pass",
+   "error": null,
+   "ms": 33877,
+   "fields": {
+    "lr_no": true,
+    "stamp": true,
+    "signature": true,
+    "date": true,
+    "quantity": true,
+    "items": null,
+    "total": null,
+    "remarks": false,
+    "shortage_flag": true
+   }
+  },
+  "S03": {
+   "photo": "S03.jpeg",
+   "sheet": "S03",
+   "cond": "flat",
+   "title": "No signature",
+   "tags": [
+    "signature",
+    "hard"
+   ],
+   "do": "Write the date and 50 bags, stamp. Do NOT sign.",
+   "judgement": false,
+   "expected": {
+    "decision": "retake_requested",
+    "accept": [
+     "retake_requested"
+    ],
+    "reasons": [
+     "signature_missing"
+    ],
+    "lr": "LR/MH20/26-27/900003",
+    "trip_lr": "LR/MH20/26-27/900003",
+    "stamp": true,
+    "signature": false,
+    "date": "2026-11-08",
+    "quantity": "50 bags",
+    "items": [],
+    "total": null,
+    "remarks": "",
+    "booked": {
+     "packages": 50,
+     "weight_t": 2.5
+    }
+   },
+   "got": {
+    "is_document": true,
+    "readable": true,
+    "lr_no": "LR/MH20/26-27/900003",
+    "consignee_stamp_present": true,
+    "signature_present": true,
+    "delivery_date": "2026-11-08",
+    "quantity_received": "50 bags",
+    "items": [
+     {
+      "name": "PPC Cement 50 kg bags",
+      "quantity": 50.0,
+      "unit": "bags"
+     }
+    ],
+    "total_quantity": null,
+    "remarks": "Consignor signature Driver signature Consignee signature, name and stamp (on delivery)",
+    "shortage_or_damage": false,
+    "confidence": 0.9,
+    "issues": []
+   },
+   "decision": "verified",
+   "reasons": [],
+   "status": "unsafe",
+   "error": null,
+   "ms": 35132,
+   "fields": {
+    "lr_no": true,
+    "stamp": true,
+    "signature": false,
+    "date": true,
+    "quantity": true,
+    "items": null,
+    "total": null,
+    "remarks": false,
+    "shortage_flag": true
+   }
+  },
+  "S04": {
+   "photo": "S04.jpeg",
+   "sheet": "S04",
+   "cond": "flat",
+   "title": "Receiver part left empty",
+   "tags": [
+    "stamp",
+    "signature",
+    "empty"
+   ],
+   "do": "Fill nothing at all in the receiver part.",
+   "judgement": false,
+   "expected": {
+    "decision": "retake_requested",
+    "accept": [
+     "retake_requested"
+    ],
+    "reasons": [
+     "stamp_missing",
+     "signature_missing"
+    ],
+    "lr": "LR/MH20/26-27/900004",
+    "trip_lr": "LR/MH20/26-27/900004",
+    "stamp": false,
+    "signature": false,
+    "date": null,
+    "quantity": "",
+    "items": [],
+    "total": null,
+    "remarks": "",
+    "booked": {
+     "packages": 50,
+     "weight_t": 2.5
+    }
+   },
+   "got": {
+    "is_document": true,
+    "readable": false,
+    "lr_no": "LR/MH20/26-27/900004",
+    "consignee_stamp_present": false,
+    "signature_present": false,
+    "delivery_date": null,
+    "quantity_received": null,
+    "items": [],
+    "total_quantity": null,
+    "remarks": "Consignor signature Driver signature Consignee signature, name and stamp (on delivery) Generated by CargoOne on 08 Nov 2026, 16:02. LR number LR/MH20/26-27/900004 is unique to this consignment.",
+    "shortage_or_damage": false,
+    "confidence": 0.8,
+    "issues": [
+     "handwriting unclear"
+    ]
+   },
+   "decision": "retake_requested",
+   "reasons": [
+    "unreadable"
+   ],
+   "status": "pass",
+   "error": null,
+   "ms": 35123,
+   "fields": {
+    "lr_no": true,
+    "stamp": true,
+    "signature": true,
+    "date": true,
+    "quantity": true,
+    "items": null,
+    "total": null,
+    "remarks": false,
+    "shortage_flag": true
+   }
+  },
+  "S05": {
+   "photo": "S05.jpeg",
+   "sheet": "S05",
+   "cond": "flat",
+   "title": "Wrong LR number",
+   "tags": [
+    "lr-number"
+   ],
+   "do": "Fill everything correctly (as S01). The trip's LR ends 900099, but this paper carries another number.",
+   "judgement": false,
+   "expected": {
+    "decision": "retake_requested",
+    "accept": [
+     "retake_requested"
+    ],
+    "reasons": [
+     "lr_mismatch"
+    ],
+    "lr": "LR/MH20/26-27/900105",
+    "trip_lr": "LR/MH20/26-27/900099",
+    "stamp": true,
+    "signature": true,
+    "date": "2026-11-08",
+    "quantity": "50 bags",
+    "items": [],
+    "total": null,
+    "remarks": "",
+    "booked": {
+     "packages": 50,
+     "weight_t": 2.5
+    }
+   },
+   "got": {
+    "is_document": true,
+    "readable": true,
+    "lr_no": "LR/MH20/26-27/900105",
+    "consignee_stamp_present": true,
+    "signature_present": true,
+    "delivery_date": "2026-11-08",
+    "quantity_received": "50 bags",
+    "items": [
+     {
+      "name": "PPC Cement 50 kg bags",
+      "quantity": 50.0,
+      "unit": "bags"
+     }
+    ],
+    "total_quantity": null,
+    "remarks": "Consignor signature Driver signature Consignee signature, name and stamp (on delivery)",
+    "shortage_or_damage": false,
+    "confidence": 0.9,
+    "issues": []
+   },
+   "decision": "retake_requested",
+   "reasons": [
+    "lr_mismatch"
+   ],
+   "status": "pass",
+   "error": null,
+   "ms": 36022,
+   "fields": {
+    "lr_no": true,
+    "stamp": true,
+    "signature": true,
+    "date": true,
+    "quantity": true,
+    "items": null,
+    "total": null,
+    "remarks": false,
+    "shortage_flag": true
+   }
+  },
+  "S06": {
+   "photo": "S06.jpeg",
+   "sheet": "S06",
+   "cond": "flat",
+   "title": "Shortage remark and short count",
+   "tags": [
+    "quantity",
+    "remark"
+   ],
+   "do": "Date, quantity 44 bags, remark: Short 6 bags. Stamp, sign.",
+   "judgement": false,
+   "expected": {
+    "decision": "needs_review",
+    "accept": [
+     "needs_review"
+    ],
+    "reasons": [
+     "shortage_or_damage",
+     "quantity_mismatch"
+    ],
+    "lr": "LR/MH20/26-27/900006",
+    "trip_lr": "LR/MH20/26-27/900006",
+    "stamp": true,
+    "signature": true,
+    "date": "2026-11-08",
+    "quantity": "44 bags",
+    "items": [],
+    "total": null,
+    "remarks": "Short 6 bags",
+    "booked": {
+     "packages": 50,
+     "weight_t": 2.5
+    }
+   },
+   "got": {
+    "is_document": true,
+    "readable": false,
+    "lr_no": "LR/MH20/26-27/900006",
+    "consignee_stamp_present": true,
+    "signature_present": true,
+    "delivery_date": "2026-11-08",
+    "quantity_received": "44 bags",
+    "items": [
+     {
+      "name": "PPC Cement 50 kg bags",
+      "quantity": 44.0,
+      "unit": "bags"
+     }
+    ],
+    "total_quantity": null,
+    "remarks": "shortage or damage if any",
+    "shortage_or_damage": true,
+    "confidence": 0.8,
+    "issues": [
+     "handwriting unclear"
+    ]
+   },
+   "decision": "retake_requested",
+   "reasons": [
+    "unreadable"
+   ],
+   "status": "different",
+   "error": null,
+   "ms": 34822,
+   "fields": {
+    "lr_no": true,
+    "stamp": true,
+    "signature": true,
+    "date": true,
+    "quantity": true,
+    "items": null,
+    "total": null,
+    "remarks": false,
+    "shortage_flag": true
+   }
+  },
+  "S07": {
+   "photo": "S07.jpeg",
+   "sheet": "S07",
+   "cond": "flat",
+   "title": "Damage remark, full count",
+   "tags": [
+    "remark"
+   ],
+   "do": "Date, quantity 50 bags, remark: 2 bags torn / damaged. Stamp, sign.",
+   "judgement": false,
+   "expected": {
+    "decision": "needs_review",
+    "accept": [
+     "needs_review"
+    ],
+    "reasons": [
+     "shortage_or_damage"
+    ],
+    "lr": "LR/MH20/26-27/900007",
+    "trip_lr": "LR/MH20/26-27/900007",
+    "stamp": true,
+    "signature": true,
+    "date": "2026-11-08",
+    "quantity": "50 bags",
+    "items": [],
+    "total": null,
+    "remarks": "2 bags torn / damaged",
+    "booked": {
+     "packages": 50,
+     "weight_t": 2.5
+    }
+   },
+   "got": {
+    "is_document": true,
+    "readable": false,
+    "lr_no": "LR/MH20/26-27/900007",
+    "consignee_stamp_present": true,
+    "signature_present": true,
+    "delivery_date": "2026-11-08",
+    "quantity_received": "50 bags",
+    "items": [
+     {
+      "name": "PPC Cement 50 kg bags",
+      "quantity": 50.0,
+      "unit": "bags"
+     }
+    ],
+    "total_quantity": null,
+    "remarks": "2 bags torn/damaged",
+    "shortage_or_damage": true,
+    "confidence": 0.8,
+    "issues": [
+     "handwriting unclear for quantity received"
+    ]
+   },
+   "decision": "retake_requested",
+   "reasons": [
+    "unreadable"
+   ],
+   "status": "different",
+   "error": null,
+   "ms": 34762,
+   "fields": {
+    "lr_no": true,
+    "stamp": true,
+    "signature": true,
+    "date": true,
+    "quantity": true,
+    "items": null,
+    "total": null,
+    "remarks": true,
+    "shortage_flag": true
+   }
+  },
+  "S08": {
+   "photo": "S08.jpeg",
+   "sheet": "S08",
+   "cond": "flat",
+   "title": "Short count, nobody wrote a remark",
+   "tags": [
+    "quantity"
+   ],
+   "do": "Date, quantity 40 bags, NO remark. Stamp, sign.",
+   "judgement": false,
+   "expected": {
+    "decision": "needs_review",
+    "accept": [
+     "needs_review"
+    ],
+    "reasons": [
+     "quantity_mismatch"
+    ],
+    "lr": "LR/MH20/26-27/900008",
+    "trip_lr": "LR/MH20/26-27/900008",
+    "stamp": true,
+    "signature": true,
+    "date": "2026-11-08",
+    "quantity": "40 bags",
+    "items": [],
+    "total": null,
+    "remarks": "",
+    "booked": {
+     "packages": 50,
+     "weight_t": 2.5
+    }
+   },
+   "got": {
+    "is_document": true,
+    "readable": true,
+    "lr_no": "LR/MH20/26-27/900008",
+    "consignee_stamp_present": true,
+    "signature_present": true,
+    "delivery_date": "2026-11-08",
+    "quantity_received": "40 bags",
+    "items": [
+     {
+      "name": "PPC Cement 50 kg bags",
+      "quantity": 50.0,
+      "unit": "bags"
+     }
+    ],
+    "total_quantity": null,
+    "remarks": "Consignor signature Driver signature Consignee signature, name and stamp (on delivery)",
+    "shortage_or_damage": false,
+    "confidence": 0.9,
+    "issues": []
+   },
+   "decision": "needs_review",
+   "reasons": [
+    "quantity_mismatch"
+   ],
+   "status": "pass",
+   "error": null,
+   "ms": 34835,
+   "fields": {
+    "lr_no": true,
+    "stamp": true,
+    "signature": true,
+    "date": true,
+    "quantity": true,
+    "items": null,
+    "total": null,
+    "remarks": false,
+    "shortage_flag": true
+   }
+  },
+  "S09": {
+   "photo": "S09.jpeg",
+   "sheet": "S09",
+   "cond": "flat",
+   "title": "Weighed load, kg matches",
+   "tags": [
+    "weight"
+   ],
+   "do": "Date, quantity 18000 kg. Stamp, sign.",
+   "judgement": false,
+   "expected": {
+    "decision": "verified",
+    "accept": [
+     "verified"
+    ],
+    "reasons": [],
+    "lr": "LR/MH20/26-27/900009",
+    "trip_lr": "LR/MH20/26-27/900009",
+    "stamp": true,
+    "signature": true,
+    "date": "2026-11-08",
+    "quantity": "18000 kg",
+    "items": [],
+    "total": null,
+    "remarks": "",
+    "booked": {
+     "packages": 6,
+     "weight_t": 18.0
+    }
+   },
+   "got": {
+    "is_document": true,
+    "readable": true,
+    "lr_no": "LR/MH20/26-27/900009",
+    "consignee_stamp_present": true,
+    "signature_present": true,
+    "delivery_date": "2026-11-08",
+    "quantity_received": "18000 Kg",
+    "items": [
+     {
+      "name": "MS Coils (HR)",
+      "quantity": 6.0,
+      "unit": "Packages"
+     }
+    ],
+    "total_quantity": null,
+    "remarks": "Consignor signature Driver signature Consignee signature, name and stamp (on delivery)",
+    "shortage_or_damage": false,
+    "confidence": 0.95,
+    "issues": []
+   },
+   "decision": "verified",
+   "reasons": [],
+   "status": "pass",
+   "error": null,
+   "ms": 33415,
+   "fields": {
+    "lr_no": true,
+    "stamp": true,
+    "signature": true,
+    "date": true,
+    "quantity": true,
+    "items": null,
+    "total": null,
+    "remarks": false,
+    "shortage_flag": true
+   }
+  },
+  "S10": {
+   "photo": "S10.jpeg",
+   "sheet": "S10",
+   "cond": "flat",
+   "title": "Weighed load, kg is much less",
+   "tags": [
+    "weight",
+    "quantity"
+   ],
+   "do": "Date, quantity 16000 kg, no remark. Stamp, sign.",
+   "judgement": false,
+   "expected": {
+    "decision": "needs_review",
+    "accept": [
+     "needs_review"
+    ],
+    "reasons": [
+     "quantity_mismatch"
+    ],
+    "lr": "LR/MH20/26-27/900010",
+    "trip_lr": "LR/MH20/26-27/900010",
+    "stamp": true,
+    "signature": true,
+    "date": "2026-11-08",
+    "quantity": "16000 kg",
+    "items": [],
+    "total": null,
+    "remarks": "",
+    "booked": {
+     "packages": 6,
+     "weight_t": 18.0
+    }
+   },
+   "got": {
+    "is_document": true,
+    "readable": true,
+    "lr_no": "LR/MH20/26-27/900010",
+    "consignee_stamp_present": true,
+    "signature_present": true,
+    "delivery_date": "2026-11-08",
+    "quantity_received": "16000kg",
+    "items": [
+     {
+      "name": "MS Coils (HR)",
+      "quantity": 6.0,
+      "unit": "Packages"
+     }
+    ],
+    "total_quantity": "16000kg",
+    "remarks": "Consignor signature Driver signature Consignee signature, name and stamp (on delivery)",
+    "shortage_or_damage": false,
+    "confidence": 0.95,
+    "issues": []
+   },
+   "decision": "needs_review",
+   "reasons": [
+    "quantity_mismatch"
+   ],
+   "status": "pass",
+   "error": null,
+   "ms": 33137,
+   "fields": {
+    "lr_no": true,
+    "stamp": true,
+    "signature": true,
+    "date": true,
+    "quantity": true,
+    "items": null,
+    "total": null,
+    "remarks": false,
+    "shortage_flag": true
+   }
+  },
+  "S11": {
+   "photo": "S11.jpeg",
+   "sheet": "S11",
+   "cond": "flat",
+   "title": "Date left blank",
+   "tags": [
+    "date"
+   ],
+   "do": "Quantity 50 bags. Stamp, sign. Leave the date blank.",
+   "judgement": false,
+   "expected": {
+    "decision": "verified",
+    "accept": [
+     "verified"
+    ],
+    "reasons": [],
+    "lr": "LR/MH20/26-27/900011",
+    "trip_lr": "LR/MH20/26-27/900011",
+    "stamp": true,
+    "signature": true,
+    "date": null,
+    "quantity": "50 bags",
+    "items": [],
+    "total": null,
+    "remarks": "",
+    "booked": {
+     "packages": 50,
+     "weight_t": 2.5
+    }
+   },
+   "got": {
+    "is_document": true,
+    "readable": true,
+    "lr_no": "LR/MH20/26-27/900011",
+    "consignee_stamp_present": true,
+    "signature_present": true,
+    "delivery_date": null,
+    "quantity_received": "50 bags",
+    "items": [
+     {
+      "name": "PPC Cement 50 kg bags",
+      "quantity": 50.0,
+      "unit": "bags"
+     }
+    ],
+    "total_quantity": "50 bags",
+    "remarks": "Consignor signature Driver signature Consignee signature, name and stamp (on delivery) Generated by CargoOne on 08 Nov 2026, 16:02. LR number LR/MH20/26-27/900011 is unique to this consignment.",
+    "shortage_or_damage": false,
+    "confidence": 0.9,
+    "issues": []
+   },
+   "decision": "verified",
+   "reasons": [],
+   "status": "pass",
+   "error": null,
+   "ms": 31603,
+   "fields": {
+    "lr_no": true,
+    "stamp": true,
+    "signature": true,
+    "date": true,
+    "quantity": true,
+    "items": null,
+    "total": null,
+    "remarks": false,
+    "shortage_flag": true
+   }
+  },
+  "S12": {
+   "photo": "S12.jpeg",
+   "sheet": "S12",
+   "cond": "flat",
+   "title": "Remark in Hindi handwriting",
+   "tags": [
+    "remark",
+    "hindi"
+   ],
+   "do": "Date, 50 bags, remark in Hindi: 3 बोरी फटी हुई है. Stamp, sign.",
+   "judgement": false,
+   "expected": {
+    "decision": "needs_review",
+    "accept": [
+     "needs_review"
+    ],
+    "reasons": [
+     "shortage_or_damage"
+    ],
+    "lr": "LR/MH20/26-27/900012",
+    "trip_lr": "LR/MH20/26-27/900012",
+    "stamp": true,
+    "signature": true,
+    "date": "2026-11-08",
+    "quantity": "50 bags",
+    "items": [],
+    "total": null,
+    "remarks": "3 बोरी फटी हुई है",
+    "booked": {
+     "packages": 50,
+     "weight_t": 2.5
+    }
+   },
+   "got": {
+    "is_document": true,
+    "readable": true,
+    "lr_no": "LR/MH20/26-27/900012",
+    "consignee_stamp_present": true,
+    "signature_present": true,
+    "delivery_date": "2026-11-08",
+    "quantity_received": "50 bags",
+    "items": [
+     {
+      "name": "PPC Cement 50 kg bags",
+      "quantity": 50.0,
+      "unit": "bags"
+     }
+    ],
+    "total_quantity": null,
+    "remarks": "3 पीट भूति से",
+    "shortage_or_damage": true,
+    "confidence": 0.9,
+    "issues": []
+   },
+   "decision": "needs_review",
+   "reasons": [
+    "shortage_or_damage"
+   ],
+   "status": "pass",
+   "error": null,
+   "ms": 32567,
+   "fields": {
+    "lr_no": true,
+    "stamp": true,
+    "signature": true,
+    "date": true,
+    "quantity": true,
+    "items": null,
+    "total": null,
+    "remarks": false,
+    "shortage_flag": true
+   }
+  },
+  "S13": {
+   "photo": "S13.jpeg",
+   "sheet": "S13",
+   "cond": "flat",
+   "title": "Remark in Marathi handwriting",
+   "tags": [
+    "remark",
+    "marathi"
+   ],
+   "do": "Date, 50 bags, remark in Marathi: २ गोणी ओल्या झाल्या. Stamp, sign.",
+   "judgement": false,
+   "expected": {
+    "decision": "needs_review",
+    "accept": [
+     "needs_review"
+    ],
+    "reasons": [
+     "shortage_or_damage"
+    ],
+    "lr": "LR/MH20/26-27/900013",
+    "trip_lr": "LR/MH20/26-27/900013",
+    "stamp": true,
+    "signature": true,
+    "date": "2026-11-08",
+    "quantity": "50 bags",
+    "items": [],
+    "total": null,
+    "remarks": "२ गोणी ओल्या झाल्या",
+    "booked": {
+     "packages": 50,
+     "weight_t": 2.5
+    }
+   },
+   "got": {
+    "is_document": true,
+    "readable": true,
+    "lr_no": "LR/MH20/26-27/900013",
+    "consignee_stamp_present": true,
+    "signature_present": true,
+    "delivery_date": "2026-11-08",
+    "quantity_received": "50 bags",
+    "items": [
+     {
+      "name": "PPC Cement 50 kg bags",
+      "quantity": 50.0,
+      "unit": "bags"
+     }
+    ],
+    "total_quantity": null,
+    "remarks": "2 गीणी ओन्या शाना",
+    "shortage_or_damage": true,
+    "confidence": 0.9,
+    "issues": []
+   },
+   "decision": "needs_review",
+   "reasons": [
+    "shortage_or_damage"
+   ],
+   "status": "pass",
+   "error": null,
+   "ms": 32354,
+   "fields": {
+    "lr_no": true,
+    "stamp": true,
+    "signature": true,
+    "date": true,
+    "quantity": true,
+    "items": null,
+    "total": null,
+    "remarks": true,
+    "shortage_flag": true
+   }
+  },
+  "S14": {
+   "photo": "S14.jpeg",
+   "sheet": "S14",
+   "cond": "flat",
+   "title": "Faint, half-cut stamp",
+   "tags": [
+    "stamp",
+    "hard"
+   ],
+   "do": "Date, 50 bags, sign. Press the stamp lightly so it is pale, and let it run off the edge of its box.",
+   "judgement": true,
+   "expected": {
+    "decision": "verified",
+    "accept": [
+     "needs_review",
+     "verified"
+    ],
+    "reasons": [],
+    "lr": "LR/MH20/26-27/900014",
+    "trip_lr": "LR/MH20/26-27/900014",
+    "stamp": true,
+    "signature": true,
+    "date": "2026-11-08",
+    "quantity": "50 bags",
+    "items": [],
+    "total": null,
+    "remarks": "",
+    "booked": {
+     "packages": 50,
+     "weight_t": 2.5
+    }
+   },
+   "got": {
+    "is_document": true,
+    "readable": false,
+    "lr_no": "LR/MH20/26-27/900014",
+    "consignee_stamp_present": true,
+    "signature_present": true,
+    "delivery_date": "2026-11-08",
+    "quantity_received": "50 bags",
+    "items": [
+     {
+      "name": "PPC Cement 50 kg bags",
+      "quantity": 50.0,
+      "unit": "bags"
+     }
+    ],
+    "total_quantity": null,
+    "remarks": "Consignor signature Driver signature Consignee signature, name and stamp (on delivery)",
+    "shortage_or_damage": false,
+    "confidence": 0.8,
+    "issues": [
+     "handwriting unclear for quantity received"
+    ]
+   },
+   "decision": "retake_requested",
+   "reasons": [
+    "unreadable"
+   ],
+   "status": "friction",
+   "error": null,
+   "ms": 32157,
+   "fields": {
+    "lr_no": true,
+    "stamp": true,
+    "signature": true,
+    "date": true,
+    "quantity": true,
+    "items": null,
+    "total": null,
+    "remarks": false,
+    "shortage_flag": true
+   }
+  },
+  "S15": {
+   "photo": "S15.jpeg",
+   "sheet": "S15",
+   "cond": "flat",
+   "title": "Messy: stamp over the signature and date",
+   "tags": [
+    "stamp",
+    "signature",
+    "hard"
+   ],
+   "do": "Date, 50 bags, sign, then stamp OVER the signature, the date and the quantity.",
+   "judgement": true,
+   "expected": {
+    "decision": "verified",
+    "accept": [
+     "needs_review",
+     "verified"
+    ],
+    "reasons": [],
+    "lr": "LR/MH20/26-27/900015",
+    "trip_lr": "LR/MH20/26-27/900015",
+    "stamp": true,
+    "signature": true,
+    "date": "2026-11-08",
+    "quantity": "50 bags",
+    "items": [],
+    "total": null,
+    "remarks": "",
+    "booked": {
+     "packages": 50,
+     "weight_t": 2.5
+    }
+   },
+   "got": {
+    "is_document": true,
+    "readable": true,
+    "lr_no": "LR/MH20/26-27/900015",
+    "consignee_stamp_present": true,
+    "signature_present": true,
+    "delivery_date": "2026-11-08",
+    "quantity_received": "50 bags",
+    "items": [
+     {
+      "name": "PPC Cement 50 kg bags",
+      "quantity": 50.0,
+      "unit": "bags"
+     }
+    ],
+    "total_quantity": null,
+    "remarks": "Received OK,thanks",
+    "shortage_or_damage": false,
+    "confidence": 0.9,
+    "issues": []
+   },
+   "decision": "verified",
+   "reasons": [],
+   "status": "pass",
+   "error": null,
+   "ms": 32832,
+   "fields": {
+    "lr_no": true,
+    "stamp": true,
+    "signature": true,
+    "date": true,
+    "quantity": true,
+    "items": null,
+    "total": null,
+    "remarks": false,
+    "shortage_flag": true
+   }
+  },
+  "S16": {
+   "photo": "S16.jpeg",
+   "sheet": "S16",
+   "cond": "flat",
+   "title": "A remark that is NOT a problem",
+   "tags": [
+    "remark",
+    "false-alarm"
+   ],
+   "do": "Date, 50 bags, remark: Received OK, thanks. Stamp, sign.",
+   "judgement": false,
+   "expected": {
+    "decision": "verified",
+    "accept": [
+     "verified"
+    ],
+    "reasons": [],
+    "lr": "LR/MH20/26-27/900016",
+    "trip_lr": "LR/MH20/26-27/900016",
+    "stamp": true,
+    "signature": true,
+    "date": "2026-11-08",
+    "quantity": "50 bags",
+    "items": [],
+    "total": null,
+    "remarks": "Received OK, thanks",
+    "booked": {
+     "packages": 50,
+     "weight_t": 2.5
+    }
+   },
+   "got": {
+    "is_document": true,
+    "readable": true,
+    "lr_no": "LR/MH20/26-27/900016",
+    "consignee_stamp_present": true,
+    "signature_present": true,
+    "delivery_date": "2026-11-08",
+    "quantity_received": "50 bags",
+    "items": [
+     {
+      "name": "PPC Cement 50 kg bags",
+      "quantity": 50.0,
+      "unit": "bags"
+     }
+    ],
+    "total_quantity": null,
+    "remarks": "Received, on thanks",
+    "shortage_or_damage": false,
+    "confidence": 0.9,
+    "issues": []
+   },
+   "decision": "verified",
+   "reasons": [],
+   "status": "pass",
+   "error": null,
+   "ms": 31380,
+   "fields": {
+    "lr_no": true,
+    "stamp": true,
+    "signature": true,
+    "date": true,
+    "quantity": true,
+    "items": null,
+    "total": null,
+    "remarks": true,
+    "shortage_flag": true
+   }
+  },
+  "S17": {
+   "photo": "S17.jpeg",
+   "sheet": "S17",
+   "cond": "flat",
+   "title": "Two goods, each weight written, total matches",
+   "tags": [
+    "multi-item"
+   ],
+   "do": "Date. Received column: row 1 write 2.5 t, row 2 write 1.5 t, Total received 4 t. Stamp, sign.",
+   "judgement": false,
+   "expected": {
+    "decision": "verified",
+    "accept": [
+     "verified"
+    ],
+    "reasons": [],
+    "lr": "LR/MH20/26-27/900017",
+    "trip_lr": "LR/MH20/26-27/900017",
+    "stamp": true,
+    "signature": true,
+    "date": "2026-11-08",
+    "quantity": "Cement 2.5 t, Sand 1.5 t, Total 4 t",
+    "items": [
+     2.5,
+     1.5
+    ],
+    "total": 4.0,
+    "remarks": "",
+    "booked": {
+     "packages": null,
+     "weight_t": 4.0
+    }
+   },
+   "got": {
+    "is_document": true,
+    "readable": true,
+    "lr_no": "LR/MH20/26-27/900017",
+    "consignee_stamp_present": true,
+    "signature_present": true,
+    "delivery_date": "2026-11-08",
+    "quantity_received": "4t",
+    "items": [
+     {
+      "name": "PPC Cement",
+      "quantity": 2.5,
+      "unit": "t"
+     },
+     {
+      "name": "River Sand",
+      "quantity": 1.5,
+      "unit": "t"
+     }
+    ],
+    "total_quantity": "4 t",
+    "remarks": "Consignor signature Driver signature Consignee signature name and signature (on delivery)",
+    "shortage_or_damage": false,
+    "confidence": 0.9,
+    "issues": []
+   },
+   "decision": "verified",
+   "reasons": [],
+   "status": "pass",
+   "error": null,
+   "ms": 32447,
+   "fields": {
+    "lr_no": true,
+    "stamp": true,
+    "signature": true,
+    "date": true,
+    "quantity": true,
+    "items": true,
+    "total": true,
+    "remarks": false,
+    "shortage_flag": true
+   }
+  },
+  "S18": {
+   "photo": "S18.jpeg",
+   "sheet": "S18",
+   "cond": "flat",
+   "title": "Two goods, one short, honest total",
+   "tags": [
+    "multi-item",
+    "quantity"
+   ],
+   "do": "Date. Received: row 1 2.5 t, row 2 1.0 t, total 3.5 t. No remark. Stamp, sign.",
+   "judgement": false,
+   "expected": {
+    "decision": "needs_review",
+    "accept": [
+     "needs_review"
+    ],
+    "reasons": [
+     "quantity_mismatch"
+    ],
+    "lr": "LR/MH20/26-27/900018",
+    "trip_lr": "LR/MH20/26-27/900018",
+    "stamp": true,
+    "signature": true,
+    "date": "2026-11-08",
+    "quantity": "Cement 2.5 t, Sand 1.0 t, Total 3.5 t",
+    "items": [
+     2.5,
+     1.0
+    ],
+    "total": 3.5,
+    "remarks": "",
+    "booked": {
+     "packages": null,
+     "weight_t": 4.0
+    }
+   },
+   "got": {
+    "is_document": true,
+    "readable": false,
+    "lr_no": "LR/MH20/26-27/900018",
+    "consignee_stamp_present": true,
+    "signature_present": true,
+    "delivery_date": null,
+    "quantity_received": "3.5t",
+    "items": [
+     {
+      "name": "PPC Cement",
+      "quantity": 2.5,
+      "unit": "t"
+     },
+     {
+      "name": "River Sand",
+      "quantity": 1.0,
+      "unit": "t"
+     }
+    ],
+    "total_quantity": null,
+    "remarks": "Consignor signature Driver signature Consignee signature, name and stamp (on delivery)",
+    "shortage_or_damage": false,
+    "confidence": 0.85,
+    "issues": [
+     "handwriting unclear for some fields",
+     "date received handwritten but not clear"
+    ]
+   },
+   "decision": "retake_requested",
+   "reasons": [
+    "unreadable"
+   ],
+   "status": "different",
+   "error": null,
+   "ms": 33530,
+   "fields": {
+    "lr_no": true,
+    "stamp": true,
+    "signature": true,
+    "date": false,
+    "quantity": true,
+    "items": true,
+    "total": false,
+    "remarks": false,
+    "shortage_flag": true
+   }
+  },
+  "S19": {
+   "photo": "S19.jpeg",
+   "sheet": "S19",
+   "cond": "flat",
+   "title": "Two goods, one short, with a remark",
+   "tags": [
+    "multi-item",
+    "quantity",
+    "remark"
+   ],
+   "do": "Date. Received: row 1 2.5 t, row 2 1.0 t, total 3.5 t. Remark: Sand short 0.5 t. Stamp, sign.",
+   "judgement": false,
+   "expected": {
+    "decision": "needs_review",
+    "accept": [
+     "needs_review"
+    ],
+    "reasons": [
+     "shortage_or_damage",
+     "quantity_mismatch"
+    ],
+    "lr": "LR/MH20/26-27/900019",
+    "trip_lr": "LR/MH20/26-27/900019",
+    "stamp": true,
+    "signature": true,
+    "date": "2026-11-08",
+    "quantity": "Cement 2.5 t, Sand 1.0 t, Total 3.5 t",
+    "items": [
+     2.5,
+     1.0
+    ],
+    "total": 3.5,
+    "remarks": "Sand short 0.5 t",
+    "booked": {
+     "packages": null,
+     "weight_t": 4.0
+    }
+   },
+   "got": {
+    "is_document": true,
+    "readable": true,
+    "lr_no": "LR/MH20/26-27/900019",
+    "consignee_stamp_present": true,
+    "signature_present": true,
+    "delivery_date": "2026-11-08",
+    "quantity_received": "3.5t",
+    "items": [
+     {
+      "name": "PPC Cement",
+      "quantity": 2.5,
+      "unit": "t"
+     },
+     {
+      "name": "River Sand",
+      "quantity": 1.0,
+      "unit": "t"
+     }
+    ],
+    "total_quantity": null,
+    "remarks": "Sand short 0.5t",
+    "shortage_or_damage": true,
+    "confidence": 0.9,
+    "issues": []
+   },
+   "decision": "needs_review",
+   "reasons": [
+    "shortage_or_damage",
+    "quantity_mismatch"
+   ],
+   "status": "pass",
+   "error": null,
+   "ms": 34203,
+   "fields": {
+    "lr_no": true,
+    "stamp": true,
+    "signature": true,
+    "date": true,
+    "quantity": true,
+    "items": true,
+    "total": false,
+    "remarks": true,
+    "shortage_flag": true
+   }
+  },
+  "S20": {
+   "photo": "S20.jpeg",
+   "sheet": "S20",
+   "cond": "flat",
+   "title": "Two goods, lines do not add up to the total",
+   "tags": [
+    "multi-item",
+    "hard"
+   ],
+   "do": "Date. Received: row 1 2.5 t, row 2 1.5 t, total 5 t (a wrong total, as a rushed receiver might write). Stamp, sign.",
+   "judgement": false,
+   "expected": {
+    "decision": "needs_review",
+    "accept": [
+     "needs_review"
+    ],
+    "reasons": [
+     "quantity_unclear"
+    ],
+    "lr": "LR/MH20/26-27/900020",
+    "trip_lr": "LR/MH20/26-27/900020",
+    "stamp": true,
+    "signature": true,
+    "date": "2026-11-08",
+    "quantity": "Cement 2.5 t, Sand 1.5 t, Total 5 t",
+    "items": [
+     2.5,
+     1.5
+    ],
+    "total": 5.0,
+    "remarks": "",
+    "booked": {
+     "packages": null,
+     "weight_t": 4.0
+    }
+   },
+   "got": {
+    "is_document": true,
+    "readable": false,
+    "lr_no": "LR/MH20/26-27/900020",
+    "consignee_stamp_present": true,
+    "signature_present": true,
+    "delivery_date": "2026-11-08",
+    "quantity_received": "5t",
+    "items": [
+     {
+      "name": "PPC Cement",
+      "quantity": 2.5,
+      "unit": "t"
+     },
+     {
+      "name": "River Sand",
+      "quantity": 1.5,
+      "unit": "t"
+     }
+    ],
+    "total_quantity": null,
+    "remarks": "Consignor signature Driver signature Consignee signature, name and stamp (on delivery)",
+    "shortage_or_damage": false,
+    "confidence": 0.8,
+    "issues": [
+     "handwriting unclear for some fields"
+    ]
+   },
+   "decision": "retake_requested",
+   "reasons": [
+    "unreadable"
+   ],
+   "status": "different",
+   "error": null,
+   "ms": 35104,
+   "fields": {
+    "lr_no": true,
+    "stamp": true,
+    "signature": true,
+    "date": true,
+    "quantity": true,
+    "items": true,
+    "total": false,
+    "remarks": false,
+    "shortage_flag": true
+   }
+  },
+  "S21": {
+   "photo": "S21.jpeg",
+   "sheet": "S21",
+   "cond": "flat",
+   "title": "Two goods in kilograms",
+   "tags": [
+    "multi-item",
+    "weight"
+   ],
+   "do": "Date. Received: row 1 2500 kg, row 2 1500 kg, total 4000 kg. Stamp, sign.",
+   "judgement": false,
+   "expected": {
+    "decision": "verified",
+    "accept": [
+     "verified"
+    ],
+    "reasons": [],
+    "lr": "LR/MH20/26-27/900021",
+    "trip_lr": "LR/MH20/26-27/900021",
+    "stamp": true,
+    "signature": true,
+    "date": "2026-11-08",
+    "quantity": "Cement 2500 kg, Sand 1500 kg, Total 4000 kg",
+    "items": [
+     2500.0,
+     1500.0
+    ],
+    "total": 4000.0,
+    "remarks": "",
+    "booked": {
+     "packages": null,
+     "weight_t": 4.0
+    }
+   },
+   "got": {
+    "is_document": true,
+    "readable": true,
+    "lr_no": "LR/MH20/26-27/900021",
+    "consignee_stamp_present": true,
+    "signature_present": true,
+    "delivery_date": "2026-11-08",
+    "quantity_received": "4000kg",
+    "items": [
+     {
+      "name": "PPC Cement",
+      "quantity": 2.5,
+      "unit": "t"
+     },
+     {
+      "name": "River Sand",
+      "quantity": 1.5,
+      "unit": "t"
+     }
+    ],
+    "total_quantity": null,
+    "remarks": "Consignor signature Driver signature Consignee signature name and stamp (on delivery)",
+    "shortage_or_damage": false,
+    "confidence": 0.9,
+    "issues": []
+   },
+   "decision": "verified",
+   "reasons": [],
+   "status": "pass",
+   "error": null,
+   "ms": 32925,
+   "fields": {
+    "lr_no": true,
+    "stamp": true,
+    "signature": true,
+    "date": true,
+    "quantity": false,
+    "items": false,
+    "total": false,
+    "remarks": false,
+    "shortage_flag": true
+   }
+  },
+  "S22": {
+   "photo": "S22.jpeg",
+   "sheet": "S22",
+   "cond": "flat",
+   "title": "Two goods in different units",
+   "tags": [
+    "multi-item",
+    "hard"
+   ],
+   "do": "Date. Received: row 1 50 bags, row 2 1.5 t, leave the total blank. Stamp, sign.",
+   "judgement": true,
+   "expected": {
+    "decision": "needs_review",
+    "accept": [
+     "needs_review"
+    ],
+    "reasons": [
+     "quantity_unclear"
+    ],
+    "lr": "LR/MH20/26-27/900022",
+    "trip_lr": "LR/MH20/26-27/900022",
+    "stamp": true,
+    "signature": true,
+    "date": "2026-11-08",
+    "quantity": "Cement 50 bags, Sand 1.5 t",
+    "items": [
+     50.0,
+     1.5
+    ],
+    "total": null,
+    "remarks": "",
+    "booked": {
+     "packages": 50,
+     "weight_t": 4.0
+    }
+   },
+   "got": {
+    "is_document": true,
+    "readable": true,
+    "lr_no": "LR/MH20/26-27/900022",
+    "consignee_stamp_present": true,
+    "signature_present": true,
+    "delivery_date": "2026-11-08",
+    "quantity_received": "50 bags\n1.5t",
+    "items": [
+     {
+      "name": "PPC Cement",
+      "quantity": 50.0,
+      "unit": "bags"
+     },
+     {
+      "name": "River Sand",
+      "quantity": 1.5,
+      "unit": "t"
+     }
+    ],
+    "total_quantity": null,
+    "remarks": "Consignor signature Driver signature Consignee signature, name and stamp",
+    "shortage_or_damage": false,
+    "confidence": 0.9,
+    "issues": []
+   },
+   "decision": "needs_review",
+   "reasons": [
+    "quantity_unclear"
+   ],
+   "status": "pass",
+   "error": null,
+   "ms": 33874,
+   "fields": {
+    "lr_no": true,
+    "stamp": true,
+    "signature": true,
+    "date": true,
+    "quantity": true,
+    "items": true,
+    "total": null,
+    "remarks": false,
+    "shortage_flag": true
+   }
+  }
+ },
+ "model": "qwen3-vl:4b",
+ "when": "2026-11-08 21:47",
+ "note": "Local. glm-ocr reads the text, Qwen3-VL 4B judges. Every field required in the answer."
+}

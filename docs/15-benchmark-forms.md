@@ -77,16 +77,31 @@ Each run is saved in `docs/benchmark/results/<label>.json` and is resumable. The
 
 **What the tab counts.** *Unsafe*: a sheet that should not be verified (missing stamp or signature, wrong LR, a shortage or different quantity) would have been. It must be 0. *Needless retake*: a good sheet sent back. *Safe, but different*: sent to a person where a retake was expected, or the reverse. Photo-condition shots and the judgement-call sheets (S14, S15, S22) accept more than one answer.
 
-## Results so far (28 photos)
-| Run | Model | Pass rate | Unsafe | Needless |
-|---|---|---|---|---|
-| Qwen3-VL 4B, run 1 (first prompt and rules) | local, Ollama + OCR | 67.9% | 5 | 2 |
-| Qwen3-VL 4B, run 2 (current code) | local, Ollama + OCR | 71.4% | 3 | 3 |
-| Qwen3-VL 4B, run 2 with `POD_REQUIRE_QUANTITY` (same readings) | local | 64.3% | 2 | 6 |
-| **Qwen3.8 27B on Groq** (LR-aware prompt) | cloud, free tier | **89.3%** | 2 | 1 |
+## Results so far (28 photos, 2026-11-08)
+Ranked by unsafe errors first (must be 0), then pass rate. "Fields" is how many individual fields were read right.
 
-**Local 4B.** Run 2 still verified S03 (the consignor's and driver's signatures were taken for the receiver's), S10 (the quantity was not found) and S13 (a Marathi shortage remark was misread). The model is sensitive to its prompt: a longer instruction about which signature counts made it stop reading the quantity altogether, so that wording was reverted. `POD_REQUIRE_QUANTITY` (a booked quantity that the reader cannot find goes to a person) removes one more unsafe case at the price of more reviews of good sheets; it is off by default.
+| Run | Pass rate | Unsafe | Needless | Fields | Time per photo |
+|---|---|---|---|---|---|
+| **Qwen3.8 27B on Groq** (cloud, free tier) | **89.3%** | 2 | 1 | 97.9% | 16 s |
+| **Qwen3-VL 4B + glm-ocr** (local, every field required) | 78.6% | **1** | 1 | 84.5% | 34 s |
+| Qwen3-VL 4B + glm-ocr, before the schema fix | 85.7% | 3 | 1 | 85.0% | 32 s |
+| Qwen3-VL 8B + glm-ocr (local, every field required) | 67.9% | 3 | 3 | 81.3% | 57 s |
+| Qwen3-VL 8B + glm-ocr, before the schema fix | 71.4% | 8 | 0 | 53.9% | 53 s |
+| Qwen3-VL 4B + RapidOCR, run 2 (the old reader) | 71.4% | 3 | 3 | 76.2% | 12 s |
+| MiniCPM-V 2.6 + glm-ocr (local) | 21.4% | 0 | 12 | 57.5% | 50 s |
 
-**Groq, Qwen3.8 27B.** Much better on every field. It still verified S01_cut (a corner of the sheet cut off, which it called readable) and S13 (the Marathi remark was misread, so the shortage was not flagged). The free tier allows 7,000 input tokens a minute, about 3 photos a minute, so a run takes about 10 minutes and it cannot serve real traffic; a paid plan is needed for that.
+**What decided it**
+- **glm-ocr is the biggest single win for the local setup.** It reads the handwritten quantity, date and remark almost perfectly ("2.5t", "8/11/26", "Sand short 0.5t"). RapidOCR, the old reader, only reads print. It costs about 20 s a photo.
+- **A bigger local model was not better.** Qwen3-VL 8B did worse than the 4B on this paper, and it also needs more than the 6 GB graphics card has. MiniCPM-V (Ollama's `minicpm-v` is version 2.6, not 4.5) asks for a retake on almost every photo.
+- **A code bug was found and fixed on the way:** the local model's answer format only required six fields, so a larger model answered the bare minimum and left the quantity, date and remarks out. Every field is now required (they may still be null).
+- **Groq's Qwen3.8 27B is the most accurate**, but its free tier is 7,000 input tokens a minute (about 3 photos a minute), so it cannot serve real traffic without a paid plan, and a cloud model sends the photo (names, signatures) off the machine.
+- **Both leaders still let a bad sheet through.** Groq verified S01_cut (a cut-off corner it called readable) and S13 (a Marathi shortage remark misread). The local pair verified S03 (the consignor's and driver's signatures taken for the receiver's).
 
-**Not run yet.** Gemini 2.5 Flash: the key works but Google answers "the free tier is not available for this project", so billing has to be switched on in AI Studio. Local Ollama models (Qwen3-VL 7B, MiniCPM-V 4.5, Llama 3.2 Vision 11B, glm-ocr) are not installed on this machine yet, and drive C: has under 9 GB free.
+**Two readers together.** Judged from the stored decisions of the Groq run and the local 4B + glm-ocr run (not built): verify only when both readers say verify, otherwise send to a person. That gives 26 of 28 as expected, **0 unsafe**, 0 needless retakes and 2 safe differences (S01_cut and S03 go to a person instead of a retake). The two readers fail on different sheets, which is what makes this work. It needs both a cloud call and the local model for every POD, so it is a decision for you.
+
+**Could not be run**
+- **Gemini 2.5 Flash:** the key works, but Google answers "the free tier is not available for this project": billing must be switched on in AI Studio.
+- **Llama 3.2 Vision 11B:** it is installed but this Ollama (0.32.5) cannot load its architecture (`mllama`), so every call failed; updating Ollama may fix it. The failed run is not shown.
+- **PaddleOCR-VL:** there is no Ollama build of it; glm-ocr stands in as the document reader.
+
+Ollama's models now live on `D:\ollama\models` (`OLLAMA_MODELS` is set for your user); C: has about 26 GB free again.

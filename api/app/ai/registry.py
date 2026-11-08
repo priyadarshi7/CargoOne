@@ -37,7 +37,7 @@ def build_provider(name: str, s: Settings) -> VisionProvider:
     if name == "groq":
         return OpenAICompatProvider("groq", s.groq_url, s.groq_api_key, s.groq_model, s.local_ai_timeout_s)
     if name == "local":
-        return LocalProvider(s.ollama_url, s.ollama_model, s.local_ai_timeout_s, s.ocr_langs, s.ocr_models, s.ocr_engine)
+        return LocalProvider(s.ollama_url, s.ollama_model, s.local_ai_timeout_s, s.ocr_langs, s.ollama_ocr_model if s.ocr_engine == "glm" else s.ocr_models, s.ocr_engine)
     raise ValueError(f"Unknown AI provider '{name}' (available: mock, gemini, groq, local)")
 
 

@@ -200,6 +200,7 @@ def main() -> None:
     ap.add_argument("--photos", required=True)
     ap.add_argument("--provider", default="local", help="local | gemini | mock")
     ap.add_argument("--ollama-model", default=None)
+    ap.add_argument("--ocr", default=None, help="rapid | glm: the text reader for the local pipeline")
     ap.add_argument("--model", default=None, help="the cloud model to use (gemini or groq); default: the one in settings")
     ap.add_argument("--label", required=True)
     ap.add_argument("--title", default=None, help="the name shown on the dashboard (default: the label)")
@@ -212,6 +213,8 @@ def main() -> None:
     s = get_settings()
     if a.ollama_model:
         s = s.model_copy(update={"ollama_model": a.ollama_model})
+    if a.ocr:
+        s = s.model_copy(update={"ocr_engine": a.ocr})
     if a.model:
         s = s.model_copy(update={"gemini_model" if a.provider == "gemini" else "groq_model": a.model})
     out = Path(a.results)

@@ -60,7 +60,7 @@ Answer ONLY with JSON. Rules:
 - stamp_present: a company / consignee rubber stamp or seal is on the receiving block. stamp_box: [x1,y1,x2,y2] around it on the photo, each 0 to 1000 (left, top, right, bottom). null if none.
 - signature_present: true if there is ANY handwritten pen mark by the receiver in the receiving block: a signature, initials, a squiggle or a scribble, even if you cannot read it or it looks crude. Printed text and the round stamp are not signatures. signature_box: the same kind of box around it. null if none.
 - delivery_date: date of receipt as yyyy-mm-dd, null if not visible. date_lines: ids of its lines.
-- quantity_received: what the receiver wrote as received, as written (e.g. "54 cartons"; for several goods "Cement 2.5 t, Sand 1.5 t"), null if not visible. quantity_lines: ids. Not the booked quantity printed above.
+- quantity_received: what the receiver wrote as received, as written (e.g. "54 cartons"; for several goods "Cement 2.5 t, Sand 1.5 t"), null if not visible. quantity_lines: ids. Not the booked quantity printed above. In the goods table a row reads "<no.> <good> <printed packages> <printed weight> <what the receiver wrote>": the receiver's handwriting is what comes AFTER the two printed numbers (for "1 PPC Cement 50 kg bags 50 2.5 40 bags" it is "40 bags"); the Total row works the same ("Total 50 2.5 Total received: 40 bags" means 40 bags).
 - items: when the receiver wrote more than one good, one {{"name","quantity","unit"}} per line (quantity a number, unit as written); empty list otherwise.
 - total_quantity: the total the receiver wrote (e.g. "4 t") only if one is written, else null. Never add lines up yourself.
 - remarks: any handwritten remark, word for word, null if none. remarks_lines: ids.
@@ -86,7 +86,10 @@ SCHEMA = {
         "shortage_or_damage": {"type": "boolean"}, "confidence": {"type": "number"},
         "issues": {"type": "array", "items": {"type": "string"}},
     },
-    "required": ["is_document", "readable", "stamp_present", "signature_present", "shortage_or_damage", "confidence"],
+    # Every field is asked for. With only the first six required, a larger model answered the minimum and left the quantity, the date and the
+    # remarks out (null) even when the text was plainly on the page; the optional ones are nullable, so "not there" is still an honest answer.
+    "required": ["is_document", "readable", "lr_no", "stamp_present", "signature_present", "delivery_date", "quantity_received", "items", "total_quantity",
+                 "remarks", "shortage_or_damage", "confidence"],
 }
 
 
@@ -161,6 +164,34 @@ def _lines(found: list[tuple[str, float, tuple[float, float, float, float]]]) ->
     found = _drop_overlaps(found)
     found.sort(key=lambda f: (round(f[2][1] * 40), f[2][0]))  # top to bottom, then left to right
     return [Line(i, t, c, *b) for i, (t, c, b) in enumerate(found)]
+
+
+class OllamaOcr:
+    """A document-reading model run through Ollama as the text reader (glm-ocr). It returns plain text, not boxes, so each line gets the
+    slice of the page it would fill if the text were spread evenly: enough for the answering model to cite lines, not a real position."""
+
+    def __init__(self, url: str, model: str, timeout_s: float) -> None:
+        self._url, self._model, self._timeout = url.rstrip("/"), model, timeout_s
+
+    def __call__(self, image: bytes) -> list[Line]:
+        body = {"model": self._model, "stream": False, "keep_alive": "30m", "options": {"temperature": 0},
+                "messages": [{"role": "user", "content": "Text Recognition:", "images": [base64.b64encode(jpeg(prepare(image))).decode()]}]}
+        try:
+            res = httpx.post(f"{self._url}/api/chat", json=body, timeout=self._timeout)
+            res.raise_for_status()
+            text = res.json()["message"]["content"]
+        except httpx.ConnectError as e:
+            raise ProviderError("local model is not running (start Ollama)") from e
+        except httpx.HTTPStatusError as e:
+            raise ProviderError(f"ollama http {e.response.status_code}") from e
+        except httpx.HTTPError as e:
+            raise ProviderError(f"ollama error: {type(e).__name__}") from e
+        except (KeyError, ValueError) as e:
+            raise ProviderError(f"local OCR returned unusable output: {type(e).__name__}") from e
+        rows = [re.sub(r"\s*\|\s*", " ", ln).strip(" #*-") for ln in text.splitlines()]
+        rows = [r for r in rows if r and not re.fullmatch(r"[-:| ]+", r)]  # drop empty lines and markdown table rules
+        n = max(len(rows), 1)
+        return [Line(id=i, text=r, conf=0.9, x=0.0, y=i / n, w=1.0, h=1 / n) for i, r in enumerate(rows)]
 
 
 class RapidReader:
@@ -462,7 +493,7 @@ class LocalProvider:
 
     def __init__(self, url: str, model: str, timeout_s: float, langs: str = "en", ocr_models: str = "mobile", ocr_engine: str = "rapid", *, ocr: Ocr | None = None, vlm: Vlm | None = None,
                  sign: Sign | None = None, locate: Locate | None = None) -> None:
-        self._ocr = ocr or (RapidReader(langs) if ocr_engine == "rapid" else PaddleReader(langs, ocr_models))
+        self._ocr = ocr or (OllamaOcr(url, ocr_models, timeout_s) if ocr_engine == "glm" else RapidReader(langs) if ocr_engine == "rapid" else PaddleReader(langs, ocr_models))
         self._vlm = vlm or ollama_vlm(url, model, timeout_s)
         self._url, self._model = url, model
         self._sign = sign or (ollama_signature(url, model, timeout_s) if vlm is None else None)

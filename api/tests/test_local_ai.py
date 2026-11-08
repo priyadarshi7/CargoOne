@@ -237,3 +237,24 @@ def test_item_lines_from_the_model_are_kept_only_when_well_formed() -> None:
     got = _items([{"name": "Cement", "quantity": 2.5, "unit": "t"}, {"name": "Sand", "quantity": "lots", "unit": "t"}, "junk", {"quantity": True}])
     assert [(i.name, i.quantity, i.unit) for i in got] == [("Cement", 2.5, "t"), ("Sand", None, "t"), (None, None, None)]
     assert _items(None) == [] and _items("x") == []
+
+
+def test_the_model_is_asked_for_every_field_and_a_document_reader_can_be_the_text_source(monkeypatch: pytest.MonkeyPatch) -> None:
+    import httpx
+
+    from app.ai.providers import local as L
+
+    # a larger model answered the bare minimum and left the quantity, date and remarks out when they were not required
+    assert {"lr_no", "delivery_date", "quantity_received", "items", "total_quantity", "remarks"} <= set(L.SCHEMA["required"])
+
+    def fake_post(url: str, **kw):
+        assert kw["json"]["messages"][0]["content"] == "Text Recognition:"
+        text = "| No. | Goods |\n| --- | --- |\n1 PPC Cement 50 40 bags\n\nDate received\n8/11/26"
+        return httpx.Response(200, json={"message": {"content": text.replace("\\n", "\n")}}, request=httpx.Request("POST", url))
+
+    monkeypatch.setattr(L.httpx, "post", fake_post)
+    img = io.BytesIO()
+    Image.new("RGB", (40, 30), "white").save(img, "JPEG")
+    lines = L.OllamaOcr("http://x", "glm-ocr", 5)(img.getvalue())
+    assert [ln.text for ln in lines] == ["No. Goods", "1 PPC Cement 50 40 bags", "Date received", "8/11/26"]
+    assert [ln.id for ln in lines] == [0, 1, 2, 3] and all(0 <= ln.y < 1 for ln in lines)
