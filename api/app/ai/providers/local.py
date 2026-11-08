@@ -55,7 +55,7 @@ Text may be English, Hindi or Marathi, printed or handwritten. A text reader alr
 Answer ONLY with JSON. Rules:
 - is_document: false if this is not a transport receipt / POD paper.
 - readable: false if blur, darkness, glare or cropping make the key fields unreadable.
-- lr_no: the LR / consignment number as printed (expected: "{expected}"). null if not visible. Never invent it.
+- lr_no: the LR / consignment number exactly as printed, character for character. null if any part of it is cut off, hidden or unreadable. Never complete or invent it.
 - lr_lines: ids of the lines above that hold it.
 - stamp_present: a company / consignee rubber stamp or seal is on the receiving block. stamp_box: [x1,y1,x2,y2] around it on the photo, each 0 to 1000 (left, top, right, bottom). null if none.
 - signature_present: true if there is ANY handwritten pen mark by the receiver in the receiving block: a signature, initials, a squiggle or a scribble, even if you cannot read it or it looks crude. Printed text and the round stamp are not signatures. signature_box: the same kind of box around it. null if none.
@@ -260,7 +260,7 @@ def ollama_vlm(url: str, model: str, timeout_s: float, transport: httpx.AsyncBas
         listing = "\n".join(f"{ln.id}: {ln.text}" for ln in lines) or "(no text was found)"
         body = {
             "model": model, "stream": False, "format": SCHEMA, "think": False, "options": {"temperature": 0}, "keep_alive": "30m",
-            "messages": [{"role": "user", "content": PROMPT.format(lines=listing, expected=expected),
+            "messages": [{"role": "user", "content": PROMPT.format(lines=listing),
                           "images": [base64.b64encode(jpeg(prepare(image))).decode()]}],
         }
         try:
@@ -419,7 +419,7 @@ def merge(raw: dict, lines: list[Line], expected_lr_no: str) -> PodExtraction:
     said = raw.get("lr_no") if isinstance(raw.get("lr_no"), str) and raw.get("lr_no") else None
     lr_no, hit = said, None
     for ln in lines:
-        if _contains(_key(ln.text), want):
+        if want and want in _key(ln.text):  # exactly, not nearly: a number one digit away is another consignment
             hit = ln
             break
     if hit is not None:  # the number is printed on this paper: that beats whatever the model made of it
@@ -430,7 +430,7 @@ def merge(raw: dict, lines: list[Line], expected_lr_no: str) -> PodExtraction:
         if near and _contains(_key(" ".join(ln.text for ln in near)), _key(said)):
             x, y, w, h = _union(near)
             boxes.append(Box(field="lr_no", x=x, y=y, w=w, h=h, text=" ".join(ln.text for ln in near), conf=min(ln.conf for ln in near), source="ocr"))
-        if want and _key(said) == want and not _contains(seen_text, want):
+        if want and _key(said) == want and want not in seen_text:
             conf = min(conf, 0.6)  # the model "read" the number that was expected, but the text reader never saw it: do not trust
             issues.append("LR number not confirmed by text reader")
 

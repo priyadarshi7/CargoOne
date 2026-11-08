@@ -28,7 +28,7 @@ class GeminiProvider:
             raise ProviderError("GEMINI_API_KEY not configured")
         body = {
             "contents": [{"parts": [
-                {"text": POD_PROMPT.format(expected_lr_no=expected_lr_no)},
+                {"text": POD_PROMPT},
                 {"inline_data": {"mime_type": mime, "data": base64.b64encode(image).decode()}},
             ]}],
             "generationConfig": {

@@ -46,7 +46,7 @@ class OpenAICompatProvider:
     async def extract(self, image: bytes, mime: str, expected_lr_no: str) -> PodExtraction:
         if not self._key:
             raise ProviderError(f"{self.name}: no API key configured")
-        prompt = POD_PROMPT.format(expected_lr_no=expected_lr_no) + "\n\n" + SHAPE
+        prompt = POD_PROMPT + "\n\n" + SHAPE
         if self._ocr is not None:
             lines = await asyncio.to_thread(self._ocr, image)
             prompt += ("\n\nA text reader already read this paper. Its lines, in page order (a goods-table row reads: no., good, printed packages, "

@@ -260,3 +260,23 @@ def test_the_model_is_asked_for_every_field_and_a_document_reader_can_be_the_tex
     lines = L.OllamaOcr("http://x", "glm-ocr", 5)(img.getvalue())
     assert [ln.text for ln in lines] == ["No. Goods", "1 PPC Cement 50 40 bags", "Date received", "8/11/26"]
     assert [ln.id for ln in lines] == [0, 1, 2, 3] and all(0 <= ln.y < 1 for ln in lines)
+
+
+def test_an_lr_one_digit_away_is_not_taken_for_the_expected_one() -> None:
+    near = [Line(0, "LR No: LR-88135", 0.95, 0.1, 0.12, 0.4, 0.04), *LINES[2:]]
+    res = merge(raw(lr_no="LR-88135", lr_lines=[0]), near, "LR-88134")
+    assert res.lr_no == "LR-88135"  # the paper says another number: the decision asks for a retake
+
+
+def test_a_half_visible_lr_is_not_completed() -> None:
+    half = [Line(0, "LR No: LR-88", 0.95, 0.1, 0.12, 0.2, 0.04), *LINES[2:]]
+    res = merge(raw(lr_no=None, lr_lines=[0]), half, "LR-88134")
+    assert res.lr_no is None
+
+
+def test_no_prompt_tells_the_model_which_lr_number_to_expect() -> None:
+    from app.ai.prompt import POD_PROMPT
+    from app.ai.providers.local import PROMPT
+
+    assert "{expected" not in POD_PROMPT and "expected" not in PROMPT.lower().replace("expected_", "")
+    assert "cut off" in POD_PROMPT

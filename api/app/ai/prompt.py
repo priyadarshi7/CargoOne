@@ -11,7 +11,7 @@ The paper has these parts:
 Return ONLY JSON matching the schema. Rules:
 - is_document: false if the photo is not a transport receipt / POD paper.
 - readable: false only if blur, darkness, glare or cropping make the LR number or the receiver's part unreadable. Untidy handwriting you can still read is readable.
-- lr_no: the LR number as printed. The expected number is "{expected_lr_no}"; do not invent it - return what is actually printed, or null.
+- lr_no: the LR number exactly as printed on this paper, character for character. If any part of it is cut off, hidden, blurred or lost in glare, do not complete it or guess it: return null, set readable to false and put "LR number cut off" in issues. You are not told which number to expect, on purpose.
 - consignee_stamp_present: an ink stamp or seal (round or square, any colour) is on the paper in the consignee's box.
 - signature_present: handwriting by the RECEIVER (a signature, initials or a scribble) inside the box "Consignee signature, name and stamp". Signatures in
   the Consignor and Driver boxes are NOT the receiver's: ignore them. If the consignee's box has no handwriting, false.
