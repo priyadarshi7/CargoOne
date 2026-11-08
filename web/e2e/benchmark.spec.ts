@@ -9,16 +9,18 @@ test('ops opens the AI benchmark, compares the runs and looks at one sheet', asy
   await expect(page).toHaveURL(/\/office\/benchmark/)
   await expect(page.getByRole('heading', { name: 'AI benchmark' })).toBeVisible()
 
-  await expect(page.getByRole('heading', { name: 'Runs' })).toBeVisible()
+  await expect(page.getByRole('complementary', { name: 'Runs' })).toBeVisible()
   await expect(page.getByText('Decision pass rate')).toBeVisible()
   await expect(page.getByText('Unsafe errors', { exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'How each field was read' })).toBeVisible()
   await shot(page, 'benchmark-top')
 
   // pick the first (oldest) run, then narrow the suite to the unsafe sheets
-  const runButtons = page.getByRole('button', { name: /run 1/ })
-  await runButtons.first().click()
-  await expect(runButtons.first()).toHaveAttribute('aria-pressed', 'true')
+  const runButtons = page.getByRole('complementary', { name: 'Runs' }).getByRole('button', { name: /run 1/ })
+  await runButtons.click()
+  await expect(runButtons).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByText('What changed since')).toHaveCount(0) // the oldest run has nothing before it
+  await page.getByRole('tab', { name: /^Photos/ }).click()
   await page.getByRole('button', { name: /^Unsafe/ }).click()
   await expect(page.getByRole('heading', { name: /S03/ })).toBeVisible()
   await page.getByText('Expected against what the AI read').first().click()
