@@ -4,7 +4,6 @@ Security model: a link is a bearer secret scoped to ONE trip and ONE purpose (up
 the token is stored, so a database leak does not leak working links. Links expire, can be revoked, are rate limited,
 reveal no personal data, and a new link revokes the older ones for that trip.
 """
-import hashlib
 import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -17,11 +16,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.db import get_session
-from app.models import AccessLink, AuditLog, LinkKind, Role, Trip, User, Vehicle
-from app.notify.sms import Sms, get_sms, mask_phone, render
+from app.models import AccessLink, AuditLog, LinkKind, Role, Trip, TripState, User, Vehicle
+from app.notify.sms import MockSms, Sms, get_sms, mask_phone, render, send_sms
+from app.phones import clean_phone
 from app.pod.ingest import OPEN_STATUSES, UploadResult, ingest_pod
 from app.ratelimit import RateLimiter
-from app.security import require_roles
+from app.security import link_hash, require_roles
 from app.storage import Storage, get_storage
 
 router = APIRouter(tags=["links"])
@@ -31,12 +31,12 @@ bad_token_limiter = RateLimiter(max_hits=30, window_s=60)  # per client IP: gues
 upload_limiter = RateLimiter(max_hits=12, window_s=3600)  # per link: photos per hour (retakes are capped at 2 anyway)
 
 
-def _hash(token: str) -> str:
-    return hashlib.sha256(token.encode()).hexdigest()
+_hash = link_hash
 
 
 class CreateLink(BaseModel):
     phone: str | None = Field(default=None, pattern=r"^\+?\d{10,15}$", description="driver's mobile; SMS is sent if given")
+    driver_name: str | None = Field(default=None, max_length=120, description="a hired driver's name, for the record")
     lang: Literal["hi", "mr", "en"] = "hi"
 
 
@@ -44,6 +44,8 @@ class LinkOut(BaseModel):
     url: str
     expires_at: datetime
     sms_sent: bool
+    sms_simulated: bool = False  # the sender is the simulated one: nothing really left the machine
+    sms_error: str | None = None  # why the text did not go; the link itself is still good and can be shared by hand
 
 
 class LinkInfo(BaseModel):
@@ -57,6 +59,23 @@ class LinkInfo(BaseModel):
     needs_code: bool = False  # the receiver's 4-digit code must be entered before the photo
 
 
+async def _driver_for(session: AsyncSession, trip: Trip, vehicle: Vehicle | None, phone: str | None, name: str | None, lang: str) -> User:
+    """The person the link signs in as. A trip with a driver keeps them; a hired trip with none gets a driver record (found by mobile number,
+    so the same person on their next trip is the same record) who has no PIN and can only ever use a private link."""
+    if trip.driver_id:
+        return await session.get(User, trip.driver_id)
+    person = await session.scalar(select(User).where(User.phone == phone)) if phone else None
+    if person is not None and (person.role != Role.driver or not person.is_active):
+        raise HTTPException(status.HTTP_409_CONFLICT, "That mobile number belongs to someone who cannot be a driver")
+    if person is None:
+        person = User(name=(name or "").strip() or f"Hired driver {vehicle.reg_no if vehicle else ''}".strip(), phone=phone, role=Role.driver, language=lang,
+                      employment_type="hired", vendor_id=vehicle.vendor_id if vehicle else None)
+        session.add(person)
+        await session.flush()
+    trip.driver_id = person.id
+    return person
+
+
 @router.post("/trips/{trip_id}/upload-link", response_model=LinkOut, status_code=status.HTTP_201_CREATED)
 async def create_link(
     trip_id: uuid.UUID, body: CreateLink, user: Annotated[User, Depends(require_roles(Role.ops, Role.billing))],
@@ -66,21 +85,25 @@ async def create_link(
     trip = await session.get(Trip, trip_id)
     if trip is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Trip not found")
+    if trip.state == TripState.cancelled:
+        raise HTTPException(status.HTTP_409_CONFLICT, "This trip is cancelled")
     if trip.pod_status not in OPEN_STATUSES:
         raise HTTPException(status.HTTP_409_CONFLICT, f"POD already {trip.pod_status.value}; no upload needed")
+    phone = clean_phone(body.phone) if body.phone else None
+    await _driver_for(session, trip, await session.get(Vehicle, trip.vehicle_id), phone, body.driver_name, body.lang)
 
     await session.execute(update(AccessLink).where(AccessLink.trip_id == trip.id, AccessLink.kind == LinkKind.sms_upload,
                                                    AccessLink.revoked.is_(False)).values(revoked=True))
     raw = secrets.token_urlsafe(32)  # 256 bits
-    expires = datetime.now(UTC) + timedelta(hours=s.upload_link_ttl_hours)
+    # Long enough for the whole trip: the link must still work on the road and at the drop, days after it was sent.
+    expires = max(datetime.now(UTC) + timedelta(hours=s.upload_link_ttl_hours), (trip.planned_end or datetime.now(UTC)) + timedelta(hours=48))
     session.add(AccessLink(token=_hash(raw), trip_id=trip.id, kind=LinkKind.sms_upload, expires_at=expires))
     url = f"{s.app_base_url.rstrip('/')}/u/{raw}?l={body.lang}"
-    if body.phone:
-        sms.send(body.phone, render(body.lang, trip.destination, url))
+    failure = await send_sms(session, sms, phone, render(body.lang, trip.destination, url), actor=user.id) if phone else None
     session.add(AuditLog(actor_id=user.id, action="link.create", entity="trip", entity_id=str(trip.id),
-                         meta={"kind": "sms_upload", "sms_to": mask_phone(body.phone) if body.phone else None}))
+                         meta={"kind": "sms_upload", "sms_to": mask_phone(phone) if phone else None, "sms_failed": failure is not None}))
     await session.commit()
-    return LinkOut(url=url, expires_at=expires, sms_sent=bool(body.phone))
+    return LinkOut(url=url, expires_at=expires, sms_sent=bool(phone) and failure is None, sms_simulated=isinstance(sms, MockSms), sms_error=failure)
 
 
 @router.delete("/trips/{trip_id}/upload-link", status_code=status.HTTP_204_NO_CONTENT)

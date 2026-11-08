@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BASE, tokenStore } from '../api'
+import { authHeader, BASE, getActiveLink } from '../api'
 import { db, newId, type OutboxItem, type OutboxKind } from './db'
 
 /** Actions a driver takes with no network (start a trip, say the truck has reached, report a delay, add an expense) are saved on the phone first and sent in order
@@ -11,7 +11,7 @@ const listeners = new Set<() => void>()
 const changed = () => listeners.forEach((f) => f())
 
 export async function enqueueAction(kind: OutboxKind, data: Record<string, string>, photo?: Blob, id = newId()): Promise<OutboxItem> {
-  const item: OutboxItem = { id, kind, data, photo, createdAt: stamp(), attempts: 0, status: 'queued' }
+  const item: OutboxItem = { id, kind, data, photo, createdAt: stamp(), attempts: 0, status: 'queued', link: getActiveLink() ?? undefined }
   await (await db()).put('outbox', item)
   changed()
   return item
@@ -24,8 +24,7 @@ export class PermanentSendError extends Error {}
 /** Sends one saved action. A 4xx the server will never change its mind about is permanent; network errors, 5xx and an
  *  expired login (401) leave the action saved. */
 export async function sendItem(item: OutboxItem): Promise<void> {
-  const token = tokenStore.get()
-  const auth: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
+  const auth: Record<string, string> = item.link ? { Authorization: `Link ${item.link}` } : authHeader()
   let res: Response
   if (item.kind === 'start') {
     res = await fetch(`${BASE}/trips/${encodeURIComponent(item.data.trip_id)}/start`, { method: 'POST', headers: auth })
@@ -46,6 +45,7 @@ export async function sendItem(item: OutboxItem): Promise<void> {
     res = await fetch(`${BASE}/expenses`, { method: 'POST', body: form, headers: auth })
   }
   if (res.ok) return
+  if (res.status === 401 && item.link) throw new PermanentSendError('The link has expired. Ask the office for a new one.') // a revoked link will not come back
   if (res.status >= 500 || res.status === 401 || res.status === 408 || res.status === 429) throw new Error(`temporary ${res.status}`)
   const detail = await res.json().then((j) => (typeof j.detail === 'string' ? j.detail : res.statusText)).catch(() => res.statusText)
   throw new PermanentSendError(detail)

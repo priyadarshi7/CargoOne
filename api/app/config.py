@@ -80,6 +80,12 @@ class Settings(BaseSettings):
     whatsapp_template_shipment_update_hi: str = ""
     whatsapp_template_shipment_update_mr: str = ""
     onboarding_link_ttl_hours: int = 72
+    sms_provider: str = "mock"  # mock | twilio. "twilio" really sends text messages and needs the settings below (secrets: .env only)
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_from: str = ""  # a Twilio number in +E.164 form, or leave empty and set the messaging service below
+    twilio_messaging_service_sid: str = ""
+    sms_max_total: int = 60  # hard ceiling on real texts ever sent (counted from the audit log), so a trial balance is never used up by accident
     vapid_public_key: str = ""  # Web Push (alerts to a driver's phone). Both keys set = live; empty = recorded only. The private key is a secret: .env only
     vapid_private_key: str = ""
     vapid_subject: str = "mailto:admin@cargoone.dev"  # a contact the push services can reach

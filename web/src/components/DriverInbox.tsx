@@ -2,6 +2,7 @@ import { Bell } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
+import { useDriverBase } from '../lib/driverBase'
 import { useI18n } from '../lib/i18n'
 
 interface Item { id: string; kind: string; title: string; body: string; link: string | null; read: boolean; created_at: string }
@@ -14,6 +15,7 @@ const TXT = {
 /** The driver's inbox: what the office just told them (new trip, change, cancellation). Shown only while something is unread. */
 export default function DriverInbox({ onOpen }: { onOpen?: () => void }) {
   const { lang } = useI18n()
+  const { path } = useDriverBase()
   const [data, setData] = useState<{ unread: number; items: Item[] } | null>(null)
   const x = TXT[lang]
   const load = useCallback(() => { api<{ unread: number; items: Item[] }>('/notifications/mine?limit=5').then(setData).catch(() => undefined) }, [])
@@ -34,7 +36,7 @@ export default function DriverInbox({ onOpen }: { onOpen?: () => void }) {
       <ul className="space-y-2">
         {unread.map((n) => (
           <li key={n.id} className="text-base">
-            {n.link ? <Link to={n.link} onClick={onOpen} className="block"><b>{n.title}</b><span className="block text-muted">{n.body}</span></Link> : <><b>{n.title}</b><span className="block text-muted">{n.body}</span></>}
+            {n.link ? <Link to={path(n.link)} onClick={onOpen} className="block"><b>{n.title}</b><span className="block text-muted">{n.body}</span></Link> : <><b>{n.title}</b><span className="block text-muted">{n.body}</span></>}
           </li>
         ))}
       </ul>

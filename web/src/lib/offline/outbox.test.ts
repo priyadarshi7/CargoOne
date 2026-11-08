@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { readCache, writeCache } from './cache'
 import { db } from './db'
-import { enqueueAction, flushOutbox, listOutbox, PermanentSendError } from './outbox'
+import { setActiveLink } from '../api'
+import { enqueueAction, flushOutbox, listOutbox, PermanentSendError, sendItem } from './outbox'
 
 beforeEach(async () => { await (await db()).clear('outbox'); await (await db()).clear('kv') })
 
@@ -47,5 +48,19 @@ describe('cache', () => {
     await writeCache('u1:/trips/mine', [{ id: 1 }])
     expect((await readCache('u1:/trips/mine'))?.value).toEqual([{ id: 1 }])
     expect(await readCache('u2:/trips/mine')).toBeNull()
+  })
+
+  it("sends a hired driver's action with the private link it was made on, and a dead link is a failure, not a retry", async () => {
+    setActiveLink('L'.repeat(43))
+    const item = await enqueueAction('start', { trip_id: 'a' })
+    setActiveLink(null) // another page flushes it later
+    expect(item.link).toBe('L'.repeat(43))
+    const seen: (string | null)[] = []
+    const real = globalThis.fetch
+    globalThis.fetch = (async (_url: unknown, init?: RequestInit) => { seen.push(new Headers(init?.headers).get('authorization')); return new Response('{}', { status: 401 }) }) as typeof fetch
+    try {
+      await expect(sendItem(item)).rejects.toBeInstanceOf(PermanentSendError)
+    } finally { globalThis.fetch = real }
+    expect(seen).toEqual(['Link ' + 'L'.repeat(43)])
   })
 })

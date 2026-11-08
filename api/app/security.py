@@ -3,6 +3,7 @@
 Authorisation is enforced here in the API (there is no database row-level security),
 so every protected endpoint must depend on `require_roles(...)`.
 """
+import hashlib
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
@@ -16,12 +17,54 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.db import get_session
-from app.models import Role, User
+from app.models import AccessLink, LinkKind, Role, Trip, User
 
 _hasher = PasswordHasher()
 _bearer = HTTPBearer(auto_error=False)
 TOKEN_TTL = timedelta(hours=12)
 PIN_FREE_PATHS = {"/auth/me", "/auth/change-secret"}  # all a person with a temporary PIN may do
+LINK_REFUSED = {"/auth/change-secret"}  # a private link has no PIN to change
+
+
+def link_hash(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def link_trip_id(request: Request) -> uuid.UUID | None:
+    """The one trip a request is confined to when it came in on a hired driver's private link; None for a normal sign-in."""
+    return getattr(request.state, "link_trip_id", None)
+
+
+def confine_to_link(request: Request, trip_id: uuid.UUID) -> None:
+    """A private link may only touch its own trip, even when the same person has other trips."""
+    only = link_trip_id(request)
+    if only is not None and only != trip_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Trip not found")
+
+
+async def _link_user(request: Request, raw: str, session: AsyncSession) -> User:
+    """A hired driver's private link signs them in as the trip's driver, for that trip only. The link is the secret: only its hash is stored."""
+    from app.routers.links import bad_token_limiter  # the same guess throttle as the public upload endpoints
+
+    bad = HTTPException(status.HTTP_401_UNAUTHORIZED, "This link is not valid or has expired. Ask the office for a new one.")
+    link = await session.get(AccessLink, link_hash(raw)) if 20 <= len(raw) <= 128 else None
+    if link is None or link.kind != LinkKind.sms_upload:
+        ip = request.client.host if request.client else "unknown"
+        if bad_token_limiter.blocked(ip):
+            raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many attempts. Try again later.")
+        bad_token_limiter.record(ip)
+        raise bad
+    if link.revoked or link.expires_at <= datetime.now(UTC) or request.url.path in LINK_REFUSED:
+        raise bad
+    trip = await session.get(Trip, link.trip_id)
+    user = await session.get(User, trip.driver_id) if trip is not None and trip.driver_id else None
+    if user is None or not user.is_active or user.role != Role.driver:
+        raise bad
+    only = link.trip_id
+    if (asked := request.path_params.get("trip_id")) is not None and str(asked) != str(only):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Trip not found")
+    request.state.link_trip_id = only
+    return user
 
 
 def hash_secret(secret: str) -> str:
@@ -49,6 +92,9 @@ async def current_user(
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> User:
     unauthorised = HTTPException(status.HTTP_401_UNAUTHORIZED, "Not authenticated")
+    header = request.headers.get("authorization", "")
+    if header[:5].lower() == "link ":
+        return await _link_user(request, header[5:].strip(), session)
     if creds is None:
         raise unauthorised
     try:

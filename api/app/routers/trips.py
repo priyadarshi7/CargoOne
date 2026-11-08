@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,7 +15,7 @@ from app.lrdoc import LrData, build_lr_pdf
 from app.models import AuditLog, Branch, Client, Role, Trip, TripState, User, Vehicle
 from app.notify.service import safely
 from app.notify.shipment import tell_parties
-from app.security import require_roles
+from app.security import link_trip_id, require_roles
 
 router = APIRouter(prefix="/trips", tags=["trips"])
 
@@ -95,10 +95,14 @@ async def list_trips(
 
 @router.get("/mine", response_model=list[DriverTripOut])
 async def my_trips(
+    request: Request,
     user: Annotated[User, Depends(require_roles(Role.driver))],
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> list[DriverTripOut]:
-    rows = (await session.execute(_query().where(Trip.driver_id == user.id))).all()
+    query = _query().where(Trip.driver_id == user.id)
+    if (only := link_trip_id(request)) is not None:
+        query = query.where(Trip.id == only)  # a private link shows its one trip
+    rows = (await session.execute(query)).all()
     return [DriverTripOut(**_out(r).model_dump(), material=r[0].material, weight_tonnes=float(r[0].weight_tonnes) if r[0].weight_tonnes is not None else None,
                           packages=r[0].packages, consignee_name=r[0].consignee_name, consignee_phone=r[0].consignee_phone,
                           destination_lat=r[0].destination_lat, destination_lng=r[0].destination_lng, acknowledged_at=r[0].acknowledged_at,

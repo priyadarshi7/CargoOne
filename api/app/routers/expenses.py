@@ -10,7 +10,7 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Query, Response, UploadFile, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, Response, UploadFile, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,7 +34,7 @@ from app.models import (
 )
 from app.notify.service import expense_decided, safely
 from app.pod.ingest import validate_image
-from app.security import current_user, require_roles
+from app.security import confine_to_link, current_user, require_roles
 from app.storage import Storage, get_storage
 
 log = logging.getLogger("cargoone.expenses")
@@ -84,7 +84,7 @@ async def _fills(session: AsyncSession, vehicle_id: uuid.UUID) -> list[Fill]:
 
 @router.post("/expenses", response_model=ExpenseOut)
 async def add_expense(
-    user: Driver, session: Session, storage: Annotated[Storage, Depends(get_storage)],
+    request: Request, user: Driver, session: Session, storage: Annotated[Storage, Depends(get_storage)],
     client_expense_id: Annotated[str, Form(min_length=8, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")],
     trip_id: Annotated[uuid.UUID, Form()],
     category: Annotated[ExpenseCategory, Form()],
@@ -95,6 +95,7 @@ async def add_expense(
     note: Annotated[str | None, Form(max_length=200)] = None,
     photo: UploadFile | None = None,
 ) -> ExpenseOut:
+    confine_to_link(request, trip_id)
     existing = await session.scalar(select(Expense).where(Expense.client_expense_id == client_expense_id))
     trip = await session.get(Trip, trip_id)
     if trip is None or trip.driver_id != user.id or trip.state == TripState.cancelled:

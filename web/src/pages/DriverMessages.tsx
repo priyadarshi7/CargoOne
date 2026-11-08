@@ -4,6 +4,7 @@ import DriverShell from '../components/DriverShell'
 import StaleNote from '../components/StaleNote'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { useDriverBase } from '../lib/driverBase'
 import { useI18n } from '../lib/i18n'
 import { useCachedApi } from '../lib/offline/cache'
 
@@ -16,6 +17,7 @@ export default function DriverMessages() {
   const { user } = useAuth()
   const { t, date } = useI18n()
   const nav = useNavigate()
+  const { path } = useDriverBase()
   const { data, stale, loaded, mutate, reload } = useCachedApi<Box>('/notifications/mine?limit=50', user?.id ?? 'anon')
 
   const changed = () => window.dispatchEvent(new Event('cargoone:messages-read'))
@@ -24,7 +26,7 @@ export default function DriverMessages() {
       mutate((b) => ({ unread: Math.max(0, b.unread - 1), items: b.items.map((x) => (x.id === m.id ? { ...x, read: true } : x)) }))
       await api(`/notifications/${m.id}/read`, { method: 'POST' }).then(changed).catch(() => undefined)
     }
-    if (m.link) nav(m.link)
+    if (m.link) nav(path(m.link))
   }
   async function readAll() {
     mutate((b) => ({ unread: 0, items: b.items.map((x) => ({ ...x, read: true })) }))

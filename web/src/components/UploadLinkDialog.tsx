@@ -4,7 +4,7 @@ import { api, ApiError, type Trip } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 import PhoneInput from './PhoneInput'
 
-interface LinkOut { url: string; expires_at: string; sms_sent: boolean }
+interface LinkOut { url: string; expires_at: string; sms_sent: boolean; sms_simulated: boolean; sms_error: string | null }
 const LANGS = [['hi', 'हिन्दी'], ['mr', 'मराठी'], ['en', 'English']] as const
 
 /** Office action: create a one-trip upload link for a hired driver and (optionally) "SMS" it.
@@ -13,6 +13,7 @@ export function UploadLinkDialog({ trip, onClose }: { trip: Trip; onClose: () =>
   const ref = useRef<HTMLDialogElement>(null)
   const { t, date } = useI18n()
   const [phone, setPhone] = useState('')
+  const [name, setName] = useState('')
   const [lang, setLang] = useState<(typeof LANGS)[number][0]>('hi')
   const [link, setLink] = useState<LinkOut | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -26,7 +27,7 @@ export function UploadLinkDialog({ trip, onClose }: { trip: Trip; onClose: () =>
     setError(null)
     try {
       setLink(await api<LinkOut>(`/trips/${trip.id}/upload-link`, {
-        method: 'POST', body: JSON.stringify({ phone: phone.trim() || undefined, lang }),
+        method: 'POST', body: JSON.stringify({ phone: phone.trim() || undefined, driver_name: name.trim() || undefined, lang }),
       }))
     } catch (e) {
       setError(e instanceof ApiError && e.status === 422 ? t('ul.phoneBad') : e instanceof ApiError ? e.message : t('ul.createFail'))
@@ -64,6 +65,8 @@ export function UploadLinkDialog({ trip, onClose }: { trip: Trip; onClose: () =>
           <>
             <p className="text-sm text-muted">{t('ul.intro')}</p>
             <PhoneInput label={t('ul.phone')} value={phone} onChange={setPhone} />
+            <label className="block space-y-1 text-sm"><span className="text-muted">{t('ul.name')}</span>
+              <input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} className={field} /></label>
             <fieldset className="space-y-1 text-sm">
               <legend className="text-muted">{t('ul.lang')}</legend>
               <div className="flex gap-2">
@@ -87,7 +90,8 @@ export function UploadLinkDialog({ trip, onClose }: { trip: Trip; onClose: () =>
               </button>
             </div>
             <ul className="space-y-1 text-sm text-muted">
-              {link.sms_sent && <li>SMS queued to the driver (simulated in this build, nothing is really sent).</li>}
+              {link.sms_sent && <li>{link.sms_simulated ? t('ul.smsSim') : t('ul.smsOk')}</li>}
+              {link.sms_error && <li role="alert" className="text-bad">{t('ul.smsFail', { why: link.sms_error })}</li>}
               <li>{t('ul.valid', { when: date(link.expires_at, true) })}</li>
             </ul>
             <button onClick={() => void revoke()} className="text-sm text-bad underline underline-offset-2">{t('ul.revoke')}</button>

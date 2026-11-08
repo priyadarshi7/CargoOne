@@ -27,7 +27,7 @@ from app.models import (
     User,
     Vehicle,
 )
-from app.notify.sms import MockSms, Sms, get_sms, mask_phone, reminder_text
+from app.notify.sms import MockSms, Sms, get_sms, mask_phone, reminder_text, send_sms
 from app.security import require_roles
 
 router = APIRouter(prefix="/attention", tags=["attention"])
@@ -162,16 +162,18 @@ async def remind_drivers(actor: Sender, session: Session, sms: Annotated[Sms, De
     recent = set((await session.scalars(
         select(AuditLog.entity_id).where(AuditLog.action == "reminder.sent", AuditLog.at >= now - REMIND_EVERY)
     )).all())
-    sent = skipped = no_phone = 0
+    sent = skipped = no_phone = failed = 0
     for trip, driver in rows:
         if str(trip.id) in recent:
             skipped += 1
         elif not driver.phone:
             no_phone += 1
         else:
-            sms.send(driver.phone, reminder_text(driver.language, trip.destination))
+            if await send_sms(session, sms, driver.phone, reminder_text(driver.language, trip.destination), actor=actor.id):
+                failed += 1  # not marked as reminded, so pressing the button again tries once more
+                continue
             session.add(AuditLog(actor_id=actor.id, action="reminder.sent", entity="trip", entity_id=str(trip.id), meta={"to": mask_phone(driver.phone)}))
             sent += 1
     await session.commit()
     no_driver = (await session.scalar(select(func.count()).select_from(Trip).where(*_missing_clause(now), Trip.driver_id.is_(None)))) or 0
-    return {"sent": sent, "skipped_recent": skipped, "no_phone": no_phone, "no_driver": no_driver, "simulated": isinstance(sms, MockSms)}
+    return {"sent": sent, "failed": failed, "skipped_recent": skipped, "no_phone": no_phone, "no_driver": no_driver, "simulated": isinstance(sms, MockSms)}

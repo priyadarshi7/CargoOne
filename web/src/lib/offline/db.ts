@@ -8,6 +8,7 @@ export interface OutboxItem {
   kind: OutboxKind
   data: Record<string, string>
   photo?: Blob
+  link?: string // the private link it was made on: a hired driver's action is sent with that link, whichever page flushes it
   createdAt: number
   attempts: number
   status: 'queued' | 'failed'

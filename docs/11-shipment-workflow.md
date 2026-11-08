@@ -77,6 +77,8 @@ Neither shipment address shows who is driving, other trips, or any phone number.
 
 ## The driver's phone
 
+- **Hired drivers use the same app through a private link** (`/u/<token>`, made by the office from the Trips table and sent by SMS): everything below applies to them too, for that one trip. See ADR 97.
+
 - The home screen shows one trip with one big button: the truck on the road first, then a delivery still waiting for its photo, then the earliest trip to come. The card shows the pickup time, who receives the load and four steps (Loaded, On the road, Reached, Delivered). Below it, other trips are grouped: photo to send (tap to open), coming up (with the date), and done (cancelled trips say so).
 - The list refreshes when the app comes back to the front or the network returns. Every trip waiting to start is marked "seen" for the office, not only the first.
 - The location question is asked as soon as there is a trip, not only once the truck is moving; "Not now" lasts the day.

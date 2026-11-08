@@ -5,6 +5,7 @@ import DriverShell from '../components/DriverShell'
 import { ThemeChoice } from '../components/ThemeToggle'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { useDriverBase } from '../lib/driverBase'
 import { useSyncedQueue } from '../lib/capture/sync'
 import { useI18n } from '../lib/i18n'
 import { useCachedApi } from '../lib/offline/cache'
@@ -18,6 +19,7 @@ const STEPS: { icon: LucideIcon; key: 'drv.how1' | 'drv.how2' | 'drv.how3' }[] =
 /** Help for a driver: three pictured steps, alerts on or off with a test, screen colour, send what is waiting, change the PIN, sign out. */
 export default function DriverHelp() {
   const { user, logout } = useAuth()
+  const { link } = useDriverBase()
   const { data: office } = useCachedApi<{ phone: string | null }>('/trips/office-contact', user?.id ?? 'anon')
   const { t } = useI18n()
   const photos = useSyncedQueue()
@@ -82,8 +84,8 @@ export default function DriverHelp() {
         <button onClick={() => void sync()} disabled={busy || pending === 0} className={`${row} disabled:opacity-50`}>
           <CloudUpload size={24} aria-hidden /> {busy ? t('drv.sending') : pending > 0 ? `${t('drv.help.sync')} (${pending})` : t('drv.help.nothing')}
         </button>
-        <Link to="/driver/pin" className={row}><KeyRound size={24} aria-hidden /> {t('drv.help.pin')}</Link>
-        <button onClick={logout} className={row}><LogOut size={24} aria-hidden /> {t('drv.help.out')}</button>
+        {!link && <Link to="/driver/pin" className={row}><KeyRound size={24} aria-hidden /> {t('drv.help.pin')}</Link>}
+        {!link && <button onClick={logout} className={row}><LogOut size={24} aria-hidden /> {t('drv.help.out')}</button>}
       </section>
     </DriverShell>
   )

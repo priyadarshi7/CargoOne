@@ -1,4 +1,4 @@
-import { BASE, tokenStore } from '../api'
+import { authHeader, BASE } from '../api'
 import { PermanentUploadError, type QueuedPod, type UploadResult } from './queue'
 
 /** Sends one queued photo. Throws PermanentUploadError for answers a retry can never change;
@@ -13,12 +13,11 @@ export async function uploadPod(item: QueuedPod): Promise<UploadResult> {
     form.set('lng', String(item.lng))
   }
   // SMS-link photos carry their own bearer secret in the URL; logged-in photos use the session token.
-  const token = item.linkToken ? null : tokenStore.get()
   const url = item.linkToken ? `${BASE}/u/${encodeURIComponent(item.linkToken)}/pod` : `${BASE}/trips/${item.tripId}/pod`
   const res = await fetch(url, {
     method: 'POST',
     body: form,
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: item.linkToken ? {} : authHeader(),
   }) // a network failure rejects here and keeps the photo queued
   if (res.ok) return (await res.json()) as UploadResult
   // 410 (expired/revoked link) is permanent for this photo; the office must send a new link

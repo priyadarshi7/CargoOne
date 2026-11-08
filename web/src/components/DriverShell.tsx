@@ -3,6 +3,7 @@ import { useEffect, type ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { useSyncedQueue } from '../lib/capture/sync'
+import { useDriverBase } from '../lib/driverBase'
 import { LANGUAGES, useI18n } from '../lib/i18n'
 import { useOnline, useServerUp } from '../lib/offline/online'
 import { useUnread } from '../lib/unread'
@@ -21,6 +22,7 @@ const SHORT: Record<string, string> = { en: 'EN', hi: 'हि', mr: 'म' }
  *  It also keeps the offline queues draining (photos, trip starts, expenses) on every driver page. */
 export default function DriverShell({ children, title }: { children: ReactNode; title?: string }) {
   const { user } = useAuth()
+  const { path } = useDriverBase()
   const { t, lang, setLang } = useI18n()
   const online = useOnline()
   const serverUp = useServerUp()
@@ -68,7 +70,7 @@ export default function DriverShell({ children, title }: { children: ReactNode; 
       <nav aria-label="Driver" className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-surface">
         <div className="mx-auto grid max-w-md grid-cols-4 px-1 pb-2 pt-1.5">
           {TABS.map(({ to, icon: Icon, key, end }) => (
-            <NavLink key={to} to={to} end={end} className={({ isActive }) => `flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl text-xs font-semibold ${isActive ? 'text-ink' : 'text-muted'}`}>
+            <NavLink key={to} to={path(to)} end={end} className={({ isActive }) => `flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl text-xs font-semibold ${isActive ? 'text-ink' : 'text-muted'}`}>
               {({ isActive }) => (<><span className={`relative grid h-9 w-14 place-items-center rounded-full ${isActive ? 'bg-wash' : ''}`}><Icon size={24} aria-hidden />{key === 'drv.tabMessages' && unread > 0 && <span aria-label={`${unread}`} className="absolute right-1 top-0 grid min-w-5 place-items-center rounded-full bg-bad px-1 text-[11px] font-bold text-on-solid">{unread > 9 ? '9+' : unread}</span>}</span>{t(key)}</>)}
             </NavLink>
           ))}

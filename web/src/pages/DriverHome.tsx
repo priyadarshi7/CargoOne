@@ -14,10 +14,11 @@ import InstallBanner from '../components/InstallBanner'
 import PushPrompt from '../components/PushPrompt'
 import { api, tokenStore, type DriverTrip, type PodStatus, type User } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { useDriverBase } from '../lib/driverBase'
 import { useSyncedQueue } from '../lib/capture/sync'
 import { useI18n } from '../lib/i18n'
 import { useCachedApi } from '../lib/offline/cache'
-import { enqueueAction, flushOutbox } from '../lib/offline/outbox'
+import { enqueueAction, flushOutbox, useOutbox } from '../lib/offline/outbox'
 import { useTracker } from '../lib/tracker'
 
 const OPEN: PodStatus[] = ['pending', 'retake_requested']
@@ -40,8 +41,10 @@ const big = 'flex w-full items-center justify-center gap-3 rounded-2xl text-xl f
 export default function DriverHome() {
   const { user, adopt } = useAuth()
   const { t, lang } = useI18n()
+  const { path } = useDriverBase()
   const pending = useSyncedQueue()
   const { data: trips, stale, loaded, mutate, reload } = useCachedApi<DriverTrip[]>('/trips/mine', user?.id ?? 'anon', pending) // refresh statuses after queued photos finish
+  const { waiting } = useOutbox()
   const { data: office } = useCachedApi<{ phone: string | null }>('/trips/office-contact', user?.id ?? 'anon')
   const [params] = useSearchParams()
   const [starting, setStarting] = useState(false)
@@ -67,6 +70,10 @@ export default function DriverHome() {
   const waitingPhoto = others.filter((x) => x.state === 'delivered' && OPEN.includes(x.pod_status))
   const finished = others.filter((x) => x.state !== 'planned' && !waitingPhoto.includes(x))
   const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString(lang === 'en' ? 'en-IN' : `${lang}-IN`, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : t('drv.tbd'))
+
+  // Saved actions (start, reached, a delay) have just reached the server: show what the server now says, not the phone's guess.
+  const was = useRef(0)
+  useEffect(() => { if (was.current > 0 && waiting === 0 && navigator.onLine) reload(); was.current = waiting }, [waiting, reload])
 
   // Look again when the app comes back to the front or the network returns, so a change made by the office shows up without a restart.
   useEffect(() => {
@@ -223,7 +230,7 @@ export default function DriverHome() {
               <KeyRound size={36} aria-hidden /> <span className="text-left leading-tight">{t('drv.deliver')}<span className="block text-sm font-normal opacity-80">{t('drv.deliverB')}</span></span>
             </button>
           ) : (
-            <Link to={`/driver/trip/${next.id}`} className={`${big} h-24 bg-ink text-surface`}>
+            <Link to={path(`/driver/trip/${next.id}`)} className={`${big} h-24 bg-ink text-surface`}>
               <Camera size={36} aria-hidden /> <span className="text-left leading-tight">{t('drv.photo')}<span className="block text-sm font-normal opacity-80">{t('drv.photoB')}</span></span>
             </Link>
           )}
@@ -249,7 +256,7 @@ export default function DriverHome() {
         </details>
       )}
 
-      <TripGroup title={t('drv.waitingPhoto')} trips={waitingPhoto} to={(x) => `/driver/trip/${x.id}`} line={(x) => `${t(`drv.st.${x.pod_status}`)} · ${x.trip_code}`} />
+      <TripGroup title={t('drv.waitingPhoto')} trips={waitingPhoto} to={(x) => path(`/driver/trip/${x.id}`)} line={(x) => `${t(`drv.st.${x.pod_status}`)} · ${x.trip_code}`} />
       <TripGroup title={t('drv.upcoming')} trips={upcoming} line={(x) => `${when(x.planned_start)} · ${x.trip_code}`} />
       <TripGroup title={t('drv.done')} trips={finished} line={(x) => `${x.state === 'cancelled' ? t('drv.cancelledTrip') : t(`drv.st.${x.pod_status}`)} · ${x.trip_code}`} />
       {sheet === 'deliver' && next && (

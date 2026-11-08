@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { api, ApiError, tokenStore, type User } from './api'
+import { api, ApiError, linkStore, tokenStore, type User } from './api'
 
 interface AuthState {
   user: User | null
@@ -36,6 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       body: JSON.stringify({ identifier, secret }),
     })
     tokenStore.set(res.access_token)
+    linkStore.clear() // a signed-in person is not a hired driver on a link
     cacheUser(res.user)
     setUser(res.user)
     return res.user
@@ -54,6 +55,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo(() => ({ user, loading, login, logout, adopt }), [user, loading, login, logout, adopt])
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>
+}
+
+/** The signed-in person for a hired driver's private link page: the person the link stands for. There is no password to type or change, and nothing to sign out of. */
+export function LinkAuthProvider({ user: first, children }: { user: User; children: ReactNode }) {
+  const [user, setUser] = useState<User>(first)
+  const value = useMemo<AuthState>(() => ({
+    user, loading: false,
+    login: () => Promise.reject(new Error('A private link has no sign-in')),
+    logout: () => undefined,
+    adopt: (_token, u) => setUser(u),
+  }), [user])
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 

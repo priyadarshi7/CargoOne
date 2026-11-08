@@ -58,7 +58,7 @@ export const en = {
   'imp.alsoNew': 'Also new', 'imp.fix': 'Fix these rows in your sheet', 'imp.row': 'Row', 'imp.tripCol': 'Trip', 'imp.problemCol': 'Problem', 'imp.firstN': 'Showing the first {n} of {total}.',
   'imp.btn': 'Import {n} trips', 'imp.btn1': 'Import 1 trip', 'imp.nothing': 'Nothing to import', 'imp.skippedNote': 'Rows with problems are skipped; the rest are imported.',
   // dialogs
-  'ul.title': 'Upload link', 'ul.intro': 'The driver opens the link on any phone, takes the photo, and is done. No app, no login. It works for this trip only.',
+  'ul.title': 'Driver link', 'ul.intro': "A private link for this trip. The driver opens it on any phone, with no app and no login, and does everything an own driver does: loaded photo, start, arrived, problems, delivery code, proof photo, expenses and alerts. It keeps working with no network.",
   'ul.phone': "Driver's mobile (optional)", 'ul.lang': 'Message language', 'ul.phoneBad': 'Enter the mobile number with 10–15 digits, or leave it empty.', 'ul.createFail': 'Could not create the link.',
   'ul.create': 'Create link', 'ul.createSms': 'Create link and send SMS', 'ul.creating': 'Creating…', 'ul.copy': 'Copy', 'ul.copied': 'Copied',
   'ul.valid': 'Valid until {when}. Creating a new link cancels this one.', 'ul.revoke': 'Revoke this link',
@@ -141,6 +141,7 @@ export const en = {
   "filter.search": "Search",
   "common.sending": "Sending…", "common.working": "Working…",
   "land.nav.lang": "Languages", "land.route.pickup": "Pickup", "land.route.delivery": "Delivery", "land.c.pickup": "Pickup city", "land.c.delivery": "Delivery city", "land.c.material": "Material", "land.c.weight": "Weight", "land.c.date": "Date", "land.c.accepted": "Your request is accepted", "land.c.follow": "Follow the truck", "land.c.receipt": "Open the receipt", "land.why.sub": "One private page for each request. It follows your load from the first form to the signed receipt, so nobody has to call to ask.",
+  "ul.name": "Driver's name (optional)", "ul.smsOk": "SMS sent to the driver.", "ul.smsSim": "SMS queued to the driver (simulated in this build, nothing is really sent). Share the link yourself.", "ul.smsFail": "The SMS did not go: {why} The link below is good, so share it yourself.",
 } as const
 
 export type Key = keyof typeof en

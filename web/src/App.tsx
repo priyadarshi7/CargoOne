@@ -1,7 +1,7 @@
 import { lazy, Suspense, type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { OfficeShell } from './components/Shell'
-import type { Role } from './lib/api'
+import { linkStore, type Role } from './lib/api'
 import { AuthProvider, homeFor, useAuth } from './lib/auth'
 import { LangProvider } from './lib/i18n'
 import { ThemeProvider } from './lib/theme'
@@ -17,7 +17,7 @@ import RequestStatus from './pages/RequestStatus'
 import RequestTransport from './pages/RequestTransport'
 import Login from './pages/Login'
 import ClientPod from './pages/ClientPod'
-import SmsCapture from './pages/SmsCapture'
+import LinkApp from './pages/LinkApp'
 import Progress from './pages/Progress'
 
 // Office screens are loaded only when an office person opens them: a driver's phone never downloads charts, tables or the map.
@@ -43,9 +43,14 @@ const PortalAccount = lazy(() => import('./pages/Portal').then((m) => ({ default
 
 function Guard({ roles, children }: { roles: Role[]; children: ReactNode }) {
   const { user, loading } = useAuth()
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
   if (loading) return null
-  if (!user) return <Navigate to="/login" replace />
+  if (!user) {
+    // A hired driver tapping an alert, or opening the installed app, has no sign-in but does have a private link on this phone.
+    const link = linkStore.get()
+    if (link && /^\/driver(\/|$)/.test(pathname)) return <Navigate to={`/u/${link}${pathname.slice('/driver'.length)}${search}`} replace />
+    return <Navigate to="/login" replace />
+  }
   if (user.must_change_secret && user.role === 'driver' && pathname !== '/driver/pin') return <Navigate to="/driver/pin" replace />
   if (user.must_change_secret && user.role === 'client' && pathname !== '/portal/account') return <Navigate to="/portal/account" replace />
   if (user.must_change_secret && user.role !== 'driver' && user.role !== 'client' && pathname !== '/office/account') return <Navigate to="/office/account" replace /> // new office accounts start with a temporary password
@@ -62,7 +67,8 @@ function OfficeHome() {
 function Root() {
   const { user, loading } = useAuth()
   if (loading) return null
-  return user ? <Navigate to={homeFor(user.role)} replace /> : <Landing />
+  const link = linkStore.get()
+  return user ? <Navigate to={homeFor(user.role)} replace /> : link ? <Navigate to={`/u/${link}`} replace /> : <Landing />
 }
 
 export default function App() {
@@ -79,7 +85,7 @@ export default function App() {
           <Route path="/onboard/:token" element={<Onboard />} />
           <Route path="/request" element={<RequestTransport />} />
           <Route path="/request/:token" element={<RequestStatus />} />
-          <Route path="/u/:token" element={<SmsCapture />} />
+          <Route path="/u/:token/*" element={<LinkApp />} />
           <Route path="/v/:token" element={<ClientPod />} />
           <Route path="/t/:token" element={<TrackPublic />} />
           <Route path="/s/:token" element={<ShipmentPage />} />

@@ -7,6 +7,24 @@ export const tokenStore = {
   clear: () => localStorage.removeItem(TOKEN_KEY),
 }
 
+/** A hired driver has no sign-in: their private link (/u/<token>) is the credential. The link page sets it for every request it makes,
+ *  and it is remembered on the phone so the installed app and an alert tapped later find their way back to it. */
+const LINK_KEY = 'cargoone.link'
+let activeLink: string | null = null
+export const linkStore = {
+  get: (): string | null => { try { return localStorage.getItem(LINK_KEY) } catch { return null } },
+  set: (t: string) => { try { localStorage.setItem(LINK_KEY, t) } catch { /* storage blocked: the link still works while it is open */ } },
+  clear: () => { try { localStorage.removeItem(LINK_KEY) } catch { /* nothing to clear */ } },
+}
+export const setActiveLink = (t: string | null) => { activeLink = t }
+export const getActiveLink = () => activeLink
+/** The Authorization header for whoever is using this page: a private link, a signed-in person, or nobody. */
+export function authHeader(): Record<string, string> {
+  if (activeLink) return { Authorization: `Link ${activeLink}` }
+  const token = tokenStore.get()
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
 export class ApiError extends Error {
   status: number
   detail: unknown // the raw `detail` from the API (an object for clash errors)
@@ -26,12 +44,11 @@ function messageOf(detail: unknown): string {
 }
 
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const token = tokenStore.get()
   const res = await fetch(`${BASE}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...authHeader(),
       ...init.headers,
     },
   })
@@ -113,8 +130,7 @@ export interface ReviewItem {
 
 /** Fetches a protected file (the POD image needs the Authorization header, so <img src> cannot be used). */
 export async function fetchBlob(path: string): Promise<Blob> {
-  const token = tokenStore.get()
-  const res = await fetch(`${BASE}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+  const res = await fetch(`${BASE}${path}`, { headers: authHeader() })
   if (!res.ok) throw new ApiError(res.status, 'Could not load image')
   return res.blob()
 }
@@ -161,8 +177,7 @@ export interface TallyStatus { reachable: boolean; company: string | null; perio
 
 /** Downloads a protected file (needs the Authorization header, so a plain link would not work). */
 export async function download(path: string, fallbackName: string): Promise<void> {
-  const token = tokenStore.get()
-  const res = await fetch(`${BASE}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+  const res = await fetch(`${BASE}${path}`, { headers: authHeader() })
   if (!res.ok) throw new ApiError(res.status, 'Download failed')
   const name = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') ?? '')?.[1] ?? fallbackName
   const url = URL.createObjectURL(await res.blob())
@@ -196,10 +211,9 @@ export interface ImportReport {
 
 /** Multipart upload with the session token (api() forces a JSON content type, which breaks file uploads). */
 export async function postFile<T>(path: string, file: File): Promise<T> {
-  const token = tokenStore.get()
   const form = new FormData()
   form.set('file', file)
-  const res = await fetch(`${BASE}${path}`, { method: 'POST', body: form, headers: token ? { Authorization: `Bearer ${token}` } : {} })
+  const res = await fetch(`${BASE}${path}`, { method: 'POST', body: form, headers: authHeader() })
   if (!res.ok) {
     const detail = await res.json().then((j) => j.detail).catch(() => res.statusText)
     throw new ApiError(res.status, typeof detail === 'string' ? detail : 'Upload failed')
@@ -209,8 +223,7 @@ export async function postFile<T>(path: string, file: File): Promise<T> {
 
 /** Multipart POST with extra form fields (api() forces a JSON content type, which breaks file uploads). */
 export async function postForm<T>(path: string, form: FormData): Promise<T> {
-  const token = tokenStore.get()
-  const res = await fetch(`${BASE}${path}`, { method: 'POST', body: form, headers: token ? { Authorization: `Bearer ${token}` } : {} })
+  const res = await fetch(`${BASE}${path}`, { method: 'POST', body: form, headers: authHeader() })
   if (!res.ok) {
     const detail = await res.json().then((j) => j.detail).catch(() => res.statusText)
     throw new ApiError(res.status, messageOf(detail), detail)
