@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, ApiError } from '../api'
 import { db } from './db'
 import { markServer } from './online'
@@ -26,15 +26,18 @@ export function useCachedApi<T>(path: string, scope: string, refreshKey: unknown
   const [loaded, setLoaded] = useState(false)
   const [tick, setTick] = useState(0)
   const key = `${scope}:${path}`
+  const changed = useRef(0) // counts the changes made on the phone (mutate): an answer from the server that was asked for before one is out of date
 
   useEffect(() => {
     let alive = true
     void (async () => {
       const saved = await readCache<T>(key)
       if (alive && saved) { setData(saved.value); setLoaded(true) } // show the phone's copy at once, then refresh it
+      const asked = changed.current
       try {
         const fresh = await api<T>(path)
         if (!alive) return
+        if (asked !== changed.current) return // the driver did something while this was on its way (start, reached): it would flip the screen back; the next look has it
         markServer(true)
         setData(fresh); setStale(false); setLoaded(true)
         void writeCache(key, fresh)
@@ -49,6 +52,7 @@ export function useCachedApi<T>(path: string, scope: string, refreshKey: unknown
   }, [key, path, refreshKey, tick])
 
   const mutate = useCallback((fn: (d: T) => T) => { // change what is shown and saved at once (an action taken with no network)
+    changed.current += 1
     setData((d) => { if (d === null) return d; const next = fn(d); void writeCache(key, next); return next })
   }, [key])
   return { data, stale, loaded, reload: useCallback(() => setTick((n) => n + 1), []), mutate }

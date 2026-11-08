@@ -10,7 +10,7 @@ export default defineConfig({
   testDir: './e2e',
   fullyParallel: false, // tests share one database and walk the real workflow in order
   workers: 1,
-  timeout: process.env.CI ? 90_000 : 30_000, // a shared CI runner is several times slower than a laptop
+  timeout: process.env.CI ? 90_000 : 60_000, // these tests walk whole workflows; a shared CI runner is several times slower than a laptop
   retries: process.env.CI ? 1 : 0,
   reporter: [['list']],
   use: { baseURL: `http://localhost:${WEB_PORT}`, timezoneId: 'Asia/Kolkata', trace: 'retain-on-failure', screenshot: 'only-on-failure' },
