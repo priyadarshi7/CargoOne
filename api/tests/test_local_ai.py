@@ -168,7 +168,9 @@ def test_the_ocr_engine_reads_one_photo_at_a_time() -> None:
     import time
     from types import SimpleNamespace
 
-    import numpy as np
+    import pytest
+
+    np = pytest.importorskip("numpy")  # only present where the OCR extras are installed
 
     from app.ai.providers.local import RapidReader
 
