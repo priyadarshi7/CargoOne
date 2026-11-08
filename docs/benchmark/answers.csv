@@ -1,0 +1,17 @@
+sheet,case,lr_on_paper,trips_expected_lr,booked,write_by_hand,expected_stamp,expected_signature,expected_date,expected_quantity,expected_remark,expected_decision,expected_reasons,judgement_call
+S01,"Clean, everything right",BM-1001,BM-1001,50 bags / 2.5 t,"Stamp, sign, write today's date, write 50 bags. No remark.",True,True,today,50 bags,none,verified,,
+S02,No stamp,BM-1002,BM-1002,50 bags / 2.5 t,Sign and write date + 50 bags. Do NOT stamp.,False,True,today,50 bags,none,retake_requested,stamp_missing,
+S03,No signature,BM-1003,BM-1003,50 bags / 2.5 t,Stamp and write date + 50 bags. Do NOT sign.,True,False,today,50 bags,none,retake_requested,signature_missing,
+S04,Receiver part left empty,BM-1004,BM-1004,50 bags / 2.5 t,Fill nothing at all in the receiver part.,False,False,blank,blank,none,retake_requested,stamp_missing signature_missing,
+S05,Wrong LR number,BM-1005,BM-1099,50 bags / 2.5 t,"Fill everything correctly (as S01). The trip's LR is BM-1099, but this paper says another number.",True,True,today,50 bags,none,retake_requested,lr_mismatch,
+S06,Shortage remark and short count,BM-1006,BM-1006,50 bags / 2.5 t,"Stamp, sign, date. Quantity 44 bags. Remark: Short 6 bags",True,True,today,44 bags,Short 6 bags,needs_review,shortage_or_damage quantity_mismatch,
+S07,"Damage remark, full count",BM-1007,BM-1007,50 bags / 2.5 t,"Stamp, sign, date. Quantity 50 bags. Remark: 2 bags torn / damaged",True,True,today,50 bags,2 bags torn / damaged,needs_review,shortage_or_damage,
+S08,"Short count, nobody wrote a remark",BM-1008,BM-1008,50 bags / 2.5 t,"Stamp, sign, date. Quantity 40 bags. NO remark.",True,True,today,40 bags,none,needs_review,quantity_mismatch,
+S09,"Weighed load, kg matches",BM-1009,BM-1009,6 coils / 18.0 t,"Stamp, sign, date. Quantity 18000 kg. No remark.",True,True,today,18000 kg,none,verified,,
+S10,"Weighed load, kg is much less",BM-1010,BM-1010,6 coils / 18.0 t,"Stamp, sign, date. Quantity 16000 kg. No remark.",True,True,today,16000 kg,none,needs_review,quantity_mismatch,
+S11,Date left blank,BM-1011,BM-1011,50 bags / 2.5 t,"Stamp, sign, quantity 50 bags. Leave the date blank.",True,True,blank,50 bags,none,verified,,
+S12,Remark in Hindi handwriting,BM-1012,BM-1012,50 bags / 2.5 t,"Stamp, sign, date, 50 bags. Remark in Hindi: 3 बोरी फटी हुई है",True,True,today,50 bags,3 बोरी फटी हुई है,needs_review,shortage_or_damage,
+S13,Remark in Marathi handwriting,BM-1013,BM-1013,50 bags / 2.5 t,"Stamp, sign, date, 50 bags. Remark in Marathi: २ गोणी ओल्या झाल्या",True,True,today,50 bags,२ गोणी ओल्या झाल्या,needs_review,shortage_or_damage,
+S14,"Faint, half-cut stamp",BM-1014,BM-1014,50 bags / 2.5 t,"Press the stamp lightly so it comes out pale, and let it run off the edge of the box. Sign, date, 50 bags.",True,True,today,50 bags,none,verified,,yes
+S15,Messy: stamp over the signature and date,BM-1015,BM-1015,50 bags / 2.5 t,Stamp over your signature AND over the date and quantity lines. Left-handed scribble is fine. 50 bags.,True,True,today,50 bags,none,verified,,yes
+S16,A remark that is NOT a problem,BM-1016,BM-1016,50 bags / 2.5 t,"Stamp, sign, date, 50 bags. Remark: Received OK, thanks",True,True,today,50 bags,"Received OK, thanks",verified,,
