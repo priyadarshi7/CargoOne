@@ -36,7 +36,7 @@ test('ops plans a trip, a clash is flagged, then the driver starts it from the p
   await expect(page.getByRole('heading', { name: 'Trip planning' })).toBeVisible()
 
   await page.getByRole('button', { name: 'New trip' }).click()
-  let d = await fill(page, { dest: 'Akola', lr: 'LR-PLAN-1', vehicle: 'MH20 GT 7718', driver: 'Plan Test Driver', start: soon(60), end: soon(660) })
+  let d = await fill(page, { dest: 'Akola', lr: 'LR-PLAN-1', vehicle: 'MH20 PL 0003', driver: 'Plan Test Driver', start: soon(60), end: soon(660) })
   await d.getByRole('button', { name: 'Create trip' }).click()
   await expect(d.getByLabel('LR number')).toHaveText(/^LR\/[A-Z0-9]+\/\d{2}-\d{2}\/\d{6}$/) // issued automatically, never typed
   await shot(page, 'planning-lr-created')
@@ -46,7 +46,7 @@ test('ops plans a trip, a clash is flagged, then the driver starts it from the p
 
   // the same driver and truck at an overlapping time -> flagged, with an explicit way to override
   await page.getByRole('button', { name: 'New trip' }).click()
-  d = await fill(page, { dest: 'Jalgaon', lr: 'LR-PLAN-2', vehicle: 'MH20 GT 7718', driver: 'Plan Test Driver', start: soon(120), end: soon(300) })
+  d = await fill(page, { dest: 'Jalgaon', lr: 'LR-PLAN-2', vehicle: 'MH20 PL 0003', driver: 'Plan Test Driver', start: soon(120), end: soon(300) })
   await d.getByRole('button', { name: 'Create trip' }).click()
   await expect(d.getByRole('alert')).toContainText('already booked')
   await shot(page, 'planning-clash')

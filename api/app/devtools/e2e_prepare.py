@@ -82,6 +82,7 @@ async def _seed() -> None:
         s.add(User(name='Journey Test Driver', phone='9000000055', role=Role.driver, password_hash=hash_secret('4821'), language='en'))
         s.add(Vehicle(reg_no='MH20 JR 0001', is_hired=False, capacity_tonnes=Decimal(20)))
         s.add(Vehicle(reg_no='MH20 HJ 0002', is_hired=True, capacity_tonnes=Decimal(18)))  # a hired truck for the private-link journey test
+        s.add(Vehicle(reg_no='MH20 PL 0003', is_hired=False))  # the planning test's own truck: the import test leaves MH20 GT 7718 on the road
         s.add(User(name='PIN Test Driver', phone='9000000077', role=Role.driver, password_hash=hash_secret('4821'), language='en'))
         await s.commit()
 
