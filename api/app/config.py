@@ -59,6 +59,9 @@ class Settings(BaseSettings):
     track_stopped_min: int = 90  # stationary this long = stoppage alert
     track_link_ttl_hours: int = 48
     tracking_retention_days: int = 30
+    retention_years: int = 8  # DPDP: consignee details and POD photos are erased this long after a trip is closed (the usual tax-record horizon); 0 = never
+    request_retention_days: int = 180  # declined transport requests (a stranger's contact details) are deleted after this
+    cloud_ai_confirmed: bool = False  # DPDP: POD photos leave the country for Groq/Gemini. Outside dev/test they are sent only after the owner confirms a no-training paid tier
     login_max_failures: int = 5
     login_lock_minutes: int = 15
     whatsapp_provider: str = "mock"  # mock | meta. "meta" needs the three settings below; messages use pre-approved templates

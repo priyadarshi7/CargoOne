@@ -294,6 +294,7 @@ class Trip(Base):
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # delivered, proven, invoiced and paid: nothing changes after this
     link_epoch: Mapped[int] = mapped_column(Integer, default=0, server_default="0")  # bumped to retire every shipment link of this trip
     late_alert_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    personal_data_erased_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # DPDP: consignee details and photos were removed (retention or a data-principal request)
     created_at: Mapped[datetime] = now()
 
     submissions: Mapped[list["PodSubmission"]] = relationship(back_populates="trip")

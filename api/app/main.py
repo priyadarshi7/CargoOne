@@ -27,6 +27,7 @@ from app.routers import (
     planning,
     pods,
     portal,
+    privacy,
     push,
     requests,
     review,
@@ -60,6 +61,7 @@ app.include_router(shipments.office)
 app.include_router(pods.router)
 app.include_router(review.router)
 app.include_router(benchmark.router)
+app.include_router(privacy.router)
 app.include_router(billing.router)
 app.include_router(dashboard.router)
 app.include_router(links.router)

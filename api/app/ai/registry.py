@@ -11,6 +11,7 @@ from app.ai.providers.openai_compat import OpenAICompatProvider
 from app.config import Settings, get_settings
 
 log = logging.getLogger("cargoone.ai")
+CLOUD = {"gemini", "groq"}  # providers that send the photo to another company
 
 
 @dataclass
@@ -44,7 +45,13 @@ def build_provider(name: str, s: Settings) -> VisionProvider:
 def build_chain(s: Settings | None = None) -> list[VisionProvider]:
     s = s or get_settings()
     names = [s.ai_provider, *[n.strip() for n in s.ai_fallbacks.split(",") if n.strip()]]
-    return [build_provider(n, s) for n in dict.fromkeys(names)]  # de-duplicated, order kept
+    names = list(dict.fromkeys(names))  # de-duplicated, order kept
+    if not (s.is_dev or s.cloud_ai_confirmed):  # DPDP: a photo of a real POD does not leave for a third party until the owner has said it may
+        blocked = [n for n in names if n in CLOUD]
+        if blocked:
+            log.warning("cloud AI skipped (CLOUD_AI_CONFIRMED is off): %s", ", ".join(blocked))
+        names = [n for n in names if n not in CLOUD]
+    return [build_provider(n, s) for n in names]
 
 
 async def run_extraction(

@@ -6,7 +6,7 @@ This is an engineering record, not legal advice - the DPDP Act 2023 obligations 
 ## Personal data inventory
 | Data | Where | Who can see it |
 |---|---|---|
-| Consignee name + phone | `trips.consignee_name/phone` | Nobody in the UI today (never returned by any API; tests assert this) |
+| Consignee name, phone, email | `trips.consignee_name/phone/email` | Nobody in the UI (never returned by an office list); drivers see their own trips'. Erased 8 years after the trip closes, or on request |
 | POD photos (may show names, signatures, phones, stamps) | private storage, `pod_submissions.storage_key` | billing, ops, admin, md (read), the trip's own driver; every view is audit-logged |
 | Driver GPS at capture time | `pod_submissions.lat/lng` | billing/ops in the review screen |
 | Requester name, phone, email (public form) | `transport_requests` | ops, billing (API only); the requester sees their own request by link |
@@ -34,14 +34,18 @@ This is an engineering record, not legal advice - the DPDP Act 2023 obligations 
 
 - **Place search sends the typed place text (or a pin's position) to the provider:** Google (Places, Geocoding) when keys are set, otherwise Photon (komoot, OpenStreetMap data), always from our server with no names, phone numbers or account details. The map loads Google's script in the browser, with a site-restricted browser key; the server key is never sent to a browser. People are asked only for a place, not a home address. The public endpoints under `/places` are rate-limited per address.
 
+- **Retention (DPDP)**: `python -m app.privacy` (run daily by cron / Task Scheduler) removes consignee name/phone/email, the POD and loading photos and what the AI read from them `RETENTION_YEARS` (8) after a trip is closed; the trip, LR, invoice and money stay for the tax records. It also deletes declined transport requests after `REQUEST_RETENTION_DAYS` (180) and runs the 30-day GPS purge. Each run is audited with counts only.
+- **Access and erasure requests**: `POST /privacy/access` and `/privacy/erase` (admin and MD only) by phone number: show everything held, or remove the person from every trip and request they made. Photos stay until the retention date (the tax records may need them, DPDP s.8(7)). Audited with the number masked. There is no screen yet; correction is done by the office editing the trip.
+- **Cloud AI gate**: outside dev/test, Gemini and Groq are skipped unless `CLOUD_AI_CONFIRMED=true`, so a real POD photo only leaves for a third party after the owner has confirmed a no-training paid tier. The chain falls back to the local model.
+
 ## Open before any real data / production
-1. **Retention + auto-delete** of POD images and personal fields (period to be agreed with the client; DPDP purpose limitation).
-2. **Notice / consent text** shown to drivers (and where consignee data is collected), plus a **data-principal request workflow** (access, correction, erasure).
+1. **Schedule the retention job** in deployment (nothing runs it by itself), and confirm the 8-year period with the client and counsel.
+2. **Notice / consent text** shown to drivers and on the public request form (naming the company, purpose, retention, how to ask for access or erasure, who to write to). Wording needs the owner's or counsel's sign-off; a screen for the access/erase requests is also not built.
 3. **Login hardening** - DONE: 5 failures lock a real account for 15 min (database, survives restarts); failed attempts are also throttled per typed identifier and per address, identically for unknown accounts (no account enumeration); constant-time check for unknown users; every sign-in and failure is audited with masked identifiers; password/PIN policy and change flow; changing it signs out all other sessions (token version). Driver PIN reset DONE: ops/billing issue a one-time temporary PIN (never stored in clear, never audited), old sessions die, the lock clears, and the driver can do nothing but choose their own PIN until they do (enforced in the API, not just the screen); drivers can also change their PIN from their home screen. STILL OPEN: SMS delivery of the temporary PIN (needs the SMS provider), a refresh-token scheme (tokens last 12 h), and the lock being per source address behind a proxy (see item 6).
 4. **Per-branch scoping** of office users; admin role audit.
 5. **Transport/headers**: HTTPS/HSTS, CSP and other security headers, strict CORS per environment.
 6. **Rate limiter is per process** (in-memory): move to Redis/edge before running more than one API instance. Behind a proxy, read the client IP from a trusted `X-Forwarded-For` only.
-7. **Sending POD photos to an AI provider** (Gemini free tier) is a cross-border/third-party disclosure; free-tier terms may allow training on inputs. Needs a decision: paid tier with no-training terms, or a local model, before real PODs are processed.
+7. **Sending POD photos to an AI provider** (Gemini, Groq) is a cross-border/third-party disclosure; free-tier terms may allow training on inputs. The gate above blocks it until the owner sets `CLOUD_AI_CONFIRMED=true`; that needs a decision first: paid tier with no-training terms, or the local model only.
 8. **Backups, encryption at rest** (managed by the DB/storage host - verify), breach-response runbook, penetration test.
 9. **Real SMS provider** needs DLT-registered templates in India; links in SMS are bearer secrets - keep TTL short.
 
