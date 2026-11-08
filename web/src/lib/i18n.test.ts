@@ -28,7 +28,8 @@ describe.each([['hi', hi], ['mr', mr]] as const)('%s dictionary', (_name, dict) 
     }
   })
   it('translates every English key', () => {
-    const missing = Object.keys(en).filter((k) => !(k in dict))
+    // The AI benchmark screen (bench.*) is a QA tool for the ops head and stays in English; its title and menu entry are translated.
+    const missing = Object.keys(en).filter((k) => !(k in dict) && !(k.startsWith('bench.') && k !== 'bench.title'))
     expect(missing).toEqual([])
   })
 })

@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     ai_confidence_threshold: float = 0.85
     max_image_bytes: int = 300 * 1024
     max_retakes: int = 2
+    benchmark_dir: str = ""  # where the AI benchmark runs and photos are kept; empty = docs/benchmark in the repository
     pod_require_quantity: bool = False  # a booked quantity that the reader could not find on the receipt goes to a person (off: it is not checked)
     pod_max_distance_km: float = 25.0  # a delivery photo taken farther than this from the destination goes to a person
     eta_speed_kmh: float = 40.0  # average truck speed used for the arrival estimate

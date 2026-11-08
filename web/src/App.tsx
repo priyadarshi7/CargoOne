@@ -31,6 +31,7 @@ const OfficeTrips = lazy(() => import('./pages/OfficeTrips'))
 const Planning = lazy(() => import('./pages/Planning'))
 const ReviewDetail = lazy(() => import('./pages/ReviewDetail'))
 const ReviewList = lazy(() => import('./pages/ReviewList'))
+const Benchmark = lazy(() => import('./pages/Benchmark'))
 const Account = lazy(() => import('./pages/Account'))
 const Desk = lazy(() => import('./pages/Desk'))
 // The map library is heavy: load it only when a map page is opened
@@ -110,6 +111,7 @@ export default function App() {
           <Route path="/office/planning" element={<Guard roles={['ops', 'billing']}><OfficeShell><Planning /></OfficeShell></Guard>} />
           <Route path="/office/import" element={<Guard roles={['ops', 'billing']}><OfficeShell><ImportTrips /></OfficeShell></Guard>} />
           <Route path="/office/billing" element={<Guard roles={['ops', 'billing']}><OfficeShell><Billing /></OfficeShell></Guard>} />
+          <Route path="/office/benchmark" element={<Guard roles={['ops', 'billing', 'md']}><OfficeShell><Benchmark /></OfficeShell></Guard>} />
           <Route path="/office/review" element={<Guard roles={['ops', 'billing']}><OfficeShell><ReviewList /></OfficeShell></Guard>} />
           <Route path="/office/review/:tripId" element={<Guard roles={['ops', 'billing', 'md']}><OfficeShell><ReviewDetail /></OfficeShell></Guard>} />
           <Route path="*" element={<Navigate to="/" replace />} />

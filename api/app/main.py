@@ -9,6 +9,7 @@ from app.config import get_settings
 from app.routers import (
     attention,
     auth,
+    benchmark,
     billing,
     client_view,
     dashboard,
@@ -58,6 +59,7 @@ app.include_router(shipments.public)
 app.include_router(shipments.office)
 app.include_router(pods.router)
 app.include_router(review.router)
+app.include_router(benchmark.router)
 app.include_router(billing.router)
 app.include_router(dashboard.router)
 app.include_router(links.router)

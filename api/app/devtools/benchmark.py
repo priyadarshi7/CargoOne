@@ -4,7 +4,7 @@
   .venv/Scripts/python -m app.devtools.benchmark --photos ... --provider local --ollama-model llava:7b --label llava-7b
 
 Results are written one file per model to docs/benchmark/results/<label>.json and are resumable (photos already done are skipped).
-`app.devtools.benchmark_report` turns them into the dashboard. Nothing here touches the database or the app's storage.
+The office app's "AI benchmark" tab (ops, billing, MD) shows every run, so there is nothing to build afterwards. Nothing here touches the database or the app's storage.
 """
 import argparse
 import asyncio

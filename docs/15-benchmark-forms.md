@@ -65,18 +65,17 @@ Photograph S01 each of these ways. The first three should still verify; the rest
 ## What to record for each photo
 The model, what it read for each field against `answers.csv`, the decision the app gave, the time taken, and the cost. The measures that matter most are in `docs/06-ai-evaluation.md`: unsafe errors must be zero, then needless retakes, then field accuracy.
 
-## Running the benchmark and the dashboard
+## Running the benchmark; the "AI benchmark" tab
 Put the photographs in `docs/benchmark/photos/` named `S01_flat.jpeg`, `S01_angle.jpeg`, ... `S02.jpeg` ... `S22.jpeg`. From `api/`:
 
 ```
 .venv/Scripts/python -m app.devtools.benchmark --photos ../docs/benchmark/photos --provider local --label qwen-run3 --title "Qwen3-VL 4B · run 3" --note "what changed"
 .venv/Scripts/python -m app.devtools.benchmark --photos ../docs/benchmark/photos --provider gemini --label gemini-run1 --title "Gemini 2.5 Flash · run 1" --pace 8
-.venv/Scripts/python -m app.devtools.benchmark_report
 ```
 
-Each run is saved in `docs/benchmark/results/<label>.json` and is resumable. `benchmark_report` builds `docs/benchmark/dashboard.html`, one self-contained file (open it in a browser) with a comparison table of every run, per-field accuracy, pass rate by kind of test, and every photo tagged with what was expected, what the app decided and why. `--rescore <label> --require-quantity` judges an earlier run's readings again with a changed rule without running a model. A 28-photo run takes about 6 minutes with the local model.
+Each run is saved in `docs/benchmark/results/<label>.json` and is resumable. The office app's **AI benchmark** tab (sidebar, Fleet and admin; ops, billing and MD) shows them straight away: a table of every run (model, date, pass rate, unsafe, needless retakes, fields right, time), the headline numbers and a warning when any sheet that should have been stopped would have been verified, how each field was read, the pass rate by kind of test, what should have happened against what happened, and every photo labelled with what was expected, what the app decided and why, with the field-by-field comparison. `GET /benchmark/runs` and `GET /benchmark/photos/<name>` feed it (set `BENCHMARK_DIR` to keep the files elsewhere). `--rescore <label> --require-quantity` judges an earlier run's readings again with a changed rule without running a model. A 28-photo run takes about 6 minutes with the local model.
 
-**What the dashboard counts.** *Unsafe*: a sheet that should not be verified (missing stamp or signature, wrong LR, a shortage or different quantity) would have been. It must be 0. *Needless retake/review*: a good sheet sent back. *Safe, but different*: sent to a person where a retake was expected, or the reverse. Photo-condition shots and the judgement-call sheets (S14, S15, S22) accept more than one answer.
+**What the tab counts.** *Unsafe*: a sheet that should not be verified (missing stamp or signature, wrong LR, a shortage or different quantity) would have been. It must be 0. *Needless retake*: a good sheet sent back. *Safe, but different*: sent to a person where a retake was expected, or the reverse. Photo-condition shots and the judgement-call sheets (S14, S15, S22) accept more than one answer.
 
 ## Results so far (local Qwen3-VL 4B, 28 photos)
 | Run | Pass rate | Unsafe | Needless |

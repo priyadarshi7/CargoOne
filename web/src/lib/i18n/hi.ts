@@ -136,4 +136,5 @@ export const hi: Partial<Record<Key, string>> = {
   "reason.quantity_mismatch": "मात्रा बुकिंग से अलग है",
   "reason.quantity_unclear": "कई माल या इकाइयाँ: मात्रा जाँचें",
   "reason.quantity_not_read": "रसीद पर मात्रा नहीं मिली",
+  "nav.benchmark": "AI बेंचमार्क", "bench.title": "AI बेंचमार्क",
 }
