@@ -94,6 +94,7 @@ async def ingest_pod(
     try:
         out = await run_extraction(data, mime, trip.lr_no)
         verdict = decide(out.extraction, expected_lr_no=trip.lr_no, retake_count=trip.retake_count,
+                         expected_packages=trip.packages, expected_weight_tonnes=float(trip.weight_tonnes) if trip.weight_tonnes else None,
                          threshold=s.ai_confidence_threshold, max_retakes=s.max_retakes, place_reasons=place_reasons)
         ai_provider, ai_result, confidence = out.provider, out.extraction.model_dump(), out.extraction.confidence
     except AllProvidersFailed:

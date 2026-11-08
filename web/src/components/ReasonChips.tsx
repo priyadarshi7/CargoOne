@@ -3,6 +3,7 @@ import { useI18n, type Key } from '../lib/i18n'
 const LABEL: Record<string, string> = {
   shortage_or_damage: 'Shortage / damage remark',
   low_confidence: 'Low AI confidence',
+  quantity_mismatch: 'Quantity differs from the booking',
   date_missing: 'Delivery date not read',
   gps_missing: 'Photo has no location',
   far_from_destination: 'Taken far from the destination',

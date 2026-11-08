@@ -133,4 +133,5 @@ export const mr: Partial<Record<Key, string>> = {
   "common.sending": "पाठवत आहोत…", "common.working": "चालू आहे…",
   "land.nav.lang": "भाषा", "land.route.pickup": "लोडिंग", "land.route.delivery": "डिलिव्हरी", "land.c.pickup": "लोडिंग शहर", "land.c.delivery": "डिलिव्हरी शहर", "land.c.material": "माल", "land.c.weight": "वजन", "land.c.date": "तारीख", "land.c.accepted": "तुमची विनंती स्वीकारली", "land.c.follow": "ट्रक पाहा", "land.c.receipt": "पावती उघडा", "land.why.sub": "प्रत्येक विनंतीसाठी एक खाजगी पेज. पहिल्या फॉर्मपासून सही केलेल्या पावतीपर्यंत तो तुमच्या मालासोबत राहतो, त्यामुळे कोणाला फोन करून विचारावे लागत नाही.",
   "ul.name": "ड्रायव्हरचे नाव (ऐच्छिक)", "ul.smsOk": "ड्रायव्हरला SMS पाठवला.", "ul.smsSim": "ड्रायव्हरसाठी SMS रांगेत आहे (या आवृत्तीत नक्कल, काही पाठवला जात नाही). लिंक स्वतः शेअर करा.", "ul.smsFail": "SMS गेला नाही: {why} खालची लिंक बरोबर आहे, ती स्वतः शेअर करा.",
+  "reason.quantity_mismatch": "प्रमाण बुकिंगपेक्षा वेगळे आहे",
 }

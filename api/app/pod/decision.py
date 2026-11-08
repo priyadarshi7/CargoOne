@@ -2,7 +2,7 @@
 
 - Not a POD / unreadable / no stamp / no signature / wrong LR  -> retake (while retakes remain),
   otherwise -> human review.
-- Shortage or damage remark, low confidence                    -> human review (never auto-verified). A missing date is not a reason: the app records when the load was delivered.
+- Shortage or damage remark, low confidence, a quantity that differs from the booking -> human review (never auto-verified). A missing date is not a reason: the app records when the load was delivered.
 - Everything clean                                              -> verified (still never auto-invoiced).
 """
 import re
@@ -40,8 +40,30 @@ def _norm(s: str | None) -> str:
     return re.sub(r"[^A-Z0-9]", "", (s or "").upper())
 
 
+_NUM = re.compile(r"\d+(?:[.,]\d+)?")
+_WEIGHT_UNIT = re.compile(r"\b(?:kgs?|kilo\w*|qtl|quintals?|mt|tonnes?|tons?|t)\b|टन|किलो|क्विंटल", re.IGNORECASE)
+
+
+def quantity_differs(received: str | None, *, packages: int | None, weight_tonnes: float | None, weight_tolerance: float = 0.05) -> bool:
+    """True only when the receipt clearly states a count or weight that is different from what was booked.
+    Anything that cannot be read as one plain number (a range, two numbers, words only) is not a mismatch: the reviewer still sees the text."""
+    nums = _NUM.findall((received or "").replace(",", "")) if received else []
+    if len(nums) != 1:
+        return False
+    value = float(nums[0])
+    unit = _WEIGHT_UNIT.search(received or "")
+    if unit:
+        if not weight_tonnes:
+            return False
+        word = unit.group(0).lower()
+        tonnes = value / 1000 if word.startswith("k") or word == "किलो" else value / 10 if word in ("qtl", "क्विंटल") or word.startswith("quintal") else value
+        return abs(tonnes - weight_tonnes) > weight_tonnes * weight_tolerance
+    return bool(packages) and value != packages
+
+
 def decide(ex: PodExtraction, *, expected_lr_no: str, retake_count: int,
-           threshold: float = 0.85, max_retakes: int = 2, place_reasons: list[str] | None = None) -> DecisionResult:
+           threshold: float = 0.85, max_retakes: int = 2, place_reasons: list[str] | None = None,
+           expected_packages: int | None = None, expected_weight_tonnes: float | None = None) -> DecisionResult:
     retake: list[tuple[str, Voice]] = []
     if not ex.is_document:
         retake.append(("not_a_pod", Voice.retake_not_pod))
@@ -64,6 +86,8 @@ def decide(ex: PodExtraction, *, expected_lr_no: str, retake_count: int,
     review: list[str] = list(place_reasons or [])  # where the photo was taken is checked by the caller; a person looks when it is off
     if ex.shortage_or_damage:
         review.append("shortage_or_damage")
+    if quantity_differs(ex.quantity_received, packages=expected_packages, weight_tonnes=expected_weight_tonnes):
+        review.append("quantity_mismatch")  # the receipt says a different count or weight than was booked: a person decides if it is a real shortage
     if ex.confidence < threshold:
         review.append("low_confidence")
     if review:

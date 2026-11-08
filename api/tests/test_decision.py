@@ -71,3 +71,23 @@ def test_a_paper_with_no_delivery_date_is_still_verified_when_everything_else_ch
     # many LR forms have no date field for the receiver; the app already records when the load was delivered
     r = run(ex(delivery_date=None))
     assert r.decision == Decision.verified and r.reasons == []
+
+
+@pytest.mark.parametrize(("got", "differs"), [
+    ("50 bags", False), ("50", False), ("40 bags", True), ("1,200", True), ("50 / 52", False),
+    ("10 t", False), ("10.3 tonnes", False), ("9 MT", True), ("10000 kg", False), ("8000 kg", True),
+])
+def test_quantity_is_compared_with_the_booking(got: str, differs: bool) -> None:
+    packages = 1200 if got == "1,200" else 50
+    tonnes = 10.0 if any(u in got.lower() for u in ("t", "kg", "mt")) and "bags" not in got else None
+    if tonnes:
+        packages = None
+    r = decide(ex(quantity_received=got), expected_lr_no=LR, retake_count=0, expected_packages=packages if got != "1,200" else 50,
+              expected_weight_tonnes=tonnes)
+    assert ("quantity_mismatch" in r.reasons) is differs
+    assert r.decision == (Decision.needs_review if differs else Decision.verified)
+
+
+def test_quantity_is_not_checked_when_nothing_was_booked_or_nothing_was_read() -> None:
+    assert run(ex(quantity_received="40 bags")).decision == Decision.verified
+    assert decide(ex(quantity_received=None), expected_lr_no=LR, retake_count=0, expected_packages=50).decision == Decision.verified
