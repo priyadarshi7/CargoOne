@@ -182,7 +182,7 @@ export default function Landing() {
       <footer className="border-t border-line">
         <div className={`${wrap} flex flex-wrap items-center justify-between gap-3 py-7 text-sm text-muted`}>
           <span>{t('land.privacy')}</span>
-          <Link to="/login" className="underline underline-offset-2">{t('land.signIn')}</Link>
+          <span className="flex gap-5"><Link to="/privacy" className="underline underline-offset-2">{t('priv.link')}</Link><Link to="/login" className="underline underline-offset-2">{t('land.signIn')}</Link></span>
         </div>
       </footer>
     </div>

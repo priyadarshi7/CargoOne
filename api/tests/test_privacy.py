@@ -80,3 +80,48 @@ def test_cloud_ai_waits_for_the_owner_outside_dev() -> None:
     assert names() == ["local", "mock"]
     assert names(cloud_ai_confirmed=True) == ["groq", "local", "mock"]
     assert [p.name for p in build_chain(Settings(app_env="dev", ai_provider="groq", ai_fallbacks="mock"))] == ["groq", "mock"]
+
+
+async def test_anyone_can_leave_a_request_and_the_officer_closes_it(client: AsyncClient) -> None:
+    sent = await client.post("/public/privacy", json={"kind": "erasure", "phone": "98444 44444", "name": "Sita", "message": "Remove me"})
+    assert sent.status_code == 201 and sent.json()["reference"].startswith("PRV-")
+    assert (await client.post("/public/privacy", json={"kind": "access", "phone": "9844444444", "website": "x"})).json()["reference"] == "PRV-0"  # a bot stores nothing
+    assert (await client.post("/public/privacy", json={"kind": "access", "phone": "123"})).status_code == 422
+    assert (await client.get("/privacy/requests")).status_code == 401
+    admin = await login(client, "admin@cargoone.dev", "cargoone-dev")
+    mine = next(r for r in (await client.get("/privacy/requests", headers=admin)).json() if r["reference"] == sent.json()["reference"])
+    assert mine["status"] == "open" and mine["phone"] == "9844444444" and mine["source"] == "public" and not mine["overdue"]
+    assert (await client.post(f"/privacy/requests/{mine['id']}/close", headers=admin, json={"outcome": "done", "note": "x"})).status_code == 422
+    done = (await client.post(f"/privacy/requests/{mine['id']}/close", headers=admin, json={"outcome": "done", "note": "Erased from 2 trips"})).json()
+    assert done["status"] == "done" and done["phone"] == "******4444" and done["name"] is None  # the number is cut once it is closed
+    assert (await client.post(f"/privacy/requests/{mine['id']}/close", headers=admin, json={"outcome": "done", "note": "again"})).status_code == 409
+
+
+async def test_the_office_can_log_a_request_taken_by_phone(client: AsyncClient) -> None:
+    admin = await login(client, "md@cargoone.dev", "cargoone-dev")
+    made = (await client.post("/privacy/requests", headers=admin, json={"kind": "correction", "phone": "9855555555", "message": "Name is spelt wrong"})).json()
+    assert made["source"] == "office" and made["status"] == "open"
+    ops = await login(client, "ops@cargoone.dev", "cargoone-dev")
+    assert (await client.get("/privacy/requests", headers=ops)).status_code == 403
+
+
+async def test_erasing_a_driver_closes_the_account_and_drops_the_position_history(client: AsyncClient) -> None:
+    from app.models import LocationPing, Role, User
+    from app.security import hash_secret
+
+    trip_id, _ = await make_trip()
+    async with SessionLocal() as s:
+        u = User(name="Leaving Driver", phone="9866666666", role=Role.driver, password_hash=hash_secret("4821"), language="en", licence_no="MH2020000001")
+        s.add(u)
+        await s.flush()
+        s.add(LocationPing(trip_id=uuid.UUID(trip_id), driver_id=u.id, lat=1, lng=1, recorded_at=datetime.now(UTC)))
+        await s.commit()
+        uid = u.id
+    admin = await login(client, "admin@cargoone.dev", "cargoone-dev")
+    seen = (await client.post("/privacy/access", headers=admin, json={"phone": "9866666666"})).json()
+    assert seen["drivers"][0]["licence_no"] == "MH2020000001"
+    assert (await client.post("/privacy/erase", headers=admin, json={"phone": "9866666666"})).json()["drivers"] == 1
+    async with SessionLocal() as s:
+        u = await s.get(User, uid)
+        left = (await s.scalars(select(LocationPing).where(LocationPing.driver_id == uid))).all()
+    assert (u.name, u.phone, u.licence_no, u.is_active) == ("Former driver", None, None, False) and left == []

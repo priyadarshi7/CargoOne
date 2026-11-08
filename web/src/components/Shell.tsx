@@ -1,4 +1,4 @@
-import { BarChart3, ClipboardCheck, FlaskConical, Home, Inbox, ListChecks, LogOut, Map, Menu, Receipt, ReceiptText, Route, Settings, Truck, Upload, UserRound, X, type LucideIcon } from 'lucide-react'
+import { BarChart3, ClipboardCheck, FlaskConical, Home, Inbox, ListChecks, LogOut, Map, Menu, Receipt, ReceiptText, Route, Settings, ShieldCheck, Truck, Upload, UserRound, X, type LucideIcon } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { api, type ReviewItem } from '../lib/api'
@@ -66,7 +66,10 @@ export function OfficeShell({ children }: { children: ReactNode }) {
       ...(canReview ? [{ to: '/office/review', label: t('nav.review'), icon: ClipboardCheck, count: reviewCount }, { to: '/office/billing', label: t('nav.billing'), icon: Receipt }] : []),
       { to: '/office/expenses', label: t('nav.expenses'), icon: ReceiptText },
     ] },
-    ...(canReview ? [{ title: t('nav.g.admin'), items: [{ to: '/office/setup', label: t('nav.setup'), icon: Settings }, { to: '/office/import', label: t('nav.import'), icon: Upload }, { to: '/office/benchmark', label: t('nav.benchmark'), icon: FlaskConical }] }] : []),
+    ...(canReview || role === 'md' ? [{ title: t('nav.g.admin'), items: [
+      ...(canReview ? [{ to: '/office/setup', label: t('nav.setup'), icon: Settings }, { to: '/office/import', label: t('nav.import'), icon: Upload }, { to: '/office/benchmark', label: t('nav.benchmark'), icon: FlaskConical }] : []),
+      ...(role === 'admin' || role === 'md' ? [{ to: '/office/privacy', label: t('nav.privacy'), icon: ShieldCheck }] : []),
+    ] }] : []),
   ]
   const link = ({ isActive }: { isActive: boolean }) =>
     `flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium ${isActive ? 'border border-line bg-surface text-ink' : 'border border-transparent text-muted hover:bg-line/60 hover:text-ink'}`

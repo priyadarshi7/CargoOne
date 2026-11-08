@@ -1,4 +1,4 @@
-import { BellOff, BellRing, Camera, CloudUpload, KeyRound, LogOut, Phone, Play, WifiOff, type LucideIcon } from 'lucide-react'
+import { BellOff, BellRing, Camera, CloudUpload, KeyRound, LogOut, Phone, Play, ShieldCheck, WifiOff, type LucideIcon } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import DriverShell from '../components/DriverShell'
@@ -84,6 +84,7 @@ export default function DriverHelp() {
         <button onClick={() => void sync()} disabled={busy || pending === 0} className={`${row} disabled:opacity-50`}>
           <CloudUpload size={24} aria-hidden /> {busy ? t('drv.sending') : pending > 0 ? `${t('drv.help.sync')} (${pending})` : t('drv.help.nothing')}
         </button>
+        <Link to="/privacy" className={row}><ShieldCheck size={24} aria-hidden /> {t('priv.title')}</Link>
         {!link && <Link to="/driver/pin" className={row}><KeyRound size={24} aria-hidden /> {t('drv.help.pin')}</Link>}
         {!link && <button onClick={logout} className={row}><LogOut size={24} aria-hidden /> {t('drv.help.out')}</button>}
       </section>

@@ -83,7 +83,7 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [ ] Ops head role distinct from billing: assignment, escalation, dispute workflow
 
 ## Phase 6 — Privacy, security, quality (P0/P1, continuous)
-- [ ] DPDP Act 2023: data inventory, consent/notice text, purpose limitation, retention & auto-delete, access/erasure workflow
+- [x] DPDP Act 2023: data inventory, notice (en/hi/mr), consent, purpose limitation, daily retention and erase, access/correction/erasure register with an officer screen, cloud-AI gate, breach runbook (`docs/16-dpdp.md`). Owner steps listed there (grievance contact, periods, AI tier, counsel read)
 - [ ] Private image storage, signed short-lived URLs, no PII in logs, encryption at rest/in transit
 - [ ] Input validation everywhere, rate limiting, upload type/size checks, CSRF/CORS, security headers
 - [x] Unit tests (decision, compression, queue), API+DB integration tests (own `cargoone_test` DB) and **Playwright E2E (14 tests, desktop + Pixel 7 driver)**: login/roles, driver capture online + offline-then-sync, review → bill → PDF/Tally download, dashboards; runs in CI

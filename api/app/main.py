@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app import privacy
 from app.ai.registry import warm_up
 from app.config import get_settings
 from app.routers import (
@@ -27,7 +28,6 @@ from app.routers import (
     planning,
     pods,
     portal,
-    privacy,
     push,
     requests,
     review,
@@ -37,6 +37,9 @@ from app.routers import (
     trips,
     webhooks,
 )
+from app.routers import (
+    privacy as privacy_routes,
+)
 
 settings = get_settings()
 @asynccontextmanager
@@ -44,7 +47,12 @@ async def lifespan(_: FastAPI):
     if "local" in {settings.ai_provider, *settings.ai_fallbacks.split(",")}:
         warming = asyncio.create_task(warm_up())  # in the background: the API answers at once, the first photo is quicker
         warming.add_done_callback(lambda t: t.exception())
+    stop = asyncio.Event()
+    job = asyncio.create_task(privacy.run_daily(stop)) if settings.retention_job and not settings.is_test else None
     yield
+    stop.set()
+    if job:
+        job.cancel()
 
 
 app = FastAPI(title="CargoOne API", version="0.1.0", lifespan=lifespan)
@@ -61,7 +69,8 @@ app.include_router(shipments.office)
 app.include_router(pods.router)
 app.include_router(review.router)
 app.include_router(benchmark.router)
-app.include_router(privacy.router)
+app.include_router(privacy_routes.router)
+app.include_router(privacy_routes.public)
 app.include_router(billing.router)
 app.include_router(dashboard.router)
 app.include_router(links.router)

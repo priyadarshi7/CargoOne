@@ -78,6 +78,7 @@ export default function Login() {
           <div className="space-y-2.5 border-t border-line pt-5">
             <p className="text-sm text-muted">{t('login.needTruck')}</p>
             <Link to="/request" className="flex h-11 w-full items-center justify-center rounded-lg border border-line text-sm font-medium hover:bg-wash">{t('land.request')}</Link>
+            <p className="text-center text-xs text-muted"><Link to="/privacy" className="underline underline-offset-2">{t('priv.link')}</Link></p>
             <p className="pt-1 text-center text-xs"><Link to="/progress" className="text-muted underline underline-offset-2">{t('login.progress')}</Link></p>
           </div>
         </form>

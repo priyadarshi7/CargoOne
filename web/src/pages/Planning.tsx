@@ -298,6 +298,7 @@ function TripDialog({ trip, prefill, refs, canPlan, onClose, onSaved }: { trip: 
               {label(t('plan.packages'), <input className={field} inputMode="numeric" value={f.packages} onChange={(e) => set('packages', e.target.value.replace(/\D/g, ''))} />)}
             </div>
             {sec(t('plan.sec.consignee'))}
+            <p className="-mt-2 text-xs text-muted">{t('priv.notice.collect')}</p>
             <div className="grid gap-4 sm:grid-cols-2">
               {label(t('plan.consignee'), <input className={field} required minLength={2} maxLength={160} value={f.consignee_name} onChange={(e) => set('consignee_name', e.target.value)} />)}
               <PhoneInput label={t('plan.consigneePhone')} required value={f.consignee_phone} onChange={(v) => set('consignee_phone', v)} />

@@ -61,6 +61,10 @@ class Settings(BaseSettings):
     tracking_retention_days: int = 30
     retention_years: int = 8  # DPDP: consignee details and POD photos are erased this long after a trip is closed (the usual tax-record horizon); 0 = never
     request_retention_days: int = 180  # declined transport requests (a stranger's contact details) are deleted after this
+    grievance_officer: str = ""  # DPDP: the person people can write to about their data; shown on the privacy notice
+    grievance_email: str = ""
+    privacy_reply_days: int = 30  # the office's own target for answering a data request (the Act sets no number for this)
+    retention_job: bool = True  # the API runs the daily retention job itself (off in tests)
     cloud_ai_confirmed: bool = False  # DPDP: POD photos leave the country for Groq/Gemini. Outside dev/test they are sent only after the owner confirms a no-training paid tier
     login_max_failures: int = 5
     login_lock_minutes: int = 15
@@ -116,6 +120,10 @@ class Settings(BaseSettings):
     tally_url: str = "http://localhost:9000"  # Tally Prime's HTTP port (F1 Help > Settings > Connectivity); must be reachable from the API
     tally_company: str = ""  # exact Tally company name; blank = import into the currently open company
     tally_sales_ledger: str = "Freight Income"  # must already exist in Tally
+
+    @property
+    def is_test(self) -> bool:
+        return self.app_env == "test"
 
     @property
     def is_dev(self) -> bool:

@@ -513,3 +513,24 @@ class TransportRequest(Base):
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     consent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # agreed to be contacted about this request
     created_at: Mapped[datetime] = now()
+
+
+class PrivacyRequest(Base):
+    """A person's request about their own data (DPDP Act 2023): to see it, correct it, erase it, stop a consent, or a complaint.
+    The register the Data Fiduciary keeps. The phone number is kept only to find the person's records; once the request is closed it is cut to its last four digits."""
+
+    __tablename__ = "privacy_requests"
+    __table_args__ = (Index("ix_privacy_requests_status_time", "status", "created_at"),)
+    id: Mapped[uuid.UUID] = pk()
+    reference: Mapped[str] = mapped_column(String(16), unique=True)  # what the person quotes, e.g. PRV-1001
+    kind: Mapped[str] = mapped_column(String(16))  # access | correction | erasure | consent | complaint
+    name: Mapped[str | None] = mapped_column(String(120))  # PII
+    phone: Mapped[str] = mapped_column(String(20))  # PII until closed
+    message: Mapped[str | None] = mapped_column(String(500))
+    source: Mapped[str] = mapped_column(String(8), default="public")  # public | office
+    status: Mapped[str] = mapped_column(String(8), default="open")  # open | done | refused
+    outcome: Mapped[str | None] = mapped_column(String(300))  # what was done, or why not
+    due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    closed_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = now()

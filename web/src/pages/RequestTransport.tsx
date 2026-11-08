@@ -153,7 +153,7 @@ export default function RequestTransport() {
               ))}
             </ol>
           </div>
-          <p className="px-1 text-xs text-muted">{t('req.privacy')}</p>
+          <p className="px-1 text-xs text-muted">{t('req.privacy')} <Link to="/privacy" className="underline underline-offset-2">{t('priv.link')}</Link></p>
         </aside>
       </div>
     </PublicFrame>

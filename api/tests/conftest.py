@@ -97,7 +97,8 @@ def _reset_rate_limits() -> Iterator[None]:
     ip_failures.reset()
     ident_failures.reset()
     from app.routers import onboard, requests
+    from app.routers import privacy as privacy_routes
 
-    for limiter in (requests.submit_limiter, requests.phone_limiter, requests.bad_token_limiter, onboard.bad_token_limiter):
+    for limiter in (requests.submit_limiter, requests.phone_limiter, requests.bad_token_limiter, onboard.bad_token_limiter, privacy_routes.ip_limiter, privacy_routes.phone_limiter):
         limiter.reset()
     yield
