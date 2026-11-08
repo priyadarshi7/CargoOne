@@ -123,3 +123,13 @@ def test_several_goods_written_as_one_line_of_text_work_too() -> None:
 
 def test_nothing_is_flagged_when_nothing_was_booked() -> None:
     assert multi([("Cement", 2.5, "t"), ("Sand", 1.5, "t")]) == []
+
+
+def test_packages_and_weight_both_written_must_both_agree_with_the_booking() -> None:
+    both = {"expected_packages": 50, "expected_weight_tonnes": 2.5}
+    assert multi([], text="50 bags, 2.5 t", **both) == []
+    assert multi([("Cement", 50, "bags"), ("", 2.5, "t")], **both) == []
+    assert multi([], text="50 bags, 2.0 t", **both) == ["quantity_unclear"]
+    assert multi([], text="44 bags, 2.5 t", **both) == ["quantity_unclear"]
+    assert multi([], text="50 bags, 1.5 t", expected_packages=50, expected_weight_tonnes=4.0) == ["quantity_unclear"]  # sand only: not the whole weight
+    assert multi([], text="50 bags, 2.5 t", expected_weight_tonnes=2.5) == []  # packages were never booked, the weight agrees

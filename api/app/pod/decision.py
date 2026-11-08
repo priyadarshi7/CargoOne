@@ -104,8 +104,11 @@ def quantity_flag(ex: PodExtraction, *, packages: int | None, weight_tonnes: flo
     total = stated or _reduce(lines)
     if stated and lines and (summed := _reduce(lines)) and summed[0] == stated[0] and _worse(summed[1], stated[1], tol):
         return "quantity_unclear"  # the lines do not add up to the written total
-    if total is None:
-        return "quantity_unclear"
+    if total is None:  # packages and weight both written (one good "50 bags, 2.5 t", or several goods in different units)
+        count = sum(v for k, v in lines if k == "count")
+        weight = sum(v for k, v in lines if k == "weight")
+        agrees = [count == packages if packages else None, not _worse(weight, weight_tonnes, tol) if weight_tonnes else None]
+        return None if True in agrees and False not in agrees else "quantity_unclear"
     kind, value = total
     if kind == "weight":
         return "quantity_mismatch" if weight_tonnes and _worse(value, weight_tonnes, tol) else None
