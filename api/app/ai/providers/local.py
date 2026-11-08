@@ -254,8 +254,8 @@ def ollama_vlm(url: str, model: str, timeout_s: float, transport: httpx.AsyncBas
     return ask
 
 
-SIGN_QUESTION = ("Look at the receiving block at the bottom of this delivery receipt. Is there a handwritten pen mark (signature, initials or "
-                 "scribble) made by a person? Printed text and the round stamp do not count. Answer JSON: "
+SIGN_QUESTION = ("Look ONLY at the box labelled \"Consignee signature, name and stamp\" (the receiver's box, bottom right of this delivery receipt). Is there a handwritten pen mark "
+                 "(signature, initials or scribble) in it? Signatures in the \"Consignor signature\" and \"Driver signature\" boxes do not count, nor do printed text and the round stamp. Answer JSON: "
                  '{"signature_present": true or false, "signature_box": [left, top, right, bottom] each 0 to 1000, or null}')
 SIGN_SCHEMA = {"type": "object", "properties": {"signature_present": {"type": "boolean"}, "signature_box": {"type": ["array", "null"], "items": {"type": "number"}}},
                "required": ["signature_present"]}
@@ -430,6 +430,9 @@ def merge(raw: dict, lines: list[Line], expected_lr_no: str) -> PodExtraction:
             boxes = [b for b in boxes if b.field != "delivery_date"]
     qty = checked("quantity_received", raw.get("quantity_received"), "quantity_lines", digits)
     remarks = checked("remarks", raw.get("remarks"), "remarks_lines", words)
+    if remarks and not re.search(r"[^\W\d_]", remarks):  # only digits and dashes: the model copied the date written beside it, which is not a remark
+        remarks = None
+        boxes = [b for b in boxes if b.field != "remarks"]
     if not remarks and (under := remarks_from_text(lines)):  # the model skipped it, but the text is plainly there under the label
         remarks = " ".join(ln.text for ln in under)
         x, y, w, h = _union(under)

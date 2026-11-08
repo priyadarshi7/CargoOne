@@ -144,6 +144,7 @@ export const en = {
   "ul.name": "Driver's name (optional)", "ul.smsOk": "SMS sent to the driver.", "ul.smsSim": "SMS queued to the driver (simulated in this build, nothing is really sent). Share the link yourself.", "ul.smsFail": "The SMS did not go: {why} The link below is good, so share it yourself.",
   "reason.quantity_mismatch": "Quantity differs from the booking",
   "reason.quantity_unclear": "Several goods or units: check the quantity",
+  "reason.quantity_not_read": "Quantity not found on the receipt",
 } as const
 
 export type Key = keyof typeof en

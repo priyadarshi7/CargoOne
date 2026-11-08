@@ -133,3 +133,18 @@ def test_packages_and_weight_both_written_must_both_agree_with_the_booking() -> 
     assert multi([], text="44 bags, 2.5 t", **both) == ["quantity_unclear"]
     assert multi([], text="50 bags, 1.5 t", expected_packages=50, expected_weight_tonnes=4.0) == ["quantity_unclear"]  # sand only: not the whole weight
     assert multi([], text="50 bags, 2.5 t", expected_weight_tonnes=2.5) == []  # packages were never booked, the weight agrees
+
+
+def test_a_model_that_copies_the_printed_booked_figure_into_its_lines_cannot_hide_the_handwritten_one() -> None:
+    assert multi([("PPC Cement", 50, "bags")], text="40 bags", expected_packages=50) == ["quantity_mismatch"]
+    assert multi([("PPC Cement", 50, "bags")], text="50 bags", expected_packages=50) == []
+    assert multi([("Cement", 2.5, "t"), ("Sand", 1.5, "t")], text="5t", expected_weight_tonnes=4.0) == ["quantity_mismatch"]
+    assert multi([("Cement", 2.5, "t")], text="Cement 2.5 t", expected_weight_tonnes=2.5) == []
+
+
+def test_a_booked_quantity_that_was_not_found_goes_to_a_person_only_when_asked() -> None:
+    e = ex()
+    assert decide(e, expected_lr_no=LR, retake_count=0, expected_packages=50).decision == Decision.verified
+    r = decide(e, expected_lr_no=LR, retake_count=0, expected_packages=50, require_quantity=True)
+    assert (r.decision, r.reasons) == (Decision.needs_review, ["quantity_not_read"])
+    assert decide(e, expected_lr_no=LR, retake_count=0, require_quantity=True).decision == Decision.verified  # nothing booked, nothing to compare with
