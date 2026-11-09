@@ -41,6 +41,17 @@ export default function ReviewDetail() {
       .catch(() => setError(t('rd.loadFail')))
   }, [tripId])
 
+  // When the reader gave no places (Groq), the server finds them in the background; ask again twice so the labels appear on the photo.
+  useEffect(() => {
+    if (!item || !item.ai.is_document || (Array.isArray(item.ai.boxes) && item.ai.boxes.length > 0)) return
+    const timers = [6000, 18000].map((ms) => setTimeout(() => {
+      api<ReviewItem>(`/review/${tripId}`).then((it) => {
+        if (Array.isArray(it.ai.boxes) && it.ai.boxes.length > 0) setItem((prev) => (prev ? { ...prev, ai: it.ai } : it))
+      }).catch(() => undefined)
+    }, ms))
+    return () => timers.forEach(clearTimeout)
+  }, [item?.submission_id]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const submit = useCallback(async (action: Action) => {
     if (!item || !form || busy || item.pod_status !== 'needs_review') return // a POD that is not waiting for a decision is look-only
     if (action === 'reject' && !confirmReject) return setConfirmReject(true)

@@ -1,6 +1,8 @@
 """Human review of PODs the AI would not auto-verify (shortage/damage, low confidence, retake cap, AI outage).
 The image stays the source of truth: reviewers may correct extracted fields, but corrections are stored
 beside the AI output, never over it. Nothing here sends an invoice."""
+import asyncio
+import logging
 import re
 import uuid
 from datetime import UTC, date, datetime, timedelta
@@ -15,7 +17,7 @@ from sqlalchemy.orm import aliased
 from app.ai.locator import locate
 from app.billing.periods import IST
 from app.config import get_settings
-from app.db import get_session
+from app.db import SessionLocal, get_session
 from app.events import record
 from app.models import AuditLog, Client, PodStatus, PodSubmission, Role, Trip, User
 from app.notify.service import pod_retake_asked, safely
@@ -23,6 +25,7 @@ from app.notify.shipment import tell_parties
 from app.security import require_roles
 from app.storage import get_storage
 
+log = logging.getLogger(__name__)
 router = APIRouter(prefix="/review", tags=["review"])
 Reviewer = Annotated[User, Depends(require_roles(Role.billing, Role.ops))]
 Viewer = Annotated[User, Depends(require_roles(Role.billing, Role.ops, Role.md))]  # may look at any POD and what the AI read, not decide
@@ -102,6 +105,28 @@ async def queue(_: Reviewer, session: Session) -> list[ReviewItem]:
     return [_item(t, c, s) for t, c, s in (await session.execute(q)).all()]
 
 
+_BACKGROUND: set[asyncio.Task] = set()
+_PLACING: set[uuid.UUID] = set()  # submissions whose boxes are being placed right now, so two opens do not do the work twice
+
+
+async def _place_boxes(sub_id: uuid.UUID, lr_no: str) -> None:
+    """Find where the AI's findings are on the photo and save the boxes. Never raises: no boxes only means no labels on the picture."""
+    try:
+        async with SessionLocal() as s:
+            sub = await s.get(PodSubmission, sub_id)
+            if sub is None:
+                return
+            ai = sub.ai_result or {}
+            boxes = await locate(await get_storage().get(sub.storage_key), ai, lr_no, get_settings())
+            if boxes is not None:  # None = the text reader failed this time: do not remember it, try again on the next open
+                sub.ai_result = {**ai, "boxes": [b.model_dump() for b in boxes], "_boxes_tried": True}
+                await s.commit()
+    except Exception as e:  # noqa: BLE001 - the photo may be gone or the database closing
+        log.warning("box placement failed: %s", type(e).__name__)
+    finally:
+        _PLACING.discard(sub_id)
+
+
 @router.get("/{trip_id}", response_model=ReviewItem)
 async def detail(trip_id: uuid.UUID, _: Viewer, session: Session) -> ReviewItem:
     """Any trip that has a photo, in any state: this is how people see what the AI read, including PODs it verified by itself."""
@@ -110,15 +135,13 @@ async def detail(trip_id: uuid.UUID, _: Viewer, session: Session) -> ReviewItem:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No POD for this trip")
     trip, _client, sub = row
     ai = sub.ai_result or {}
-    if ai.get("is_document") and not ai.get("boxes") and "_boxes_tried" not in ai:
-        # a reader that gave values but no places (Groq, Gemini): place them on the photo once and keep them, so the labels show on the picture
-        try:
-            boxes = await locate(await get_storage().get(sub.storage_key), ai, trip.lr_no, get_settings())
-        except Exception:  # noqa: BLE001 - the photo may be gone; the screen still works without labels on it
-            boxes = None
-        if boxes is not None:  # None = the reader failed this time: do not remember it, try again on the next open
-            sub.ai_result = {**ai, "boxes": [b.model_dump() for b in boxes], "_boxes_tried": True}
-            await session.commit()
+    if ai.get("is_document") and not ai.get("boxes") and "_boxes_tried" not in ai and sub.id not in _PLACING and get_settings().place_boxes:
+        # a reader that gave values but no places (Groq, Gemini): place them on the photo in the background, once, and keep them.
+        # The page opens at once; the screen asks again a few seconds later and the labels appear on the picture.
+        _PLACING.add(sub.id)
+        task = asyncio.create_task(_place_boxes(sub.id, trip.lr_no))
+        _BACKGROUND.add(task)  # keep a reference so the task is not collected before it finishes
+        task.add_done_callback(_BACKGROUND.discard)
     return _item(*row)
 
 
