@@ -214,6 +214,10 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [x] Already built, now recorded: expenses queue on the phone with no network and are sent later (same id on every retry), past trips are listed under Done, and the Call the office button shows when `OFFICE_PHONE` is set.
 - [ ] Not done: paying drivers through the app (advances and expenses are records; the money moves outside it), and a test on a real low-end phone.
 
+## Demo data (2026-11-09)
+- [x] A realistic fabricated company from the brief's numbers: 140 own and 200 hired trucks (every hired truck has a transporter), 24 transporters, 258 drivers with licence numbers and expiry dates (some due soon or lapsed so the alerts show), RC, chassis, insurance and fitness details, six clients with billing contacts and GSTIN, and office staff in three branches. `python -m app.seed_fleet`.
+- [x] 1,200 illustrative trips on that fleet (cement by the bag, steel by weight, packaged goods by the carton). The dashboard meets the targets overall (80% of PODs within a day, 4 days to invoice, 0.5% lost), with Nagpur below target on purpose. Fixed a bug that left POD-to-invoice days blank.
+
 ## Phase 7 — "Out-of-scope" wow features (P2, after core is solid)
 **Live GPS tracking**
 - [x] Live tracking: driver agrees once (recorded, withdrawable); while a trip is on the road the phone sends GPS fixes (60 s / 100 m, batched, retried safely, screen kept awake); live map for ops and the MD with moving / stopped / no-signal states and stoppage + silent alerts; path per trip; client **tracking link** (position rounded to ~100 m, never the driver, stops once delivered); 30-day retention purge. English/Hindi/Marathi
