@@ -188,7 +188,7 @@ async def seed_fleet(session: AsyncSession) -> dict:
         session.add(User(name=_name(rnd), phone=next_phone(9000100000), role=Role.driver, password_hash=pin, language=rnd.choices(["mr", "hi", "en"], [55, 40, 5])[0],
                          branch_id=b.id, employment_type="company", assigned_vehicle_id=v.id, **_licence(rnd, today, "MH20")))
         made["drivers"] += 1
-    for v in rnd.sample(new_hired, k=max(1, int(len(new_hired) * 0.6))):  # most hired trucks have a driver we know; they sign in by link, so no PIN
+    for v in rnd.sample(new_hired, k=min(len(new_hired), max(1, int(len(new_hired) * 0.6)))):  # most hired trucks have a driver we know; they sign in by link, so no PIN
         session.add(User(name=_name(rnd), phone=next_phone(9000200000), role=Role.driver, password_hash=None, language=rnd.choices(["mr", "hi"], [50, 50])[0],
                          branch_id=hq.id, employment_type="hired", vendor_id=v.vendor_id, assigned_vehicle_id=v.id, **_licence(rnd, today, rnd.choice(["MH20", "MH17", "MH12", "MP09", "GJ05"]))))
         made["drivers"] += 1
@@ -196,6 +196,16 @@ async def seed_fleet(session: AsyncSession) -> dict:
     gt_driver = await session.scalar(select(User.id).where(User.assigned_vehicle_id == gt, User.role == Role.driver)) if gt else None
     if gt_driver:
         await session.execute(update(Trip).where(Trip.trip_code == "TRP-66134").values(driver_id=gt_driver))
+    # a few papers that need attention, so the expiry filters and alerts have something to show in a small fleet
+    fleet_rows = list((await session.scalars(select(Vehicle).where(Vehicle.rc_no.is_not(None)).order_by(Vehicle.reg_no))).all())
+    plan = [(1, "insurance_expiry", -12), (3, "fitness_expiry", 9), (5, "puc_expiry", 21), (8, "permit_expiry", 27), (10, "puc_expiry", -5)]
+    for i, col, days in plan:
+        if i < len(fleet_rows):
+            setattr(fleet_rows[i], col, today + timedelta(days=days))
+    drivers_rows = list((await session.scalars(select(User).where(User.role == Role.driver, User.licence_no.is_not(None)).order_by(User.phone))).all())
+    for i, days in ((2, 18), (6, -20)):
+        if i < len(drivers_rows):
+            drivers_rows[i].licence_expiry = today + timedelta(days=days)
     await session.commit()
     return made
 
