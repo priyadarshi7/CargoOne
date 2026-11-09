@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 import { btnGhost, btnPrimary, Field, FormModal, inputCls } from './setup/ui'
+import { FilterBar, NoMatch, type FilterSelect } from '../components/FilterBar'
+import { hit, useFilters } from '../lib/filters'
 import { useLive } from '../lib/live'
 
 interface Req {
@@ -26,7 +28,10 @@ export default function OfficePrivacy() {
   const load = useCallback(() => { api<Req[]>('/privacy/requests').then(setRows).catch(() => setError(true)) }, [])
   useEffect(() => { load() }, [load])
   useLive(['privacy'], load)
-  const shown = (rows ?? []).filter((r) => (tab === 'open') === (r.status === 'open'))
+  const { values: f, set, clear, active } = useFilters({ q: '', kind: '' })
+  const inTab = (rows ?? []).filter((r) => (tab === 'open') === (r.status === 'open'))
+  const shown = inTab.filter((r) => hit(f.q, r.reference, r.name, r.phone, r.message, r.outcome) && (!f.kind || r.kind === f.kind))
+  const selects: FilterSelect[] = [{ key: 'kind', label: t('priv.o.title'), value: f.kind, onChange: (v) => set('kind', v), options: [['', t('filter.allKinds')], ...KINDS.map((k): [string, string] => [k, `${t(`priv.k.${k}`)} (${inTab.filter((r) => r.kind === k).length})`])] }]
 
   return (
     <div className="space-y-6">
@@ -43,7 +48,9 @@ export default function OfficePrivacy() {
         ))}
       </div>
       {error && <p role="alert" className="text-bad">{t('priv.o.error')}</p>}
-      {rows && shown.length === 0 && <p className="text-muted">{t('priv.o.none')}</p>}
+      {rows && inTab.length > 0 && <FilterBar q={f.q} onQ={(v) => set('q', v)} placeholder={t('filter.privacy')} selects={selects} shown={shown.length} total={inTab.length} active={active} onClear={clear} />}
+      {rows && inTab.length === 0 && <p className="text-muted">{t('priv.o.none')}</p>}
+      {rows && inTab.length > 0 && shown.length === 0 && <NoMatch onClear={clear} />}
       <ul className="divide-y divide-line rounded-xl border border-line">
         {shown.map((r) => (
           <li key={r.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 text-sm">

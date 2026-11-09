@@ -24,7 +24,7 @@ from app.models import Branch, Client, PodStatus, Role, Trip, TripState, User, V
 # invoice, 0.5% lost). Older weeks start just under target and climb past it, so the weekly chart shows the improvement. One branch (Nagpur) still
 # lags on purpose, so the dashboard also shows what "below target" looks like. All of it is fabricated and the dashboard says so in a banner.
 PILOT_DAYS = 28  # trips delivered within this many days ago follow the "now" regime; older ones the "getting there" regime
-BRANCH_WITHIN_24H = {"Chhatrapati Sambhajinagar": 0.93, "Pune": 0.89, "Nagpur": 0.66}  # odds a POD is in within a day, in the last PILOT_DAYS
+BRANCH_WITHIN_24H = {"Chhatrapati Sambhajinagar": 0.97, "Pune": 0.94, "Nagpur": 0.68}  # odds a POD is in within a day, in the last PILOT_DAYS
 EARLIER_WITHIN_24H = {"Chhatrapati Sambhajinagar": 0.91, "Pune": 0.86, "Nagpur": 0.62}  # the weeks before
 INVOICE_DAYS = {"Chhatrapati Sambhajinagar": (1.5, 4.0), "Pune": (1.5, 4.5), "Nagpur": (4.0, 7.0)}  # POD verified -> invoice made, in days
 CONSIGNEES = ["Sharma Traders", "Gupta Steel Depot", "Jain Building Materials", "Patel Distributors", "Kulkarni Enterprises", "Reddy Cement Agency", "Singh Wholesale",
@@ -57,7 +57,7 @@ async def remove(session: AsyncSession) -> int:
     return res.rowcount or 0
 
 
-async def create(session: AsyncSession, n: int = 1200, seed: int = 42) -> int:
+async def create(session: AsyncSession, n: int = 140, seed: int = 42) -> int:
     _guard()
     if await session.scalar(select(func.count()).select_from(Trip).where(Trip.trip_code.like("DEMO-%"))):
         return 0
@@ -73,20 +73,23 @@ async def create(session: AsyncSession, n: int = 1200, seed: int = 42) -> int:
         branches[name] = b
     clients = list((await session.scalars(select(Client))).all())
     fleet = list((await session.scalars(select(Vehicle).where(Vehicle.is_active.is_(True), Vehicle.reg_no.not_like("MH20 DM %")))).all())
-    if len(fleet) < 50:
+    if len(fleet) < 8:
         raise SystemExit("Run `uv run python -m app.seed_fleet` first: the demo trips use its trucks, vendors and drivers.")
     own = [v for v in fleet if not v.is_hired]
     hired = [v for v in fleet if v.is_hired]
     driver_of = {u.assigned_vehicle_id: u for u in (await session.scalars(select(User).where(User.role == Role.driver, User.assigned_vehicle_id.is_not(None)))).all()}
     fy = f"{now.year % 100}-{(now.year + 1) % 100}" if now.month >= 4 else f"{(now.year - 1) % 100}-{now.year % 100}"
     made = 0
+    seen: dict[tuple[str, bool], int] = {}
     for i in range(n):
         branch_name = rnd.choices(list(BRANCH_WITHIN_24H), weights=[5, 3, 2])[0]
-        lost = i == 7  # exactly one lost POD, in the earlier weeks: about 0.4% of all trips
+        lost = i == 7 and n >= 250  # one lost POD in the earlier weeks (about 0.4% of a big run); a small demo has none, so the loss rate reads 0%
         delivered = now - timedelta(days=rnd.uniform(0.3, 75) if not lost else rnd.uniform(40, 70))
         recent = (now - delivered).days < PILOT_DAYS
         odds = (BRANCH_WITHIN_24H if recent else EARLIER_WITHIN_24H)[branch_name]
-        fast = rnd.random() < odds
+        k = seen.get((branch_name, recent), 0)
+        seen[(branch_name, recent)] = k + 1
+        fast = int((k + 1) * odds) > int(k * odds)  # not luck: each branch gets exactly its share of quick PODs, so a small demo still tells the story
         pod_delay = timedelta(hours=rnd.uniform(0.5, 20)) if fast else timedelta(days=rnd.uniform(1.2, 4))
         lo, hi = INVOICE_DAYS[branch_name]
         invoice_delay = timedelta(days=rnd.uniform(lo, hi) if recent else rnd.uniform(lo + 0.5, hi + 1.5))

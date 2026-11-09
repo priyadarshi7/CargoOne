@@ -1,7 +1,7 @@
 import { Eye, Pencil, Plus } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { api } from '../../lib/api'
-import { FilterBar, NoMatch } from '../../components/FilterBar'
+import { FilterBar, NoMatch, type FilterSelect } from '../../components/FilterBar'
 import { hit, useFilters } from '../../lib/filters'
 import { useI18n } from '../../lib/i18n'
 import type { VendorRef } from './DriversTab'
@@ -30,18 +30,32 @@ export default function TrucksTab({ canEdit }: { canEdit: boolean }) {
   const [vendors, setVendors] = useState<VendorRef[]>([])
   const [error, setError] = useState(false)
   const [showOff, setShowOff] = useState(false)
-  const { values: f, set, clear, active } = useFilters({ q: '' })
+  const { values: f, set, clear, active } = useFilters({ q: '', papers: '', owner: '', avail: '' })
   const [form, setForm] = useState<Truck | 'new' | null>(null)
   const [view, setView] = useState<Truck | null>(null)
   const load = () => api<Truck[]>('/setup/vehicles').then((r) => { setRows(r); setView((v) => (v ? r.find((x) => x.id === v.id) ?? null : v)) }).catch(() => setError(true))
   useEffect(() => { void load(); api<VendorRef[]>('/setup/vendors').then(setVendors).catch(() => undefined) }, [])
   if (error) return <p className="text-bad">{t('setup.loadFail')}</p>
   if (!rows) return <p className="text-muted">{t('common.loading')}</p>
-  const shown = rows.filter((v) => (showOff || v.is_active) && hit(f.q, v.reg_no, v.vehicle_type, v.owner_name, v.vendor, v.rc_no))
+  const base = rows.filter((v) => showOff || v.is_active)
+  const count = (fn: (v: Truck) => boolean) => base.filter(fn).length
+  const shown = base.filter((v) => hit(f.q, v.reg_no, v.vehicle_type, v.owner_name, v.vendor, v.rc_no)
+    && (!f.papers || (f.papers === 'none' ? v.papers === null : v.papers === f.papers))
+    && (!f.owner || (f.owner === 'hired') === v.is_hired)
+    && (!f.avail || v.availability === f.avail))
+  const selects: FilterSelect[] = [
+    { key: 'papers', label: t('filter.byPapers'), value: f.papers, onChange: (v: string) => set('papers', v), options: [
+      ['', t('filter.allPapers')], ['ok', `${t('setup.truck.ok')} (${count((v) => v.papers === 'ok')})`], ['due_soon', `${t('setup.truck.due_soon')} (${count((v) => v.papers === 'due_soon')})`],
+      ['expired', `${t('setup.truck.expired')} (${count((v) => v.papers === 'expired')})`], ['none', `${t('filter.noDates')} (${count((v) => v.papers === null)})`]] as [string, string][] },
+    { key: 'owner', label: t('filter.byOwner'), value: f.owner, onChange: (v: string) => set('owner', v), options: [
+      ['', t('filter.allOwners')], ['own', `${t('onb.truck.own')} (${count((v) => !v.is_hired)})`], ['hired', `${t('setup.hired')} (${count((v) => v.is_hired)})`]] as [string, string][] },
+    { key: 'avail', label: t('filter.byAvail'), value: f.avail, onChange: (v: string) => set('avail', v), options: [
+      ['', t('filter.allAvail')], ...(['available', 'maintenance', 'breakdown'] as const).map((a): [string, string] => [a, `${t(`onb.avail.${a}`)} (${count((v) => v.availability === a)})`])] },
+  ]
 
   return (
     <div className="space-y-4">
-      <FilterBar q={f.q} onQ={(v) => set('q', v)} placeholder={t('filter.trucks')} shown={shown.length} total={rows.filter((v) => showOff || v.is_active).length} active={active} onClear={clear} />
+      <FilterBar q={f.q} onQ={(v) => set('q', v)} placeholder={t('filter.trucks')} selects={selects} shown={shown.length} total={base.length} active={active} onClear={clear} />
       {shown.length === 0 && rows.length > 0 && <NoMatch onClear={clear} />}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <label className="flex items-center gap-2 text-sm text-muted"><input type="checkbox" checked={showOff} onChange={(e) => setShowOff(e.target.checked)} /> {t('setup.showInactive')}</label>

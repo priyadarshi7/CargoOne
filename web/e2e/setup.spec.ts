@@ -32,6 +32,14 @@ test('ops registers a hired vendor, their truck and driver; the new driver signs
   await expect(truckRow).toContainText('Hired')
   await expect(truckRow).toContainText('Expired')
   await shot(page, 'setup-trucks')
+  await page.getByLabel('Paper status').selectOption('expired') // the list narrows to trucks whose papers have run out
+  await expect(truckRow).toBeVisible()
+  await expect(page.locator('tbody tr')).not.toHaveCount(0)
+  await expect(page.locator('tbody tr', { hasText: /Valid/ })).toHaveCount(0)
+  await page.getByLabel('Paper status').selectOption('ok')
+  await expect(truckRow).toHaveCount(0)
+  await page.getByRole('search').getByRole('button', { name: 'Clear filters' }).click()
+  await expect(truckRow).toBeVisible()
 
   // driver from that vendor
   await page.getByRole('tab', { name: 'Drivers' }).click()

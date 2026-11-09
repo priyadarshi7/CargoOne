@@ -215,8 +215,9 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [ ] Not done: paying drivers through the app (advances and expenses are records; the money moves outside it), and a test on a real low-end phone.
 
 ## Demo data (2026-11-09)
-- [x] A realistic fabricated company from the brief's numbers: 140 own and 200 hired trucks (every hired truck has a transporter), 24 transporters, 258 drivers with licence numbers and expiry dates (some due soon or lapsed so the alerts show), RC, chassis, insurance and fitness details, six clients with billing contacts and GSTIN, and office staff in three branches. `python -m app.seed_fleet`.
-- [x] 1,200 illustrative trips on that fleet (cement by the bag, steel by weight, packaged goods by the carton). The dashboard meets the targets overall (80% of PODs within a day, 4 days to invoice, 0.5% lost), with Nagpur below target on purpose. Fixed a bug that left POD-to-invoice days blank.
+- [x] A small, believable fabricated company in the shape of the brief: 8 own and 8 hired trucks (every hired truck has a transporter), 6 transporters, 12 drivers with licence numbers and expiry dates (a few due soon or lapsed so the alerts show), RC, chassis, insurance and fitness details, 5 clients with billing contacts and GSTIN, and office staff in three branches. `python -m app.seed_fleet` (`--wipe` clears it).
+- [x] 140 illustrative trips on that fleet (cement by the bag, steel by weight, packaged goods by the carton). The figures are worked out from them, not typed in: the dashboard meets the targets overall, with Nagpur below target on purpose. Fixed a bug that left POD-to-invoice days blank.
+- [x] Filters on the Setup lists: trucks by paper status (valid, due within 30 days, expired), own or hired and availability; drivers by licence status and type; clients by billing cycle; vendors by status; the messages log and privacy requests by type and result. Each dropdown shows its counts.
 
 ## Phase 7 — "Out-of-scope" wow features (P2, after core is solid)
 **Live GPS tracking**

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { api, ApiError } from '../../lib/api'
 import { useAuth } from '../../lib/auth'
 import { useI18n } from '../../lib/i18n'
+import { FilterBar, NoMatch, type FilterSelect } from '../../components/FilterBar'
+import { hit, useFilters } from '../../lib/filters'
 import { btnPrimary, inputCls, Table } from './ui'
 
 interface Item {
@@ -17,6 +19,7 @@ export default function MessagesTab() {
   const { user } = useAuth()
   const canTest = user?.role === 'ops' || user?.role === 'admin'
   const [data, setData] = useState<Log | null>(null)
+  const { values: f, set, clear, active } = useFilters({ q: '', channel: '', status: '' })
   const [error, setError] = useState(false)
   const [to, setTo] = useState('')
   const [busy, setBusy] = useState(false)
@@ -37,6 +40,11 @@ export default function MessagesTab() {
 
   if (error) return <p className="text-bad">{t('setup.loadFail')}</p>
   if (!data) return <p className="text-muted">{t('common.loading')}</p>
+  const shown = data.items.filter((m) => hit(f.q, m.driver, m.to, m.text, t(`notif.tpl.${m.template}`)) && (!f.channel || m.channel === f.channel) && (!f.status || m.status === f.status))
+  const selects: FilterSelect[] = [
+    { key: 'channel', label: t('notif.log.to'), value: f.channel, onChange: (v) => set('channel', v), options: [['', t('filter.allChannels')], ['whatsapp', t('notif.channel.whatsapp')], ['email', t('notif.channel.email')]] },
+    { key: 'status', label: t('notif.log.status'), value: f.status, onChange: (v) => set('status', v), options: [['', t('filter.allResults')], ...(['sent', 'simulated', 'failed', 'skipped'] as const).map((s): [string, string] => [s, `${t(`notif.status.${s}`)} (${data.items.filter((m) => m.status === s).length})`])] },
+  ]
   const when = (iso: string) => new Date(iso).toLocaleString(lang === 'en' ? 'en-IN' : `${lang}-IN`, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
   return (
     <div className="space-y-4">
@@ -51,8 +59,10 @@ export default function MessagesTab() {
           {result && <p role="status" className={`w-full text-sm ${result.tone}`}>{result.text}</p>}
         </form>
       )}
+      <FilterBar q={f.q} onQ={(v) => set('q', v)} placeholder={t('filter.messages')} selects={selects} shown={shown.length} total={data.items.length} active={active} onClear={clear} />
+      {shown.length === 0 && data.items.length > 0 && <NoMatch onClear={clear} />}
       <Table head={[t('notif.log.when'), t('notif.log.to'), t('notif.log.what'), t('notif.log.status')]} empty={data.items.length ? undefined : t('notif.log.empty')}>
-        {data.items.map((m) => (
+        {shown.map((m) => (
           <tr key={m.id} className="border-t border-line align-top">
             <td className="whitespace-nowrap px-4 py-3 text-muted">{when(m.at)}</td>
             <td className="px-4 py-3">{m.driver ?? '—'}<div className="text-xs tabular-nums text-muted">{t(`notif.channel.${m.channel}`)} · {m.to}</div></td>

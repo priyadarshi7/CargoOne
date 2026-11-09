@@ -1,8 +1,9 @@
 """A realistic fleet for demos and recordings. ALL DATA IS FABRICATED: invented company names, invented people, invented numbers.
 Nothing here belongs to a real person, vehicle or business, and the phone numbers are in a block we use only for fake data. Dev/test only.
 
-Sized from the client brief: 140 own trucks and about 200 hired ones (from 24 transporters), their drivers with licence numbers and expiry
-dates, clients with a billing contact, GSTIN and Tally ledger, and a few more office people. Some papers expire soon and a few have expired,
+A small, believable company (the brief describes 140 own and about 200 hired trucks; this is the same shape at a size you can follow by eye): 8 own
+trucks and 8 hired ones from 6 transporters, their drivers with licence numbers and expiry dates, 5 clients with a billing contact, GSTIN and Tally
+ledger, and a few more office people. Some papers expire soon and a few have expired,
 so the document alerts have something to show.
 
   uv run python -m app.seed       # first: branches, the three brief clients, the demo logins
@@ -11,18 +12,19 @@ so the document alerts have something to show.
 import asyncio
 import random
 import string
+import sys
 from datetime import date, timedelta
 from decimal import Decimal
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.db import SessionLocal
-from app.models import Branch, Client, Role, User, Vehicle, Vendor
+from app.models import Branch, Client, Role, Trip, User, Vehicle, Vendor
 from app.security import hash_secret
 
-OWN, HIRED = 140, 200
+OWN, HIRED = 8, 8  # a small company that is easy to follow: 8 own trucks and 8 hired ones (the brief's real fleet is 140 and about 200)
 FIRST = ["Ramesh", "Suresh", "Mahesh", "Ganesh", "Dinesh", "Rajesh", "Santosh", "Prakash", "Anil", "Sunil", "Vijay", "Sanjay", "Ajay", "Ashok", "Deepak",
          "Kailas", "Bhaskar", "Nitin", "Sachin", "Rahul", "Vishal", "Pravin", "Yogesh", "Amol", "Datta", "Balaji", "Sandeep", "Manoj", "Rakesh", "Mukesh",
          "Gopal", "Harish", "Kishor", "Laxman", "Namdev", "Omkar", "Pandurang", "Shivaji", "Tukaram", "Uttam", "Vikram", "Waman", "Raju", "Jagdish", "Imran", "Farooq"]
@@ -61,9 +63,9 @@ def _code(rnd: random.Random, n: int, alphabet: str = string.ascii_uppercase + s
 def _expiry(rnd: random.Random, today: date) -> date:
     """Mostly comfortably in the future; some due within a month; a few already past (so the alerts have something to show)."""
     roll = rnd.random()
-    if roll < 0.03:
+    if roll < 0.01:
         return today - timedelta(days=rnd.randint(2, 40))
-    if roll < 0.12:
+    if roll < 0.045:
         return today + timedelta(days=rnd.randint(1, 28))
     return today + timedelta(days=rnd.randint(60, 700))
 
@@ -103,7 +105,7 @@ async def seed_fleet(session: AsyncSession) -> dict:
     pin = hash_secret("1234")
     made = {"vendors": 0, "own": 0, "hired": 0, "drivers": 0, "clients": 0, "office": 0}
 
-    for name, segment, cycle, contact in CLIENTS:
+    for name, segment, cycle, contact in CLIENTS[:5]:
         c = await session.scalar(select(Client).where(Client.name == name))
         fields = {"segment": segment, "billing_cycle": cycle, "contact_name": contact, "contact_phone": f"90003{rnd.randint(10000, 99999)}",
                       "email": f"accounts@{name.lower().replace(' ', '')}.example", "gstin": f"27{_code(rnd, 5, string.ascii_uppercase)}{rnd.randint(1000, 9999)}{rnd.choice(string.ascii_uppercase)}1Z{rnd.randint(1, 9)}",
@@ -122,7 +124,7 @@ async def seed_fleet(session: AsyncSession) -> dict:
             made["office"] += 1
 
     vendors: list[Vendor] = []
-    for v in VENDORS:
+    for v in VENDORS[:6]:
         row = await session.scalar(select(Vendor).where(Vendor.name == v))
         if row is None:
             row = Vendor(name=v, contact_name=_name(rnd), phone=f"90004{rnd.randint(10000, 99999)}",
@@ -180,12 +182,13 @@ async def seed_fleet(session: AsyncSession) -> dict:
                 phones.add(p)
                 return p
 
-    for v in new_own:  # every own truck has its regular driver, on the company payroll
+    own_without_driver = list((await session.scalars(select(Vehicle).where(Vehicle.is_hired.is_(False), Vehicle.id.not_in(select(User.assigned_vehicle_id).where(User.assigned_vehicle_id.is_not(None)))))).all())
+    for v in own_without_driver:  # every own truck has its regular driver, on the company payroll
         b = rnd.choices(order, weights=[5, 3, 2])[0]
         session.add(User(name=_name(rnd), phone=next_phone(9000100000), role=Role.driver, password_hash=pin, language=rnd.choices(["mr", "hi", "en"], [55, 40, 5])[0],
                          branch_id=b.id, employment_type="company", assigned_vehicle_id=v.id, **_licence(rnd, today, "MH20")))
         made["drivers"] += 1
-    for v in rnd.sample(new_hired, k=int(len(new_hired) * 0.6)):  # most hired trucks have a driver we know; they sign in by link, so no PIN
+    for v in rnd.sample(new_hired, k=max(1, int(len(new_hired) * 0.6))):  # most hired trucks have a driver we know; they sign in by link, so no PIN
         session.add(User(name=_name(rnd), phone=next_phone(9000200000), role=Role.driver, password_hash=None, language=rnd.choices(["mr", "hi"], [50, 50])[0],
                          branch_id=hq.id, employment_type="hired", vendor_id=v.vendor_id, assigned_vehicle_id=v.id, **_licence(rnd, today, rnd.choice(["MH20", "MH17", "MH12", "MP09", "GJ05"]))))
         made["drivers"] += 1
@@ -193,7 +196,29 @@ async def seed_fleet(session: AsyncSession) -> dict:
     return made
 
 
+async def wipe(session: AsyncSession) -> dict:
+    """Remove everything seed_fleet adds (the people, trucks, transporters and extra clients), keeping the brief's three sample trucks and the demo logins.
+    Run after `python -m app.demo_data --remove`, because trips hold on to their trucks and drivers."""
+    _guard()
+    keep = ("MH20 EL 4521", "MH20 GT 7718", "MH17 BY 3092")
+    drivers = (await session.scalars(select(User.id).where(User.role == Role.driver, User.phone != "9000000001"))).all()
+    office = (await session.scalars(select(User.id).where(User.email.in_([e for e, *_ in OFFICE])))).all()
+    trucks = (await session.scalars(select(Vehicle.id).where(Vehicle.reg_no.not_in(keep)))).all()
+    await session.execute(update(User).where(User.assigned_vehicle_id.in_(trucks)).values(assigned_vehicle_id=None))
+    await session.execute(delete(User).where(User.id.in_([*drivers, *office])))
+    await session.execute(delete(Vehicle).where(Vehicle.id.in_(trucks)))
+    await session.execute(update(Vehicle).where(Vehicle.reg_no.in_(keep)).values(vendor_id=None))
+    gone = await session.execute(delete(Vendor).where(Vendor.id.not_in(select(Vehicle.vendor_id).where(Vehicle.vendor_id.is_not(None)))))
+    extra = await session.execute(delete(Client).where(Client.name.in_([c[0] for c in CLIENTS if c[0] not in ("Company B", "Company C", "Company D")]), Client.id.not_in(select(Trip.client_id))))
+    await session.commit()
+    return {"drivers": len(drivers), "office": len(office), "trucks": len(trucks), "vendors": gone.rowcount, "clients": extra.rowcount}
+
+
 async def main() -> None:
+    if "--wipe" in sys.argv:
+        async with SessionLocal() as session:
+            print("Removed:", await wipe(session))
+        return
     async with SessionLocal() as session:
         print("Added:", await seed_fleet(session))
 

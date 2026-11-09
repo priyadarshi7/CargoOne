@@ -1,7 +1,7 @@
 import { Eye, KeyRound, Lock, MessageCircle, Pencil, Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
-import { FilterBar, NoMatch } from '../../components/FilterBar'
+import { FilterBar, NoMatch, type FilterSelect } from '../../components/FilterBar'
 import { hit, useFilters } from '../../lib/filters'
 import { useBusy } from '../../lib/busy'
 import { useI18n } from '../../lib/i18n'
@@ -27,7 +27,7 @@ export default function DriversTab({ canEdit }: { canEdit: boolean }) {
   const [view, setView] = useState<Driver | null>(null)
   const [error, setError] = useState(false)
   const [showOff, setShowOff] = useState(false)
-  const { values: f, set, clear, active } = useFilters({ q: '' })
+  const { values: f, set, clear, active } = useFilters({ q: '', licence: '', emp: '' })
   const [form, setForm] = useState<Driver | 'new' | null>(null)
   const [reset, setReset] = useState<Driver | null>(null)
   const [secret, setSecret] = useState<{ title: string; note: string; value: string } | null>(null)
@@ -49,11 +49,22 @@ export default function DriversTab({ canEdit }: { canEdit: boolean }) {
   }, [])
   if (error) return <p className="text-bad">{t('setup.loadFail')}</p>
   if (!rows) return <p className="text-muted">{t('common.loading')}</p>
-  const shown = rows.filter((d) => (showOff || d.is_active) && hit(f.q, d.name, d.phone, d.vendor, d.assigned_vehicle, d.licence_no, d.branch))
+  const base = rows.filter((d) => showOff || d.is_active)
+  const count = (fn: (d: Driver) => boolean) => base.filter(fn).length
+  const shown = base.filter((d) => hit(f.q, d.name, d.phone, d.vendor, d.assigned_vehicle, d.licence_no, d.branch)
+    && (!f.licence || (f.licence === 'none' ? d.licence === null : d.licence === f.licence))
+    && (!f.emp || d.employment_type === f.emp))
+  const selects: FilterSelect[] = [
+    { key: 'licence', label: t('filter.byLicence'), value: f.licence, onChange: (v: string) => set('licence', v), options: [
+      ['', t('filter.allLicence')], ['ok', `${t('setup.truck.ok')} (${count((d) => d.licence === 'ok')})`], ['due_soon', `${t('setup.truck.due_soon')} (${count((d) => d.licence === 'due_soon')})`],
+      ['expired', `${t('setup.truck.expired')} (${count((d) => d.licence === 'expired')})`], ['none', `${t('filter.noDates')} (${count((d) => d.licence === null)})`]] as [string, string][] },
+    { key: 'emp', label: t('filter.byEmp'), value: f.emp, onChange: (v: string) => set('emp', v), options: [
+      ['', t('filter.allEmp')], ...(['company', 'contract', 'hired'] as const).map((e): [string, string] => [e, `${t(`onb.emp.${e}`)} (${count((d) => d.employment_type === e)})`])] },
+  ]
 
   return (
     <div className="space-y-4">
-      <FilterBar q={f.q} onQ={(v) => set('q', v)} placeholder={t('filter.drivers')} shown={shown.length} total={rows.filter((d) => showOff || d.is_active).length} active={active} onClear={clear} />
+      <FilterBar q={f.q} onQ={(v) => set('q', v)} placeholder={t('filter.drivers')} selects={selects} shown={shown.length} total={base.length} active={active} onClear={clear} />
       {shown.length === 0 && rows.length > 0 && <NoMatch onClear={clear} />}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <label className="flex items-center gap-2 text-sm text-muted"><input type="checkbox" checked={showOff} onChange={(e) => setShowOff(e.target.checked)} /> {t('setup.showInactive')}</label>
