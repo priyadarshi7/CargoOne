@@ -71,6 +71,7 @@ test('driver logs expenses, the office approves and rejects, trip profit and adv
   await expect(phone.locator('li', { hasText: 'Toll' })).toContainText('Approved')
   await expect(phone.locator('li', { hasText: 'Diesel' })).toContainText('Rejected')
   await expect(phone.locator('li', { hasText: 'Diesel' })).toContainText('no bill attached')
+  await expect(phone.getByRole('region', { name: 'Cash with you' })).toContainText('₹1,550') // 2,000 advance - 450 approved
   await shot(phone, 'driver-expense-status')
   await noErrors(); await phoneErrors()
   await ctx.close()

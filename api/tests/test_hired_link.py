@@ -57,6 +57,11 @@ async def test_the_link_makes_a_driver_record_and_signs_in_as_them(client: Async
     assert [t["id"] for t in mine] == [trip_id]
 
 
+async def test_a_private_link_does_not_show_the_drivers_money(client: AsyncClient) -> None:
+    _, _, h = await hired_trip(client)
+    assert (await client.get("/finance/mine", headers=h)).status_code == 403
+
+
 async def test_the_whole_driver_journey_runs_on_the_link(client: AsyncClient) -> None:
     trip_id, _, h = await hired_trip(client)
     async with SessionLocal() as s:  # booked trips get this from the planning screen

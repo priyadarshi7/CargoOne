@@ -34,7 +34,7 @@ from app.models import (
 )
 from app.notify.service import expense_decided, safely
 from app.pod.ingest import validate_image
-from app.security import confine_to_link, current_user, require_roles
+from app.security import confine_to_link, current_user, link_trip_id, require_roles
 from app.storage import Storage, get_storage
 
 log = logging.getLogger("cargoone.expenses")
@@ -216,6 +216,20 @@ async def give_advance(body: NewAdvance, user: Office, session: Session) -> dict
     session.add(AuditLog(actor_id=user.id, action="advance.create", entity="user", entity_id=str(driver.id), meta={"amount": float(body.amount)}))
     await session.commit()
     return {"id": str(adv.id)}
+
+
+@router.get("/finance/mine")
+async def my_money(request: Request, user: Driver, session: Session) -> dict:
+    """What a driver can see of their own money: advances taken, expenses approved and waiting, and the balance (positive = cash still with
+    the driver). A hired driver's private link is confined to one trip, so it shows none of this."""
+    if link_trip_id(request) is not None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not available on a private link")
+    advanced = await session.scalar(select(func.coalesce(func.sum(Advance.amount), 0)).where(Advance.driver_id == user.id))
+    by_status = dict((await session.execute(select(Expense.status, func.sum(Expense.amount)).where(Expense.driver_id == user.id).group_by(Expense.status))).all())
+    approved, waiting = by_status.get(ExpenseStatus.approved, Decimal(0)), by_status.get(ExpenseStatus.pending, Decimal(0))
+    recent = (await session.scalars(select(Advance).where(Advance.driver_id == user.id).order_by(Advance.given_at.desc()).limit(5))).all()
+    return {"advances": float(advanced), "approved": float(approved), "waiting": float(waiting), "balance": float(advanced - approved),
+            "recent_advances": [{"amount": float(a.amount), "note": a.note, "given_at": a.given_at.isoformat()} for a in recent]}
 
 
 @router.get("/finance/settlement")

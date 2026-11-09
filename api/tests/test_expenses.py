@@ -172,6 +172,24 @@ async def test_advances_and_settlement(client: AsyncClient) -> None:
     assert (await client.post("/finance/advances", headers=await login(client, "md@cargoone.dev", "cargoone-dev"), json={"driver_id": me, "amount": "10"})).status_code == 403
 
 
+async def test_a_driver_sees_their_own_money_and_nobody_elses(client: AsyncClient) -> None:
+    h, trip = await driver_with_trip(client)
+    other, _ = await driver_with_trip(client)
+    me = (await client.get("/auth/me", headers=h)).json()["id"]
+    o = await ops(client)
+    assert (await client.post("/finance/advances", headers=o, json={"driver_id": me, "amount": "5000", "note": "diesel advance"})).status_code == 201
+    e = (await spend(client, h, trip, "toll", "1800")).json()
+    await spend(client, h, trip, "food", "200")
+    await client.post(f"/expenses/{e['id']}/decision", headers=o, json={"action": "approve"})
+    mine = (await client.get("/finance/mine", headers=h)).json()
+    assert (mine["advances"], mine["approved"], mine["waiting"], mine["balance"]) == (5000.0, 1800.0, 200.0, 3200.0)
+    assert mine["recent_advances"][0]["note"] == "diesel advance"
+    theirs = (await client.get("/finance/mine", headers=other)).json()
+    assert (theirs["advances"], theirs["approved"], theirs["balance"]) == (0.0, 0.0, 0.0)
+    assert (await client.get("/finance/mine", headers=o)).status_code == 403  # office people use /finance/settlement
+    assert (await client.get("/finance/mine")).status_code == 401
+
+
 async def test_vehicle_economy_report_lists_flagged_trucks(client: AsyncClient) -> None:
     h, trip = await driver_with_trip(client)
     now = datetime.now(UTC)

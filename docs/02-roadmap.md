@@ -126,7 +126,7 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [x] **Works with no network.** Trips, messages and expenses are saved on the phone after every successful read and shown (with a "no network, showing saved information" line) when the network drops; the app opens signed in with no network. Starting a trip and adding an expense are saved first and sent in order later (same id on every retry, so nothing is done twice); POD photos keep their own queue as before. The top bar always says whether the network is on and how many items are waiting; a send that can never succeed is shown with a Dismiss button.
 - [x] **Redesigned for low-literacy drivers on cheap phones.** One trip, one huge button (Start trip, then POD photo); From and To in large type with a Listen button that reads the route aloud; Navigate (opens Maps) and Call; three bottom tabs (Trips, Expenses, Help); a language switch (EN, हि, म) on every screen; a Help screen with three pictured steps, "send saved items now", change PIN and sign out. No blur or shadows; office screens load on demand, so the driver's first download is smaller.
 - [x] **Phone demo through the tunnel.** The tunnel was serving an old build (`vite preview` shows the last build, and the service worker keeps the old one). `pnpm demo` rebuilds and serves; new builds now take over at once (skip waiting and claim clients) and the manifest colour matches the new look.
-- [~]. Recorded Hindi and Marathi audio is done (owner). Still open: earnings or advances view, trip history, an office phone to call (`OFFICE_PHONE` is not set), offline start of a trip the phone has never seen.
+- [~]. Recorded Hindi and Marathi audio is done (owner). Still open: testing on a real low-end phone. A phone cannot start a trip it has never seen, so that is not a gap.
 
 ## Hired drivers use the driver app (private link)
 - [x] **One app, two doors.** A hired driver opens the SMS link on any phone (no install, no sign-in) and gets the same screens an own driver gets: the one-trip home with Loaded, Start, Reached, Delay or problem, Goods reached (delivery code) and the proof photo, the Expenses, Messages and Help tabs, voice, language switch, location consent and GPS, and the install banner. The link is the credential and works for that one trip only; it lasts until 48 h after the planned end (at least 72 h) and the office can revoke it.
@@ -209,6 +209,11 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [ ] Not done: more than one API instance (the connections live in the process; use Redis or Postgres LISTEN/NOTIFY then).
 - Decided against: a chat between ops and clients. The brief does not ask for it, a request already carries the quote and decline reasons, and chat texts would be a new store of personal data under DPDP.
 
+## Driver side (2026-11-09)
+- [x] The Expenses tab shows the driver's own money: cash still with them (or what the office owes), advance taken, approved, waiting, and the last advance. `GET /finance/mine`; nothing on a hired driver's private link, which shows one trip only.
+- [x] Already built, now recorded: expenses queue on the phone with no network and are sent later (same id on every retry), past trips are listed under Done, and the Call the office button shows when `OFFICE_PHONE` is set.
+- [ ] Not done: paying drivers through the app (advances and expenses are records; the money moves outside it), and a test on a real low-end phone.
+
 ## Phase 7 — "Out-of-scope" wow features (P2, after core is solid)
 **Live GPS tracking**
 - [x] Live tracking: driver agrees once (recorded, withdrawable); while a trip is on the road the phone sends GPS fixes (60 s / 100 m, batched, retried safely, screen kept awake); live map for ops and the MD with moving / stopped / no-signal states and stoppage + silent alerts; path per trip; client **tracking link** (position rounded to ~100 m, never the driver, stops once delivered); 30-day retention purge. English/Hindi/Marathi
@@ -220,7 +225,7 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [x] Driver expenses: icon-first phone screen (diesel, toll, repair, loading, food, fine, other), amount + optional bill photo (compressed, <300 KB), diesel needs litres + odometer; saved once even if retried; office review queue with receipt viewer, approve / reject with a reason the driver sees
 - [x] Fuel economy: km per litre between fills, per truck; flags for odometer going backwards, implausible mileage or litres, and mileage far below the truck's own usual (checked the moment a fill arrives and reported per truck)
 - [x] Advances and settlement per driver (advances minus approved expenses), trip profit (freight minus approved costs, pending shown apart, warning when many trips have no costs yet), where-the-money-went by category. English/Hindi/Marathi
-- [ ] Still to do here: reading the amount/litres from the bill photo with the AI layer (the driver types it today), offline expense queue (needs a connection today), payroll-style trip settlement/closing, per-client profitability
+- [ ] Still to do here: reading the amount/litres from the bill photo with the AI layer (the driver types it today), payroll-style trip settlement/closing, per-client profitability
 **Platform polish**
 - [ ] Rule/automation builder, e-way bill API integration, GST e-invoice, direct Tally connector, multi-tenant for other transporters, analytics/BI export, mobile wrapper (Capacitor) if needed
 
