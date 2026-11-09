@@ -5,6 +5,7 @@ import { api, type ReviewItem } from '../lib/api'
 import { ThemeToggle } from './ThemeToggle'
 import { useAuth } from '../lib/auth'
 import { LANGUAGES, useI18n } from '../lib/i18n'
+import { useLive } from '../lib/live'
 
 /** Re-reads the count on every navigation, so the badge never goes stale after an approval. */
 function useReviewCount(enabled: boolean): number {
@@ -14,6 +15,7 @@ function useReviewCount(enabled: boolean): number {
     if (!enabled) return
     api<ReviewItem[]>('/review').then((r) => setN(r.length)).catch(() => undefined)
   }, [enabled, pathname])
+  useLive(['review'], () => { if (enabled) api<ReviewItem[]>('/review').then((r) => setN(r.length)).catch(() => undefined) })
   return n
 }
 
@@ -30,6 +32,7 @@ function useNewRequests(enabled: boolean): number {
     document.addEventListener('visibilitychange', onShow)
     return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', onShow) }
   }, [enabled, pathname])
+  useLive(['requests'], () => { if (enabled) api<{ requests_attention: number }>('/home').then((h) => setN(h.requests_attention)).catch(() => undefined) })
   useEffect(() => {
     const base = document.title.replace(/^\(\d+\) /, '')
     document.title = n > 0 ? `(${n}) ${base}` : base

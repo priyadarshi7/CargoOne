@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { api } from './api'
+import { useLive } from './live'
 
 /** How many messages the driver has not opened yet. Checked when the app opens, when it comes back to the front, and every minute.
  *  With no network it keeps the last number it knew. */
 export function useUnread(enabled = true): number {
   const [n, setN] = useState(0)
+  useLive(['messages'], () => { if (enabled) api<{ unread: number }>('/notifications/mine?limit=1').then((r) => setN(r.unread)).catch(() => undefined) })
   useEffect(() => {
     if (!enabled) return
     let alive = true

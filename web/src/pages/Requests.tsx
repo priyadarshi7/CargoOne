@@ -6,6 +6,7 @@ import { FilterBar, NoMatch } from '../components/FilterBar'
 import { hit, useFilters } from '../lib/filters'
 import { useI18n } from '../lib/i18n'
 import { btnGhost, btnPrimary, Facts, Field, FormModal, inputCls, Modal } from './setup/ui'
+import { useLive } from '../lib/live'
 
 interface Req {
   id: string; reference: string; status: 'new' | 'accepted' | 'booked' | 'declined'; created_at: string; company_name: string; contact_name: string; phone: string
@@ -34,6 +35,7 @@ export default function Requests() {
   const phoneYes = async (r: Req) => { await api(`/requests/${r.id}/quote-confirmed`, { method: 'POST', body: JSON.stringify({}) }).catch(() => undefined); load() }
   const seen = async (r: Req) => { await api(`/requests/${r.id}/seen`, { method: 'POST' }).catch(() => undefined); load() }
   useEffect(() => { load() }, [load])
+  useLive(['requests'], load)
   const { values: f, set, clear, active } = useFilters(FILTERS)
   const shownRows = (rows ?? []).filter((r) => hit(f.q, r.company_name, r.reference, r.contact_name, r.phone, r.origin, r.destination, r.material, r.client, r.trip_code))
 

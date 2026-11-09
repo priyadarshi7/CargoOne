@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { api, ApiError, linkStore, tokenStore, type User } from './api'
+import { connectLive, liveAuth } from './live'
 
 interface AuthState {
   user: User | null
@@ -54,6 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }, [])
 
+  useEffect(() => (user ? connectLive(liveAuth) : undefined), [user?.id]) // live updates while someone is signed in
   const value = useMemo(() => ({ user, loading, login, logout, adopt }), [user, loading, login, logout, adopt])
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
@@ -61,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 /** The signed-in person for a hired driver's private link page: the person the link stands for. There is no password to type or change, and nothing to sign out of. */
 export function LinkAuthProvider({ user: first, children }: { user: User; children: ReactNode }) {
   const [user, setUser] = useState<User>(first)
+  useEffect(() => connectLive(liveAuth), [user.id])
   const value = useMemo<AuthState>(() => ({
     user, loading: false,
     login: () => Promise.reject(new Error('A private link has no sign-in')),

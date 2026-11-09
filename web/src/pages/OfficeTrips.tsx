@@ -9,6 +9,7 @@ import { useAuth } from '../lib/auth'
 import { FilterBar, NoMatch } from '../components/FilterBar'
 import { hit, useFilters } from '../lib/filters'
 import { useI18n } from '../lib/i18n'
+import { useLive } from '../lib/live'
 
 const FILTERS = { q: '', pod: '', client: '', fleet: '' }
 const POD_ORDER = ['pending', 'uploaded', 'needs_review', 'retake_requested', 'verified', 'billed', 'rejected'] as const
@@ -34,6 +35,7 @@ export default function OfficeTrips() {
   useEffect(() => {
     api<Trip[]>('/trips').then(setTrips).catch(() => setError(true))
   }, [])
+  useLive(['trips', 'billing'], () => { api<Trip[]>('/trips').then(setTrips).catch(() => undefined) })
 
   if (error) return <p className="text-bad">{tx('trips.error')}</p>
   if (!trips) return <p className="text-muted">{tx('common.loading')}</p>

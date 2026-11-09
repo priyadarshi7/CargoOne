@@ -5,6 +5,7 @@ import Attention from '../components/Attention'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
+import { useLive } from '../lib/live'
 
 interface Home {
   planned: number; in_transit: number; pod_missing: number; awaiting_review: number; requests_new: number; trucks_available: number
@@ -66,6 +67,7 @@ function useHome(): { data: Home | null; failed: boolean } {
   const [data, setData] = useState<Home | null>(null)
   const [failed, setFailed] = useState(false)
   useEffect(() => { api<Home>('/home').then(setData).catch(() => setFailed(true)) }, [])
+  useLive(['trips', 'billing', 'requests', 'expenses', 'review'], () => { api<Home>('/home').then(setData).catch(() => undefined) })
   return { data, failed }
 }
 

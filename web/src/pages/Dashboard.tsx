@@ -6,6 +6,7 @@ import { LineChart, StackedBars } from '../components/charts'
 import { api, download, type Dashboard as Data } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
+import { useLive } from '../lib/live'
 
 const inr = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })
 /** Indian short form: 3.24 crore / 38.9 lakh / 12,000 */
@@ -51,6 +52,7 @@ export default function Dashboard() {
   useEffect(() => {
     api<Data>(`/dashboard?days=${days}`).then(setD).catch(() => setError(true))
   }, [days])
+  useLive(['trips', 'billing'], () => { api<Data>(`/dashboard?days=${days}`).then(setD).catch(() => undefined) })
 
   if (error) return <p className="text-bad">{tr('dash.error')}</p>
   if (!d) return <p className="text-muted">{tr('common.loading')}</p>

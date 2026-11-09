@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth'
 import { FilterBar, NoMatch } from '../components/FilterBar'
 import { hit, useFilters } from '../lib/filters'
 import { useI18n, type Key } from '../lib/i18n'
+import { useLive } from '../lib/live'
 
 interface Exp {
   id: string; category: string; amount: number; litres: number | null; odometer_km: number | null; note: string | null; status: string
@@ -69,6 +70,7 @@ function Review({ canDecide }: { canDecide: boolean }) {
   const { values: f, set, clear, active } = useFilters({ q: '', cat: '', flag: '' })
   const load = useCallback(() => api<Exp[]>('/expenses?status=pending').then(setRows).catch(() => setError(true)), [])
   useEffect(() => { void load() }, [load])
+  useLive(['expenses'], () => { void load() })
 
   async function decide(e: Exp, action: 'approve' | 'reject') {
     setFail(null)

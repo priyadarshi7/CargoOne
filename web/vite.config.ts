@@ -44,14 +44,14 @@ export default defineConfig({
     }),
   ],
   test: { environment: 'node', setupFiles: ['fake-indexeddb/auto'], include: ['src/**/*.test.ts'] },
-  preview: { port: 4173, allowedHosts: TUNNELS, proxy: { '/api': { target: process.env.VITE_PROXY_TARGET ?? 'http://localhost:8000', rewrite: (p) => p.replace(/^\/api/, '') } } },
+  preview: { port: 4173, allowedHosts: TUNNELS, proxy: { '/api': { target: process.env.VITE_PROXY_TARGET ?? 'http://localhost:8000', ws: true, rewrite: (p) => p.replace(/^\/api/, '') } } },
   server: {
     port: 5173,
     allowedHosts: TUNNELS,
     // allow importing ../docs/*.md?raw (the Progress page renders the roadmap)
     fs: { allow: ['..'] },
     proxy: {
-      '/api': { target: process.env.VITE_PROXY_TARGET ?? 'http://localhost:8000', rewrite: (p) => p.replace(/^\/api/, '') },
+      '/api': { target: process.env.VITE_PROXY_TARGET ?? 'http://localhost:8000', ws: true, rewrite: (p) => p.replace(/^\/api/, '') },
     },
   },
 })

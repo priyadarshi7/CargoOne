@@ -7,6 +7,7 @@ import PlaceInput from '../components/PlaceInput'
 import { DocSlots, TRIP_DOCS } from './setup/Docs'
 import { useAuth } from '../lib/auth'
 import { LANGUAGES, useI18n } from '../lib/i18n'
+import { useLive } from '../lib/live'
 
 interface BoardTrip { id: string; trip_code: string; lr_no: string; client: string; vehicle_id: string; driver_id: string | null; driver: string | null; origin: string; destination: string; state: TripState; planned_start: string | null; planned_end: string | null; started_at: string | null }
 interface Vehicle { id: string; reg_no: string; is_hired: boolean; availability?: string; capacity_tonnes?: number | null }
@@ -57,6 +58,7 @@ export default function Planning() {
     } catch { setError(true) }
   }, [])
   useEffect(() => { void load() }, [load])
+  useLive(['trips', 'requests', 'setup'], () => { void load() })
 
   const range = useMemo(() => {
     const from = startOfDay(new Date(board?.now ?? Date.now())) - DAY

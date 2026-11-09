@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 import { btnGhost, btnPrimary, Field, FormModal, inputCls } from './setup/ui'
+import { useLive } from '../lib/live'
 
 interface Req {
   id: string; reference: string; kind: 'access' | 'correction' | 'erasure' | 'consent' | 'complaint'; name: string | null; phone: string; message: string | null
@@ -24,6 +25,7 @@ export default function OfficePrivacy() {
   const [adding, setAdding] = useState(false)
   const load = useCallback(() => { api<Req[]>('/privacy/requests').then(setRows).catch(() => setError(true)) }, [])
   useEffect(() => { load() }, [load])
+  useLive(['privacy'], load)
   const shown = (rows ?? []).filter((r) => (tab === 'open') === (r.status === 'open'))
 
   return (

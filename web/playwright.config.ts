@@ -16,7 +16,7 @@ export default defineConfig({
   use: { baseURL: `http://localhost:${WEB_PORT}`, timezoneId: 'Asia/Kolkata', trace: 'retain-on-failure', screenshot: 'only-on-failure' },
   projects: [
     { name: 'mobile-driver', testMatch: /(driver|offline)\.spec\.ts/, use: { ...devices['Pixel 7'], permissions: ['geolocation'], geolocation: { latitude: 19.8762, longitude: 75.3433 } } },
-    { name: 'desktop-office', testMatch: /(auth|office|dashboard|sms|import|client|security|pin|theme|planning|tracking|expenses|setup|notifications|requests|landing|desks|review-boxes|forms|map-picker|journey|portal|invoice-client|filters|hired-link|benchmark|privacy)\.spec\.ts/, use: { ...devices['Desktop Chrome'], viewport: { width: 1360, height: 900 } } },
+    { name: 'desktop-office', testMatch: /(auth|office|dashboard|sms|import|client|security|pin|theme|planning|tracking|expenses|setup|notifications|requests|landing|desks|review-boxes|forms|map-picker|journey|portal|invoice-client|filters|hired-link|live|benchmark|privacy)\.spec\.ts/, use: { ...devices['Desktop Chrome'], viewport: { width: 1360, height: 900 } } },
   ],
   webServer: [
     {

@@ -20,6 +20,7 @@ import { useI18n } from '../lib/i18n'
 import { useCachedApi } from '../lib/offline/cache'
 import { enqueueAction, flushOutbox, useOutbox } from '../lib/offline/outbox'
 import { useTracker } from '../lib/tracker'
+import { useLive } from '../lib/live'
 
 const OPEN: PodStatus[] = ['pending', 'retake_requested']
 const ICON: Record<PodStatus, { icon: LucideIcon; cls: string }> = {
@@ -73,6 +74,7 @@ export default function DriverHome() {
 
   // Saved actions (start, reached, a delay) have just reached the server: show what the server now says, not the phone's guess.
   const was = useRef(0)
+  useLive(['trips', 'expenses'], reload)
   useEffect(() => { if (was.current > 0 && waiting === 0 && navigator.onLine) reload(); was.current = waiting }, [waiting, reload])
 
   // Look again when the app comes back to the front or the network returns, so a change made by the office shows up without a restart.

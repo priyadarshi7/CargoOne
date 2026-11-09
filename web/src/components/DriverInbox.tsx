@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useDriverBase } from '../lib/driverBase'
 import { useI18n } from '../lib/i18n'
+import { useLive } from '../lib/live'
 
 interface Item { id: string; kind: string; title: string; body: string; link: string | null; read: boolean; created_at: string }
 const TXT = {
@@ -19,6 +20,7 @@ export default function DriverInbox({ onOpen }: { onOpen?: () => void }) {
   const [data, setData] = useState<{ unread: number; items: Item[] } | null>(null)
   const x = TXT[lang]
   const load = useCallback(() => { api<{ unread: number; items: Item[] }>('/notifications/mine?limit=5').then(setData).catch(() => undefined) }, [])
+  useLive(['messages'], load)
   useEffect(() => {
     load()
     const every = window.setInterval(load, 60_000)

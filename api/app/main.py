@@ -37,9 +37,8 @@ from app.routers import (
     trips,
     webhooks,
 )
-from app.routers import (
-    privacy as privacy_routes,
-)
+from app.routers import live as live_routes
+from app.routers import privacy as privacy_routes
 
 settings = get_settings()
 @asynccontextmanager
@@ -70,6 +69,7 @@ app.include_router(pods.router)
 app.include_router(review.router)
 app.include_router(benchmark.router)
 app.include_router(privacy_routes.router)
+app.include_router(live_routes.router)
 app.include_router(privacy_routes.public)
 app.include_router(billing.router)
 app.include_router(dashboard.router)

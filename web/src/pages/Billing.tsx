@@ -7,6 +7,7 @@ import { FilterBar, NoMatch } from '../components/FilterBar'
 import { hit, useFilters } from '../lib/filters'
 import { useAuth } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
+import { useLive } from '../lib/live'
 
 const inr = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })
 const invStatus = (i: Invoice) => (i.paid_at ? 'paid' : i.paid_amount > 0 ? 'part' : i.sent_at ? 'sent' : 'draft')
@@ -29,6 +30,7 @@ export default function Billing() {
     }
   }, [t])
   useEffect(() => { void load() }, [load])
+  useLive(['billing', 'trips'], () => { void load() })
 
   const tabBtn = (k: typeof tab, label: string, n?: number) => (
     <button onClick={() => setTab(k)} className={`border-b-2 px-1 pb-2 text-sm font-medium ${tab === k ? 'border-ink text-ink' : 'border-transparent text-muted hover:text-ink'}`}>

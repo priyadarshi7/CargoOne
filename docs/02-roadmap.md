@@ -202,6 +202,13 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [x] An invoice made by mistake can be cancelled while it is not sent, not in Tally and not paid (ops or admin, with a reason): its trips go back to the billing queue; the number is not reused. `POST /billing/invoices/{id}/cancel`.
 - [x] A cancelled trip no longer accepts a POD photo.
 
+## Live updates (2026-11-09)
+- [x] Screens update by themselves, with no reload: one WebSocket per open tab (`/ws`, sign-in is the first message) is told which kind of thing changed (trips, review, billing, requests, expenses, messages, privacy, setup) and the screen fetches fresh data as usual. No data travels on the socket. Covers the office desks, trips, review queue and its badge, billing, requests, planning, expenses, privacy requests, the client portal and the driver app.
+- [x] Changes are noticed in one place, when a database transaction commits, so no endpoint has to announce anything. A driver hears only about their own trips and inbox, a client only about its own.
+- [x] It fails soft: with no socket (offline, a blocking proxy) the screens keep their own refresh.
+- [ ] Not done: more than one API instance (the connections live in the process; use Redis or Postgres LISTEN/NOTIFY then).
+- Decided against: a chat between ops and clients. The brief does not ask for it, a request already carries the quote and decline reasons, and chat texts would be a new store of personal data under DPDP.
+
 ## Phase 7 — "Out-of-scope" wow features (P2, after core is solid)
 **Live GPS tracking**
 - [x] Live tracking: driver agrees once (recorded, withdrawable); while a trip is on the road the phone sends GPS fixes (60 s / 100 m, batched, retried safely, screen kept awake); live map for ops and the MD with moving / stopped / no-signal states and stoppage + silent alerts; path per trip; client **tracking link** (position rounded to ~100 m, never the driver, stops once delivered); 30-day retention purge. English/Hindi/Marathi

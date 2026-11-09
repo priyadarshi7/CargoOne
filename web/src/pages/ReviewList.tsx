@@ -6,6 +6,7 @@ import { api, type ReviewItem } from '../lib/api'
 import { FilterBar, NoMatch } from '../components/FilterBar'
 import { hit, useFilters } from '../lib/filters'
 import { useI18n, type Key } from '../lib/i18n'
+import { useLive } from '../lib/live'
 
 const FILTERS = { q: '' }
 
@@ -24,6 +25,7 @@ export default function ReviewList() {
   useEffect(() => {
     api<ReviewItem[]>('/review').then(setItems).catch(() => setError(true))
   }, [])
+  useLive(['review'], () => { api<ReviewItem[]>('/review').then(setItems).catch(() => undefined) })
 
   if (error) return <p className="text-bad">{t('review.error')}</p>
   if (!items) return <p className="text-muted">{t('common.loading')}</p>

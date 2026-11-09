@@ -9,6 +9,7 @@ import { api, ApiError, fetchBlob } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { LANGUAGES, useI18n, type Key, type Lang } from '../lib/i18n'
 import Account from './Account'
+import { useLive } from '../lib/live'
 
 interface Shipment { trip_code: string; origin: string; destination: string; stage: string; planned_start: string | null; delivered_at: string | null; freight_amount: number; token: string }
 interface Req { reference: string; status: 'new' | 'accepted' | 'booked' | 'declined'; origin: string; destination: string; material: string; pickup_date: string; quote_amount: number | null; needs_reply: boolean; token: string }
@@ -58,6 +59,10 @@ export default function Portal() {
     Promise.all([api<Shipment[]>('/portal/shipments'), api<Req[]>('/portal/requests'), api<{ company: string }>('/portal/me')]).then(([s, r, m]) => { setShips(s); setReqs(r); setMe(m) }).catch(() => setError(true))
     api<InvoiceView[]>('/portal/invoices').then(setInvs).catch(() => undefined)
   }, [])
+  useLive(['trips', 'billing', 'requests'], () => {
+    Promise.all([api<Shipment[]>('/portal/shipments'), api<Req[]>('/portal/requests')]).then(([s, r]) => { setShips(s); setReqs(r) }).catch(() => undefined)
+    api<InvoiceView[]>('/portal/invoices').then(setInvs).catch(() => undefined)
+  })
   const open = (reqs ?? []).filter((r) => r.status === 'new' || r.status === 'accepted')
 
   return (

@@ -7,6 +7,7 @@ import { useAuth } from '../lib/auth'
 import { useDriverBase } from '../lib/driverBase'
 import { useI18n } from '../lib/i18n'
 import { useCachedApi } from '../lib/offline/cache'
+import { useLive } from '../lib/live'
 
 interface Item { id: string; kind: string; title: string; body: string; link: string | null; read: boolean; created_at: string }
 interface Box { unread: number; items: Item[] }
@@ -19,6 +20,7 @@ export default function DriverMessages() {
   const nav = useNavigate()
   const { path } = useDriverBase()
   const { data, stale, loaded, mutate, reload } = useCachedApi<Box>('/notifications/mine?limit=50', user?.id ?? 'anon')
+  useLive(['messages'], reload)
 
   const changed = () => window.dispatchEvent(new Event('cargoone:messages-read'))
   async function open(m: Item) {
