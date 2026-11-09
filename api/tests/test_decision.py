@@ -148,3 +148,19 @@ def test_a_booked_quantity_that_was_not_found_goes_to_a_person_only_when_asked()
     r = decide(e, expected_lr_no=LR, retake_count=0, expected_packages=50, require_quantity=True)
     assert (r.decision, r.reasons) == (Decision.needs_review, ["quantity_not_read"])
     assert decide(e, expected_lr_no=LR, retake_count=0, require_quantity=True).decision == Decision.verified  # nothing booked, nothing to compare with
+
+
+def test_a_remark_that_is_not_plainly_fine_goes_to_a_person() -> None:
+    from app.pod.decision import remark_needs_a_look
+
+    for fine in (None, "", "  ", "none", "Received OK, thanks", "all ok", "No shortage or damage", "सब ठीक", "व्यवस्थित आहे", "8/11/26"):
+        assert not remark_needs_a_look(fine), fine
+    for look in ("२ गोणी ओल्या झाल्या", "समीत ज्ञान श्राद्ध", "2 bags wet", "short", "driver late"):
+        assert remark_needs_a_look(look), look
+
+
+def test_an_unreadable_remark_sends_the_pod_to_review_even_if_not_flagged() -> None:
+    ex = PodExtraction(is_document=True, readable=True, lr_no="LR-1", consignee_stamp_present=True, signature_present=True, delivery_date=None,
+                       quantity_received=None, remarks="समीत ज्ञान श्राद्ध", shortage_or_damage=False, confidence=0.95, issues=[])
+    res = decide(ex, expected_lr_no="LR-1", retake_count=0)
+    assert res.decision == Decision.needs_review and "remarks_to_check" in res.reasons

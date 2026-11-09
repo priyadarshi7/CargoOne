@@ -2,6 +2,7 @@ import { useI18n, type Key } from '../lib/i18n'
 
 const LABEL: Record<string, string> = {
   shortage_or_damage: 'Shortage / damage remark',
+  remarks_to_check: 'Remark to read',
   low_confidence: 'Low AI confidence',
   quantity_mismatch: 'Quantity differs from the booking',
   quantity_not_read: 'Quantity not found on the receipt',

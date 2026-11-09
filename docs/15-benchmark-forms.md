@@ -77,12 +77,25 @@ Each run is saved in `docs/benchmark/results/<label>.json` and is resumable. The
 
 **What the tab counts.** *Unsafe*: a sheet that should not be verified (missing stamp or signature, wrong LR, a shortage or different quantity) would have been. It must be 0. *Needless retake*: a good sheet sent back. *Safe, but different*: sent to a person where a retake was expected, or the reverse. Photo-condition shots and the judgement-call sheets (S14, S15, S22) accept more than one answer.
 
+## Decision: Groq with Qwen3.8 27B is the main reader (2026-11-09)
+
+Settings: `AI_PROVIDER=groq`, `AI_FALLBACKS=local` (the local Qwen3-VL 4B + glm-ocr reads the photo if Groq is down or rate-limited; if both fail the POD goes to a person). Outside dev and test, Groq is used only when `CLOUD_AI_CONFIRMED=true` (see `16-dpdp.md`); until then the local reader works alone.
+
+**Final rules on the same 28 photos: 27 of 28 as expected, 0 unsafe, 1 needless retake (S15, a judgement call).** Two things were tuned after the first Groq runs, so treat 27/28 as "tuned on this paper", not as a forecast for real PODs:
+- A remark that is not plainly fine ("received OK", "no shortage", "सब ठीक", a date) now sends the POD to a person (`remarks_to_check`). Groq misread the Marathi shortage remark on S13 as other words and said "no shortage"; the rule catches that without needing the reader to be right.
+- A cut corner is accepted when the LR number is printed again at the foot of the sheet, as it is on ours (S01_cut). On the client's own paper this may not hold.
+
+Also fixed on the way: the prompts no longer tell the model which LR number to expect (it could complete a half-visible number), and the local match of the LR is exact, not "nearly" (a number one digit away is another consignment). Groq's score did not change when the hint was removed (25 of 28 before the final rules, same sheets).
+
+Gemini 2.5 Flash: the new key works, but the free daily quota ran out partway; its sheets looked as good as Groq's. Not ranked. Run it when billing is on: `python -m app.devtools.benchmark --provider gemini --label gemini-25-flash --pace 7`.
+
 ## Results so far (28 photos, 2026-11-08)
 Ranked by unsafe errors first (must be 0), then pass rate. "Fields" is how many individual fields were read right.
 
 | Run | Pass rate | Unsafe | Needless | Fields | Time per photo |
 |---|---|---|---|---|---|
-| **Qwen3.8 27B on Groq** (cloud, free tier) | **89.3%** | 2 | 1 | 97.9% | 16 s |
+| **Qwen3.8 27B on Groq, final rules** | **96.4%** | **0** | 1 | see the tab | 16 s |
+| Qwen3.8 27B on Groq, before the final rules | 89.3% | 2 | 1 | 97.9% | 16 s |
 | **Qwen3-VL 4B + glm-ocr** (local, every field required) | 78.6% | **1** | 1 | 84.5% | 34 s |
 | Qwen3-VL 4B + glm-ocr, before the schema fix | 85.7% | 3 | 1 | 85.0% | 32 s |
 | Qwen3-VL 8B + glm-ocr (local, every field required) | 67.9% | 3 | 3 | 81.3% | 57 s |
@@ -100,7 +113,7 @@ Ranked by unsafe errors first (must be 0), then pass rate. "Fields" is how many 
 **Two readers together.** Judged from the stored decisions of the Groq run and the local 4B + glm-ocr run (not built): verify only when both readers say verify, otherwise send to a person. That gives 26 of 28 as expected, **0 unsafe**, 0 needless retakes and 2 safe differences (S01_cut and S03 go to a person instead of a retake). The two readers fail on different sheets, which is what makes this work. It needs both a cloud call and the local model for every POD, so it is a decision for you.
 
 **Could not be run**
-- **Gemini 2.5 Flash:** the key works, but Google answers "the free tier is not available for this project": billing must be switched on in AI Studio.
+- **Gemini 2.5 Flash:** the new key works; the free quota ran out before the run finished (see Decision).
 - **Llama 3.2 Vision 11B:** it is installed but this Ollama (0.32.5) cannot load its architecture (`mllama`), so every call failed; updating Ollama may fix it. The failed run is not shown.
 - **PaddleOCR-VL:** there is no Ollama build of it; glm-ocr stands in as the document reader.
 

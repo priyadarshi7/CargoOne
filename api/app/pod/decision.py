@@ -136,6 +136,20 @@ def quantity_flag(ex: PodExtraction, *, packages: int | None, weight_tonnes: flo
     return None
 
 
+_BENIGN = {"ok", "okay", "received", "good", "fine", "nil", "none", "no", "all", "thanks", "thank", "you", "goods", "condition", "safely", "delivered", "complete", "full",
+           "in", "as", "per", "the", "and", "issue", "issues", "problem", "problems", "ठीक", "सब", "सही", "बरोबर", "व्यवस्थित", "नहीं", "नाही", "है", "हैं", "आहे", "धन्यवाद", "आभार"}
+_NO_PROBLEM = re.compile(r"\b(no|nil|without)\b.*\b(shortage|short|damage|damaged|issue|problem|leak\w*)\b", re.IGNORECASE)
+
+
+def remark_needs_a_look(remarks: str | None) -> bool:
+    """Handwriting in the Remarks box that is not plainly "received OK". The reader may have missed a Hindi or Marathi shortage word, so anything else goes to a person."""
+    text = re.sub(r"[\d/.\-:,;!]+", " ", (remarks or "").strip())
+    words = [w.lower() for w in text.split()]  # split on spaces: Devanagari letters carry marks that a letter pattern would cut in two
+    if not words or _NO_PROBLEM.search(text):
+        return False
+    return not all(w in _BENIGN for w in words)
+
+
 def decide(ex: PodExtraction, *, expected_lr_no: str, retake_count: int,
            threshold: float = 0.85, max_retakes: int = 2, place_reasons: list[str] | None = None,
            expected_packages: int | None = None, expected_weight_tonnes: float | None = None, require_quantity: bool = False) -> DecisionResult:
@@ -161,6 +175,8 @@ def decide(ex: PodExtraction, *, expected_lr_no: str, retake_count: int,
     review: list[str] = list(place_reasons or [])  # where the photo was taken is checked by the caller; a person looks when it is off
     if ex.shortage_or_damage:
         review.append("shortage_or_damage")
+    elif remark_needs_a_look(ex.remarks):
+        review.append("remarks_to_check")  # something is written that is not "received OK": a person reads it
     if flag := quantity_flag(ex, packages=expected_packages, weight_tonnes=expected_weight_tonnes, require=require_quantity):
         review.append(flag)  # a different total than booked, or several goods that cannot be compared: a person decides
     if ex.confidence < threshold:

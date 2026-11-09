@@ -135,6 +135,7 @@ export const mr: Partial<Record<Key, string>> = {
   "ul.name": "ड्रायव्हरचे नाव (ऐच्छिक)", "ul.smsOk": "ड्रायव्हरला SMS पाठवला.", "ul.smsSim": "ड्रायव्हरसाठी SMS रांगेत आहे (या आवृत्तीत नक्कल, काही पाठवला जात नाही). लिंक स्वतः शेअर करा.", "ul.smsFail": "SMS गेला नाही: {why} खालची लिंक बरोबर आहे, ती स्वतः शेअर करा.",
   "reason.quantity_mismatch": "प्रमाण बुकिंगपेक्षा वेगळे आहे",
   "reason.quantity_unclear": "अनेक माल किंवा एकके: प्रमाण तपासा",
+  "reason.remarks_to_check": "शेरा वाचा",
   "reason.quantity_not_read": "पावतीवर प्रमाण सापडले नाही",
   "nav.benchmark": "AI बेंचमार्क", "bench.title": "AI बेंचमार्क",
   "priv.link": "गोपनीयता",

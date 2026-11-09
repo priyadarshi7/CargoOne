@@ -33,7 +33,7 @@ VARIANTS = {
     "glare": ("Glare across the stamp", {"verified", "needs_review"}, "verified"),
     "crumple": ("Crumpled, shadow", {"verified", "needs_review"}, "verified"),
     "blur": ("Out of focus", {"retake_requested"}, "retake_requested"),
-    "cut": ("Corner cut off", {"retake_requested"}, "retake_requested"),
+    "cut": ("Corner cut off", {"verified", "retake_requested"}, "retake_requested"),  # the LR number is printed again at the foot of the sheet, so a header cut off is not a retake by itself
 }
 ACCEPT_OVERRIDE = {"S14": {"verified", "needs_review"}, "S15": {"verified", "needs_review"}, "S22": {"needs_review"}}
 TAGS = {
@@ -193,6 +193,7 @@ def rescore(src: Path, out: Path, title: str, require_quantity: bool) -> None:
     key = load_key()
     d = json.loads(src.read_text(encoding="utf-8"))
     d["label"] = title
+    d["note"] = "The same readings as " + src.stem + ", judged with the final rules: a remark that is not plainly fine goes to a person, and a cut corner is accepted when the LR is printed at the foot."
     for stem, c in d["cases"].items():
         if not c["got"]:
             continue
@@ -200,6 +201,7 @@ def rescore(src: Path, out: Path, title: str, require_quantity: bool) -> None:
         got = PodExtraction.model_validate(c["got"])
         v = decide(got, expected_lr_no=e.lr_trip, retake_count=0, expected_packages=e.packages, expected_weight_tonnes=e.weight, require_quantity=require_quantity)
         c["decision"], c["reasons"], c["status"] = v.decision.value, v.reasons, classify(e, v.decision.value)
+        c["expected"]["accept"] = sorted(e.accept)
     out.write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"rescored {len(d['cases'])} photos -> {out.name}")
 
