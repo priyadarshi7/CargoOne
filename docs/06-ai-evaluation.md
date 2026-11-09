@@ -35,3 +35,14 @@ uv run python -m app.devtools.evaluate --provider gemini --seeds 3 --max-false-v
 ## Results
 
 See the most recent run in `api/eval_reports/` and the figures recorded in the roadmap (Phase 4).
+
+## The printed-sheet benchmark (2026-11)
+
+The synthetic harness above checks the pipeline on generated images. The printed-sheet benchmark checks it on **real paper**: 22 Lorry Receipt sheets in the app's own layout are filled by hand, stamped, signed and photographed (28 photos), then scored against `docs/benchmark/answers.csv`. Same four measures (unsafe, friction, field accuracy, time), shown on the office **AI benchmark** tab.
+Full guide, the model comparison and the decision (Groq Qwen3.8 27B is the main reader): `docs/15-benchmark-forms.md`.
+
+Things the benchmark found that the harness could not:
+- The prompt told the model which LR number to expect, so a half-visible number could be completed from the hint. Removed; the match is now exact.
+- A shortage remark in Marathi handwriting was misread as other words and passed as "no shortage". A remark that is not plainly "received OK" now goes to a person (`remarks_to_check`).
+- A local model's answer format required only six fields, so larger models skipped quantity, date and remarks. Every field is now required (it may be null).
+- Quantity is judged per good as well as in total (counts exactly, weights within 5%); a missing quantity is deliberately not flagged (`POD_REQUIRE_QUANTITY` is off).

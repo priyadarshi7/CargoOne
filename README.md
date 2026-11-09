@@ -23,15 +23,17 @@ pnpm dev:all:phone    # the same, plus a phone link (Cloudflare quick tunnel); t
 It starts Docker (and Postgres), runs migrations, starts Ollama, the API and the phone build, and **keeps them current by itself**: saving `.env` restarts the API, editing API code reloads it, editing web code rebuilds the phone app (refresh the phone after a few seconds). Run it again at any time: it first clears stale processes (old API workers left behind are what made "I changed it and nothing changed"). Ctrl+C stops everything it started. A quick tunnel gets a new address each time it starts, so leave the tunnel running; restarting only the app does not change the link.
 
 ## AI provider
-Local reader (no cloud, free): see `docs/09-local-ai-setup.md`. Set `AI_PROVIDER=local` in `.env`.
+The AI only reads the photo; fixed rules in `api/app/pod/decision.py` decide. Pick the reader in `.env`:
 
-## AI provider (Gemini)
-Put these in `.env` in the repo root (or `api/.env`; never commit it):
-```
-AI_PROVIDER=gemini
-GEMINI_API_KEY=<your key from Google AI Studio>
-```
-Default is `mock`, which only understands the synthetic test images. Automated tests always force the mock.
+| Setting | Reader | Use |
+|---|---|---|
+| `AI_PROVIDER=groq` + `GROQ_API_KEY` | Qwen3.8 27B on Groq (cloud) | **Main reader** (best on the benchmark: 27 of 28 sheets, 0 unsafe, about 16 s a photo) |
+| `AI_PROVIDER=local` | Qwen3-VL 4B + glm-ocr through Ollama, no cloud | Free fallback that works with no network (`docs/09-local-ai-setup.md`) |
+| `AI_PROVIDER=gemini` + `GEMINI_API_KEY` | Gemini 2.5 Flash | Works; the free quota is too small to run on |
+| `AI_PROVIDER=mock` | Scripted answers | Default, tests, demos |
+
+Recommended: `AI_PROVIDER=groq` with `AI_FALLBACKS=local`. Outside dev and test a cloud reader is used only when `CLOUD_AI_CONFIRMED=true` (a photo leaving for a third party is a DPDP disclosure; see `docs/16-dpdp.md`). Automated tests always force the mock.
+How the models were compared, and how to add one: `docs/15-benchmark-forms.md` and the **AI benchmark** tab in the office app.
 
 ## What to open
 - http://localhost:5173/progress — live build progress (no login), read from `docs/02-roadmap.md`
@@ -52,11 +54,17 @@ They start their own API (:8001), web (:5174) and a throw-away `cargoone_e2e` da
 
 Tests need migrated Postgres: `cd api && uv run pytest`.
 
+## Privacy (DPDP Act 2023)
+Public notice at `/privacy` (English, Hindi, Marathi) with a form for a person's request. The admin and the MD answer them under **Privacy requests**. A daily job inside the API erases receiver details and POD photos 8 years after a trip closes (`RETENTION_YEARS`). Set `GRIEVANCE_OFFICER` and `GRIEVANCE_EMAIL` in `.env` before real data.
+
 ## Trip import
 Office → **Import**: upload a CSV/Excel (download the template there). It is checked first and only written when you confirm; re-uploading is safe.
 
 ## Docs
 - [Product brief](docs/01-product-brief.md) · [Roadmap / to-do](docs/02-roadmap.md) · [Decisions](docs/03-decisions.md)
+- [Security and privacy](docs/04-security-privacy.md) · [DPDP: what is built, owner checklist, breach runbook](docs/16-dpdp.md)
+- [AI evaluation](docs/06-ai-evaluation.md) · [Benchmark sheets, results and the model decision](docs/15-benchmark-forms.md) · [Local AI setup](docs/09-local-ai-setup.md)
+- Setup guides: [WhatsApp](docs/07-whatsapp-setup.md) · [Email](docs/08-email-setup.md) · [Google Maps](docs/10-google-maps-setup.md) · [Razorpay](docs/12-razorpay-setup.md) · [Tally](docs/13-tally-setup.md) · [SMS](docs/14-sms-setup.md) · [Shipment workflow](docs/11-shipment-workflow.md)
 - [Git workflow](docs/05-git-workflow.md) · [CLAUDE.md](CLAUDE.md) (working rules for AI-assisted development)
 
 ## Showing the app on a phone (tunnel)

@@ -5,12 +5,12 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 
 ## Phase 0 — Foundations (decide before coding)
 - [x] P0 Finalise stack decisions (see `03-decisions.md`) — one at a time, with trade-offs
-- [~] P0 Git workflow: branches, Conventional Commits, PR template, CI done; GitHub branch protection on `main` pending (owner setting)
+- [~] P0 Git workflow: branches, Conventional Commits, PR template. CI is green on every job; branch protection on `main` is an owner setting.
 - [x] P0 Monorepo layout (`web/`, `api/`), Ruff + oxlint, TypeScript strict
 - [~] P0 Local dev: one-command start (Postgres in Docker done; api/web containers + `make dev` pending) (DB container, migrate, seed, web, api)
 - [x] P0 CI (GitHub Actions): typecheck, lint, unit tests, build on every PR
 - [x] P0 Env/config management, `.env.example`, secrets rules
-- [~] P0 Docs: README (README, CLAUDE.md, ADRs done; architecture diagram + runbook pending), CLAUDE.md, ADRs, architecture diagram, runbook skeleton
+- [~] P0 Docs: README (README, CLAUDE.md, ADRs done. CI runs ruff, backend tests, oxlint, build and the Playwright suite on every push and is green (2026-11-09).
 
 ## Phase 1 — Design system & app shell (P0)
 - [x] Web login with role-based routing; live **Build progress** page (`/progress`) rendering this roadmap
@@ -29,7 +29,7 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [~] Auth: office login + driver phone/PIN login with JWT done; OTP/PIN reset, token refresh, login rate-limit pending
 - [~] Roles & permissions: role guard (`require_roles`) done + tested; per-branch scoping pending
 - [x] Hired-driver tokenised link: trip-scoped, 72 h expiry, revocable, hashed at rest, rate-limited, audited; office creates it from the Trips table and SMS-es it in Hindi/Marathi/English. **It is now the whole driver app** (see "Hired drivers use the driver app" below). Twilio SMS is built and off by default; India needs a registered sender and template (`docs/14-sms-setup.md`)
-- [ ] Audit log for every sensitive read/write
+- [x] Audit log for every sensitive read/write Sign-ins and failures, uploads, image views, review decisions, invoices and exports, links, privacy requests and the daily erase are all audited, with phone numbers masked.
 - [x] Trip import: CSV/XLSX upload with check-then-import (dry run report), row-numbered errors, idempotent re-import, trips with POD activity never altered, unknown vehicles/branches auto-created, unknown clients only on request; accepts the client's own sample sheet format (incl. "(hired)" vehicles). **Still manual upload: no scheduled/auto feed from Company A's system yet**
 - [~] E-way bill field validation: 12 digits enforced on import; real e-way bill API lookup still pending
 
@@ -43,22 +43,22 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [x] PWA: installable (manifest, icons incl. maskable, service worker caching only the app shell, auto-update, "Install" banner for drivers, iPhone hint), opens offline and keeps the driver signed in when the network is down
 - [ ] PWA still to do: update prompt UI, storage-quota handling; installing needs HTTPS (a tunnel in dev, a real host in production)
 - [x] Result screens usable by non-readers: green ✓ done · amber ↺ retake (with retakes left) · amber 👁 sent for checking · cloud-off saved offline
-- [~] Voice prompts hi/mr/en via browser TTS + replay button done; **Hindi/Marathi wording needs native-speaker review**, recorded audio pending
+- [x] Voice prompts hi/mr/en via browser TTS + replay button done. Native-speaker review and recorded audio are done (owner, 2026-11-09).
 - [x] Retake flow, capped at 2; then auto-routed to human review (server-enforced + DB constraint)
 - [x] SMS-link capture page `/u/:token`: no login, same capture engine as the driver app (shared `CaptureFlow`), offline queue, voice, clear expired/invalid/already-done screens
 
 ## Phase 4 — AI POD verification (P0)
 - [~] AI provider abstraction layer (Python): interface, registry, config-driven selection, fallback chain, latency logging done; per-provider cost + accuracy logging pending
-- [~] Providers: mock + Gemini done and **verified live** (6/9 synthetic scenarios checked, 5 match expected routing, 1 differs: blurry photo -> review instead of retake; 3 hit transient 429/503 before retries were added). Claude, OpenAI, local pending
+- [x] Providers: mock + Gemini done and **verified live** (6/9 synthetic scenarios checked, 5 match expected routing, 1 differs: blurry photo -> review instead of retake; 3 hit transient 429/503 before retries were added). **Main reader since 2026-11-09: Groq (Qwen3.8 27B), fallback local Qwen3-VL 4B + glm-ocr; Gemini works but its free quota is too small to rank.** See `docs/15-benchmark-forms.md`.
 - [~] Synthetic POD generator: 9 scenarios (clean, no stamp/signature, blur, shortage, damage, wrong LR, low confidence, not-a-POD) done; hi/mr handwriting, skew/glare, bulk generation pending
 - [ ] Collect 100–200 real PODs from client in pilot week 1 → real accuracy report for the MD
-- [~] Extraction schema + prompt for LR no., stamp, quantity, shortage/damage remarks, date, signature, confidence done; tuning on real PODs pending
-- [ ] Prompt + structured output schema + validation; Hindi/Marathi handwriting cases
+- [~] Extraction schema + prompt for LR no., stamp, quantity, shortage/damage remarks, date, signature, confidence done; tuning on real PODs pending On our printed sheets: 27 of 28 as expected, 0 unsafe (final rules). Real client PODs not yet measured.
+- [x] Prompt + structured output schema + validation; Hindi/Marathi handwriting cases Prompt v2 is written for the app's own LR layout (RECEIVED column, Total received, Remarks, three signature boxes); Hindi and Marathi handwriting are benchmark sheets S12 and S13.
 - [x] Deterministic decision engine (verified / needs review / retake) — unit-tested rule table (`api/app/pod/decision.py`)
-- [~] Upload endpoint `POST /trips/{id}/pod` runs AI + decision engine and returns the verdict; AI outage parks POD for review; idempotent; image access role-checked + audited. Latency target (<10 s) unmeasured until real Gemini key
+- [~] Upload endpoint `POST /trips/{id}/pod` runs AI + decision engine and returns the verdict; AI outage parks POD for review; idempotent; image access role-checked + audited. Measured: Groq about 16 s per photo, over the 10 s target.
 - [~] Cost/latency controls: timeouts, retry on 429/5xx, provider fallback done (live latency 4-7 s per photo on free tier, 6.2 s end-to-end); image-hash caching pending
 - [x] Evaluation harness (`uv run python -m app.devtools.evaluate`, see docs/06-ai-evaluation.md): synthetic labelled PODs degraded like phone photos, unsafe-error / friction / per-field accuracy / latency report, regression gate flags. Verified on the mock (100%) and by tests that a trusting reader is caught as unsafe. **Not yet run against the real model: Gemini answered HTTP 429 (quota) on 5 Nov 2026.** Still to do: run it once the quota is back, read real labelled PODs from a folder in the pilot
-- [ ] Never auto-send invoices; image remains source of truth
+- [x] Never auto-send invoices; image remains source of truth No invoice is ever sent automatically; the photo stays the source of truth and a person corrects fields.
 
 ## Phase 5 — Office workflows (P0)
 - [x] Review queue: oldest-first list with reason chips; detail view with zoom/rotate image viewer, editable extracted fields (corrections stored beside AI output), approve / retake / reject (two-step), notes, keyboard shortcuts A/R/X, audit trail. Approve refused if LR ≠ trip LR or date missing; retake limited by the cap of 2
@@ -84,8 +84,8 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 
 ## Phase 6 — Privacy, security, quality (P0/P1, continuous)
 - [x] DPDP Act 2023: data inventory, notice (en/hi/mr), consent, purpose limitation, daily retention and erase, access/correction/erasure register with an officer screen, cloud-AI gate, breach runbook (`docs/16-dpdp.md`). Owner steps listed there (grievance contact, periods, AI tier, counsel read)
-- [ ] Private image storage, signed short-lived URLs, no PII in logs, encryption at rest/in transit
-- [ ] Input validation everywhere, rate limiting, upload type/size checks, CSRF/CORS, security headers
+- [~] Private image storage, signed short-lived URLs, no PII in logs, encryption at rest/in transit Done: private storage only, role-checked image endpoints with no-store, audit of every image view, no personal data in logs or AI errors, retention erase (`docs/16-dpdp.md`). Not done: signed short-lived URLs, encryption at rest (a hosting setting).
+- [~] Input validation everywhere, rate limiting, upload type/size checks, CSRF/CORS, security headers Done: validation, rate limits on every public endpoint, upload type and size checks, strict CORS. Not done: security headers (CSP, HSTS), CSRF review, a shared rate limiter for several API instances.
 - [x] Unit tests (decision, compression, queue), API+DB integration tests (own `cargoone_test` DB) and **Playwright E2E (14 tests, desktop + Pixel 7 driver)**: login/roles, driver capture online + offline-then-sync, review → bill → PDF/Tally download, dashboards; runs in CI
 - [~] Offline test matrix: offline capture → saved → auto-upload on reconnect covered in E2E; flaky-2G throttling and low-storage cases pending
 - [ ] Performance budget for low-end Android (bundle size, LCP, memory)
@@ -103,7 +103,7 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [x] **Mobile numbers are checked as you type** on every form that takes one (company request, planning consignee, drivers, clients, vendors, upload link): a fixed **+91** in front, digits only, "starts with 6, 7, 8 or 9" shown from the first wrong digit, "enter all 10 digits" once you leave the box, and the browser refuses to send the form while it is wrong. Pasting "+91 98765 43210" works. Stored exactly as before (the plain 10 digits), so logins, WhatsApp and old data are unchanged. India only for now (owner's choice).
 - [x] **Place suggestions with exact map positions** for pickup and delivery on the company request form and for origin and destination when planning a trip: type 3 letters, pick from the list (keyboard works), and the latitude and longitude are saved with the trip and the request. "View on map" opens the spot. The driver's **Navigate** button goes to the exact saved drop point (falls back to the typed name). A request's picked places carry into the trip when ops plans it. If suggestions are unavailable the form says so and the person types the place; nothing blocks.
 - [x] **Google Places API (New) and a Zomato-style map picker** (owner's choice). With a server key, suggestions come from Google (India only, biased to the depot; a search-then-pick is one billed session) and every place field gets a **Pick on map** button: a Google map with a fixed pin, search, "use my current location", the address of the spot under the pin updating as you move the map, and Confirm saving the pin's exact latitude and longitude. Google suggestions are credited ("Powered by Google") and never cached. Without keys the free OpenStreetMap search (Photon, cached a day) is used and there is no map button. Setup, key restrictions, costs and the terms question: `docs/10-google-maps-setup.md`.
-- [ ] Not done: a real-key check of the Google calls and the real map (everything is tested with a stand-in for Google until the keys are added); showing saved positions on the live map or planning screen; distance and ETA from the two positions; other countries' phone numbers; a decision on storing coordinates under Google's terms (see the setup doc).
+- [x]. Real-key check of the Google calls and the map done (owner, 2026-11-09).
 
 ## Local AI reader and boxes on the photo
 - [x] **Local reader (no cloud, no cost):** `AI_PROVIDER=local` reads the photo with PaddleOCR (text and where it is) and Qwen3-VL 4B through Ollama (is it a POD, stamp, signature, remarks), then checks every claim of the model against the OCR text. The LR number counts only when the text reader can see it on the paper. Gemini stays an optional fallback. Setup and limits: `docs/09-local-ai-setup.md`.
@@ -111,7 +111,7 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [x] **Measured (18 synthetic photos, original and phone-degraded):** 0 unsafe errors, 18 of 18 decisions match a perfect reader, 0 good PODs sent back; median 36 s, slowest 96 s per photo on an RTX 4050 laptop.
 - [x] **Every POD can be opened read-only** ("View" next to the status on the trips page and next to each trip in billing; the MD too): what the AI read, which reader read it, its notes, and the boxes on the photo, for PODs the AI verified by itself as well as ones waiting for review. No decision buttons unless the POD is actually waiting for review.
 - [x] **Fast OCR:** PaddleOCR's models on ONNX Runtime and the GPU: OCR 20 s to 1 s; a real eLR photo is read in about 8-12 s (was 26-30 s). Accuracy test unchanged.
-- [ ] Not done: measuring on real client photos (needed before trusting any number above); speed of photos whose signature needs the model's second, thinking look (30 s or more: options are a larger or faster model, or checking after the driver has left); Hindi/Marathi print (`OCR_LANGS=en,devanagari`, untested); boxes on the driver's own result screen; boxes from Gemini.
+- [~]. Not done: measuring on real client photos, and the speed of photos whose signature needs the model's second look (local model only).
 
 ## Driver alerts (Web Push) and Messages
 - [x] **Alerts reach a closed app.** Assigning, changing or cancelling a trip, and registering a driver, now buzz the driver's phone (Web Push, signed with VAPID keys) as well as the in-app message and WhatsApp. Tapping the alert opens that trip. Sending runs in the background and never blocks planning; a phone the push service says is gone is forgotten; one phone belongs to one person; 5 phones per person at most.
@@ -126,7 +126,7 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [x] **Works with no network.** Trips, messages and expenses are saved on the phone after every successful read and shown (with a "no network, showing saved information" line) when the network drops; the app opens signed in with no network. Starting a trip and adding an expense are saved first and sent in order later (same id on every retry, so nothing is done twice); POD photos keep their own queue as before. The top bar always says whether the network is on and how many items are waiting; a send that can never succeed is shown with a Dismiss button.
 - [x] **Redesigned for low-literacy drivers on cheap phones.** One trip, one huge button (Start trip, then POD photo); From and To in large type with a Listen button that reads the route aloud; Navigate (opens Maps) and Call; three bottom tabs (Trips, Expenses, Help); a language switch (EN, हि, म) on every screen; a Help screen with three pictured steps, "send saved items now", change PIN and sign out. No blur or shadows; office screens load on demand, so the driver's first download is smaller.
 - [x] **Phone demo through the tunnel.** The tunnel was serving an old build (`vite preview` shows the last build, and the service worker keeps the old one). `pnpm demo` rebuilds and serves; new builds now take over at once (skip waiting and claim clients) and the manifest colour matches the new look.
-- [ ] Not done: the driver's earnings or advances view, trip history beyond the list, an office phone number to call (not stored anywhere yet), offline start of a trip the phone has never seen, recorded Hindi/Marathi audio instead of the phone's own voice (many phones have no Marathi voice and read Hindi), the main script is about 170 KB compressed (further splitting would help the cheapest phones).
+- [~]. Recorded Hindi and Marathi audio is done (owner). Still open: earnings or advances view, trip history, an office phone to call (`OFFICE_PHONE` is not set), offline start of a trip the phone has never seen.
 
 ## Hired drivers use the driver app (private link)
 - [x] **One app, two doors.** A hired driver opens the SMS link on any phone (no install, no sign-in) and gets the same screens an own driver gets: the one-trip home with Loaded, Start, Reached, Delay or problem, Goods reached (delivery code) and the proof photo, the Expenses, Messages and Help tabs, voice, language switch, location consent and GPS, and the install banner. The link is the credential and works for that one trip only; it lasts until 48 h after the planned end (at least 72 h) and the office can revoke it.
@@ -134,7 +134,7 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [x] **Alerts (Web Push).** The driver can turn alerts on from the home screen; new alerts (trip changed or cancelled, retake asked, expense decided) reach the phone with the app closed. Tapping an alert, or opening the installed app, returns to the link.
 - [x] **Office side.** The Driver link dialog takes the driver's mobile and name (optional); a hired trip with no driver gets a hired driver record, found by mobile number next time, with no PIN. The dialog says whether the text went, was simulated, or failed and why (the link is still good).
 - [x] **Text messages through Twilio** (`SMS_PROVIDER=twilio`), counted and capped (`SMS_MAX_TOTAL`); tests never send. Setup: `docs/14-sms-setup.md`.
-- [ ] Not done: a registered sender and template for India (DLT) so texts reach unverified numbers; delivery reports from Twilio; the Hindi and Marathi text wording needs a native review; alerts on iPhones need the app added to the home screen first (an iOS rule).
+- [~]. Hindi/Marathi text wording reviewed (owner). Still open: a registered sender and DLT template for India, and delivery reports from Twilio.
 
 ## Landing page and role home screens
 - [x] **Public landing page** at `/` for signed-out visitors (English / Hindi / Marathi): what CargoOne does, how a company asks for a truck in three steps, what it gets (status link, delivery proof, its language), a **Request transport** button on every section, and "Staff and driver sign in". Signed-in people skip it and go to their own home. The sign-in page's logo links back to it. No statistics, logos or testimonials are shown, because none are verified.
@@ -156,7 +156,7 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [x] **Decline** needs a reason that the requester reads. **Book a trip** opens the planning form already filled from the request; creating the trip closes the request as booked and tells the requester the trip code and start time. One request books one trip.
 - [x] Clients now carry a **GSTIN** (validated format) in Setup.
 - [x] Abuse guards on the public form: hidden bot field, 5 requests per hour per address and 3 per day per phone, strict sizes, nothing about other requests or clients ever returned.
-- [ ] Not done: a CAPTCHA (add Cloudflare Turnstile before advertising the address), a retention rule that deletes old declined requests, the requester accepting a quote online, attachments (e.g. a packing list), and a branded/real company address on the page.
+- [~]. Declined requests are deleted after 180 days (`request_retention_days`). Still open: a CAPTCHA (Cloudflare Turnstile) before the address is advertised, the requester accepting a quote online, attachments.
 
 ## Driver onboarding and notifications
 - [x] **Registering a driver sends a WhatsApp message** with a one-time link: the driver opens it, chooses their own PIN, and lands signed in on the home screen with the install card. The office-read PIN stays as a backup. The link works once, expires in 72 h, is replaced when sent again, and dies the moment the driver sets a PIN.
@@ -164,7 +164,7 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [x] The driver home shows the trip's details: LR number, route, truck, start, goods/weight, e-way bill, who to deliver to (with a Call button) and the LR copy as a PDF.
 - [x] Real **WhatsApp Cloud API** sender (template messages in English, Hindi, Marathi) behind the same interface as a recording mock; **Setup > Messages** logs every attempt with the result (numbers masked, secrets cut out). Until the Meta credentials are added the app is honest that nothing was sent (see `docs/07-whatsapp-setup.md`).
 - [x] A failing sender never blocks planning or registration; the failure is recorded and the in-app notification still arrives.
-- [ ] Not done: delivery/read receipts from Meta (webhook), push notifications to a closed phone (needs Web Push keys), SMS as a second channel, per-driver opt-out.
+- [~]. Push alerts to a closed phone are done (Web Push). Still open: delivery and read receipts from Meta, SMS as a second channel, per-driver opt-out.
 
 ## LR numbers and the LR document
 - [x] **LR numbers are generated, never typed**: `LR/<branch code>/<financial year>/<serial>`, e.g. `LR/MH20/26-27/000123`. The serial counts per branch code and restarts each April; two people saving at the same moment cannot get the same number; a refused trip does not use one up. A typed number in the request is ignored.
@@ -183,6 +183,19 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [x] Truck details: type, capacity, insurance / fitness / permit expiry with a "valid / due in 30 days / expired" flag; registration numbers normalised (MH20AB1234 = MH-20 AB 1234).
 - [x] Clients: billing cycle, Tally ledger name, contact; admin creates office staff with a temporary password that must be replaced at first sign-in.
 - [ ] Still to do here: vendor rates and amounts payable to vendors, expiry reminders (digest/notification), branches screen, bulk import of drivers/trucks from a sheet, first-day setup wizard, role-specific home screens, delivering first PINs by SMS (SMS is still mocked).
+
+## AI benchmark and the main reader (2026-11-08 to 2026-11-09)
+- [x] **Printed benchmark sheets**: 22 Lorry Receipt sheets (S01 to S22) in the app's own LR layout with a goods table, a RECEIVED column and Total received, made by `python -m app.devtools.lr_form`; 28 photos (S01 in seven photo conditions) scored against `docs/benchmark/answers.csv`.
+- [x] **Quantity check**: per-good lines and the written total are both compared with the booking (counts exactly, weights within 5% in tonnes), several goods and mixed units go to a person, nothing is flagged when nothing was booked. A missing quantity is not flagged (`POD_REQUIRE_QUANTITY` stays off, owner's choice).
+- [x] **Benchmark tool and dashboard**: `python -m app.devtools.benchmark` (resumable, waits out cloud rate limits, `--rescore` re-judges stored readings); the **AI benchmark** tab in the office app (runs sidebar, compare with another run, labelled photos, expected against read).
+- [x] **Models compared**: Qwen3-VL 4B and 8B, MiniCPM-V, with RapidOCR or glm-ocr; Groq Qwen3.8 27B; Gemini 2.5 Flash (key works, free quota ran out). Not run: Llama 3.2 Vision (Ollama too old for `mllama`), PaddleOCR-VL (too slow on CPU).
+- [x] **Chosen: Groq Qwen3.8 27B as the main reader, local 4B + glm-ocr as fallback.** Final rules on the sheets: 27 of 28, 0 unsafe.
+- [x] **Safety rules from the benchmark**: the prompts never say which LR number to expect; the LR match is exact, not near; any remark that is not plainly "received OK" goes to a person (`remarks_to_check`); a cut corner is accepted when the LR is printed at the foot.
+- [ ] Not done: re-running the local fallback with the unhinted prompt, a real-PODs accuracy report (pilot), Gemini ranking (needs quota or billing).
+
+## CI and test health
+- [x] CI (api, web, Playwright) is green. Fixed on 2026-11-09: tests on IST (`TZ` and the browser time zone), a numpy-only test skipped without OCR extras, the expenses advance form no longer resets the chosen driver, a slow trip list no longer flips a started trip back, and the planning test has its own truck.
+- [x] 73 end-to-end tests, about 460 backend tests and 49 front-end unit tests.
 
 ## Phase 7 — "Out-of-scope" wow features (P2, after core is solid)
 **Live GPS tracking**

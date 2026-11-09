@@ -53,3 +53,11 @@ Synthetic PODs flatter any model. Real accuracy has to be measured on real photo
 - 6 GB of GPU memory fits a 4B vision model comfortably and a 7B only with heavy compression. OCR runs on the CPU so it does not compete for the GPU.
 - OCR reads one photo at a time (a lock): starting or using the GPU engine from two threads at once crashed the process.
 - `enable_mkldnn=False` (paddle engine only) is set on purpose: Paddle 3's CPU acceleration crashes on some of its own models.
+
+## glm-ocr, and the local reader as the fallback (2026-11)
+
+The best local setup is **Qwen3-VL 4B with glm-ocr as the text reader** (`OCR_ENGINE=glm`, `ollama pull glm-ocr`). glm-ocr reads handwriting (quantity, date, remarks) that RapidOCR cannot; it costs about 20 s a photo. On the 28-photo benchmark it scores 78.6% with 1 unsafe case; larger local models (Qwen3-VL 8B, MiniCPM-V) did worse here.
+
+The main reader is Groq (`AI_PROVIDER=groq`). Keep this local setup as `AI_FALLBACKS=local`: it takes over when the cloud is down or rate-limited, and it is the only reader used outside dev until `CLOUD_AI_CONFIRMED=true`. Groq can also be given the glm-ocr lines in its prompt (`OCR_ENGINE=glm`); on the sheets this gave the same result as Groq alone.
+
+Ollama's models can live on another drive: set `OLLAMA_MODELS` (here `D:\ollama\models`). Llama 3.2 Vision needs a newer Ollama than 0.32.5; PaddleOCR-VL has no Ollama build and was too slow on CPU.

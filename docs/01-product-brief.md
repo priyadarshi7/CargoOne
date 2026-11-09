@@ -34,3 +34,6 @@ Trip↔e-way bill link · icons + Hindi/Marathi voice, no typing · offline + <3
 | TRP-66120 | Company B (cement) | MH20 EL 4521 | Nagpur | 38500 | Verified | – |
 | TRP-66134 | Company C (steel) | MH20 GT 7718 | Pune | 26000 | Retake requested | Stamp not visible |
 | TRP-66141 | Company D (packaged foods) | MH17 BY 3092 (hired) | Indore | 41200 | Needs review | Short by 6 cartons |
+
+## Status (2026-11-09)
+All must-haves and the core slice are built and tested; the out-of-scope items (live GPS, trip planning, fuel and expenses) are built too. What remains is proof on real PODs, owner steps for DPDP and go-live work. See `02-roadmap.md` (also shown live at `/progress`).
