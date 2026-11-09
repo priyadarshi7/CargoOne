@@ -168,8 +168,9 @@ def paper_state(*dates: date | None) -> str | None:
     return "expired" if soonest < today else "due_soon" if (soonest - today).days <= 30 else "ok"
 
 
-def _vehicle_out(v: Vehicle, vendor: str | None) -> dict:
+def _vehicle_out(v: Vehicle, vendor: str | None, on_trip: str | None = None) -> dict:
     return {
+        "on_trip": on_trip,  # the trip code when the truck is on the road right now
         "id": str(v.id), "reg_no": v.reg_no, "is_hired": v.is_hired, "vendor_id": str(v.vendor_id) if v.vendor_id else None, "vendor": vendor,
         "owner_name": v.owner_name, "vehicle_type": v.vehicle_type, "capacity_tonnes": float(v.capacity_tonnes) if v.capacity_tonnes is not None else None,
         "rc_no": v.rc_no, "chassis_no": v.chassis_no, "engine_no": v.engine_no, "insurance_no": v.insurance_no, "availability": v.availability,
@@ -195,7 +196,8 @@ async def _reg_free(session: AsyncSession, reg: str, *, except_id: uuid.UUID | N
 async def list_vehicles(_: Office, session: Session) -> list[dict]:
     rows = (await session.execute(select(Vehicle, Vendor.name).outerjoin(Vendor, Vendor.id == Vehicle.vendor_id)
                                   .order_by(Vehicle.is_active.desc(), Vehicle.reg_no))).all()
-    return [_vehicle_out(v, n) for v, n in rows]
+    on_road = dict((await session.execute(select(Trip.vehicle_id, Trip.trip_code).where(Trip.state == TripState.in_transit))).all())
+    return [_vehicle_out(v, n, on_road.get(v.id)) for v, n in rows]
 
 
 @router.post("/vehicles", status_code=status.HTTP_201_CREATED)

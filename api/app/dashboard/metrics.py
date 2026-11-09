@@ -78,12 +78,15 @@ def _age_days(t: TripFact, now: datetime) -> int:
 
 
 def compute(facts: list[TripFact], *, now: datetime, window_days: int = 90, targets: Targets | None = None,
-            weeks: int = 8) -> dict:
+            weeks: int = 8, open_facts: list[TripFact] | None = None) -> dict:
+    """`facts` are the trips delivered in the window (the rates and the trend). `open_facts` are every trip still waiting on something, whenever it was
+    delivered: a POD missing for 45 days must not disappear from a 30-day view, and the counts must agree with the Today tab and the queues."""
     targets = targets or Targets()
     kpi = _kpis(facts, now)
+    waiting = facts if open_facts is None else open_facts
 
     # Missing PODs by age bucket and branch
-    missing = [t for t in facts if t.status in MISSING_STATUSES and t.delivered_at and _age_days(t, now) >= 1]
+    missing = [t for t in waiting if t.status in MISSING_STATUSES and t.delivered_at and _age_days(t, now) >= 1]
     by_branch: dict[str, dict[str, int]] = defaultdict(lambda: {b[0]: 0 for b in AGE_BUCKETS})
     for t in missing:
         label = next(b[0] for b in AGE_BUCKETS if b[1] <= _age_days(t, now) <= b[2])
@@ -127,7 +130,7 @@ def compute(facts: list[TripFact], *, now: datetime, window_days: int = 90, targ
             "pod_to_invoice_days": _avg([d for t in wk_invoiced if (d := _invoice_days(t)) is not None]),
         })
 
-    ready = [t for t in facts if t.status == "verified"]
+    ready = [t for t in waiting if t.status == "verified"]
     return {
         "window_days": window_days,
         "as_of": now.astimezone(IST).isoformat(),
@@ -152,7 +155,7 @@ def compute(facts: list[TripFact], *, now: datetime, window_days: int = 90, targ
             "by_branch": [{"branch": b, "buckets": [{"label": k, "count": v} for k, v in c.items()]} for b, c in sorted(by_branch.items())],
         },
         "pipeline": {
-            "awaiting_review": sum(t.status == "needs_review" for t in facts),
+            "awaiting_review": sum(t.status == "needs_review" for t in waiting),
             "ready_to_bill": len(ready), "ready_to_bill_amount": float(sum((t.freight for t in ready), Decimal(0))),
         },
         "branches": league,

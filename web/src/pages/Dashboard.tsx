@@ -80,12 +80,6 @@ export default function Dashboard() {
 
       {user?.role === 'md' && <Attention />}
 
-      {d.includes_demo_data && (
-        <p className="rounded-lg bg-warn-soft px-4 py-2.5 text-sm text-warn" role="note">
-          {tr('dash.demo')}
-        </p>
-      )}
-
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Tile title={tr('dash.pod24')} value={num(k.within_24h_pct, 0, '%')} target={`${t.within_24h_pct}%`}
           ok={k.within_24h_pct === null ? null : k.within_24h_pct >= t.within_24h_pct} />

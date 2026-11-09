@@ -12,7 +12,7 @@ export interface Truck {
   id: string; reg_no: string; is_hired: boolean; vendor_id: string | null; vendor: string | null; owner_name: string | null; vehicle_type: string | null
   capacity_tonnes: number | null; rc_no: string | null; registration_date: string | null; chassis_no: string | null; engine_no: string | null; insurance_no: string | null
   insurance_expiry: string | null; fitness_expiry: string | null; permit_expiry: string | null; puc_expiry: string | null
-  availability: 'available' | 'maintenance' | 'breakdown'; availability_note: string | null; is_active: boolean; papers: 'ok' | 'due_soon' | 'expired' | null
+  availability: 'available' | 'maintenance' | 'breakdown'; on_trip?: string | null; availability_note: string | null; is_active: boolean; papers: 'ok' | 'due_soon' | 'expired' | null
 }
 const PAPER_CLS = { ok: 'text-ok', due_soon: 'text-warn', expired: 'text-bad' } as const
 const AVAIL_CLS = { available: 'text-ok', maintenance: 'text-warn', breakdown: 'text-bad' } as const
@@ -42,7 +42,7 @@ export default function TrucksTab({ canEdit }: { canEdit: boolean }) {
   const shown = base.filter((v) => hit(f.q, v.reg_no, v.vehicle_type, v.owner_name, v.vendor, v.rc_no)
     && (!f.papers || (f.papers === 'none' ? v.papers === null : v.papers === f.papers))
     && (!f.owner || (f.owner === 'hired') === v.is_hired)
-    && (!f.avail || v.availability === f.avail))
+    && (!f.avail || (f.avail === 'on_trip' ? !!v.on_trip : f.avail === 'available' ? v.availability === 'available' && !v.on_trip : v.availability === f.avail)))
   const selects: FilterSelect[] = [
     { key: 'papers', label: t('filter.byPapers'), value: f.papers, onChange: (v: string) => set('papers', v), options: [
       ['', t('filter.allPapers')], ['ok', `${t('setup.truck.ok')} (${count((v) => v.papers === 'ok')})`], ['due_soon', `${t('setup.truck.due_soon')} (${count((v) => v.papers === 'due_soon')})`],
@@ -50,7 +50,7 @@ export default function TrucksTab({ canEdit }: { canEdit: boolean }) {
     { key: 'owner', label: t('filter.byOwner'), value: f.owner, onChange: (v: string) => set('owner', v), options: [
       ['', t('filter.allOwners')], ['own', `${t('onb.truck.own')} (${count((v) => !v.is_hired)})`], ['hired', `${t('setup.hired')} (${count((v) => v.is_hired)})`]] as [string, string][] },
     { key: 'avail', label: t('filter.byAvail'), value: f.avail, onChange: (v: string) => set('avail', v), options: [
-      ['', t('filter.allAvail')], ...(['available', 'maintenance', 'breakdown'] as const).map((a): [string, string] => [a, `${t(`onb.avail.${a}`)} (${count((v) => v.availability === a)})`])] },
+      ['', t('filter.allAvail')], ...(['available', 'on_trip', 'maintenance', 'breakdown'] as const).map((a): [string, string] => [a, `${t(`onb.avail.${a}`)} (${count((v) => (a === 'on_trip' ? !!v.on_trip : a === 'available' ? v.availability === 'available' && !v.on_trip : v.availability === a))})`])] },
   ]
 
   return (
@@ -68,7 +68,7 @@ export default function TrucksTab({ canEdit }: { canEdit: boolean }) {
             <td className="px-4 py-3">{[v.vehicle_type, v.capacity_tonnes ? `${v.capacity_tonnes} t` : null].filter(Boolean).join(' · ') || '—'}</td>
             <td className="px-4 py-3">{v.is_hired ? [t('setup.hired'), v.vendor].filter(Boolean).join(' · ') : t('onb.truck.own')}</td>
             <td className={`px-4 py-3 ${v.papers ? PAPER_CLS[v.papers] : 'text-muted'}`}>{v.papers ? t(`setup.truck.${v.papers}`) : '—'}</td>
-            <td className={`px-4 py-3 ${AVAIL_CLS[v.availability]}`}>{t(`onb.avail.${v.availability}`)}</td>
+            <td className={`px-4 py-3 ${v.on_trip && v.availability === 'available' ? 'text-accent' : AVAIL_CLS[v.availability]}`}>{v.on_trip && v.availability === 'available' ? `${t('onb.avail.on_trip')} · ${v.on_trip}` : t(`onb.avail.${v.availability}`)}</td>
             <td className="px-4 py-3"><StatusPill active={v.is_active} /></td>
             <td className="px-4 py-3">
               <div className="flex justify-end gap-2">

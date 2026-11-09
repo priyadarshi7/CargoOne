@@ -192,6 +192,10 @@ async def seed_fleet(session: AsyncSession) -> dict:
         session.add(User(name=_name(rnd), phone=next_phone(9000200000), role=Role.driver, password_hash=None, language=rnd.choices(["mr", "hi"], [50, 50])[0],
                          branch_id=hq.id, employment_type="hired", vendor_id=v.vendor_id, assigned_vehicle_id=v.id, **_licence(rnd, today, rnd.choice(["MH20", "MH17", "MH12", "MP09", "GJ05"]))))
         made["drivers"] += 1
+    gt = await session.scalar(select(Vehicle.id).where(Vehicle.reg_no == "MH20 GT 7718"))
+    gt_driver = await session.scalar(select(User.id).where(User.assigned_vehicle_id == gt, User.role == Role.driver)) if gt else None
+    if gt_driver:
+        await session.execute(update(Trip).where(Trip.trip_code == "TRP-66134").values(driver_id=gt_driver))
     await session.commit()
     return made
 

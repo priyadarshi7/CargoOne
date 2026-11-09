@@ -111,7 +111,7 @@ class Settings(BaseSettings):
     email_from: str = ""  # e.g. CargoOne <you@gmail.com>; blank = the smtp user. Gmail only sends as the signed-in mailbox
     default_branch_code: str = "MH20"  # LR prefix used when a trip has no branch
     default_origin: str = "Chhatrapati Sambhajinagar"  # used when an import row has no origin
-    company_name: str = "Company A (demo)"  # printed on invoices
+    company_name: str = "Company A"  # printed on invoices
     office_phone: str = ""  # shown to drivers as a one-tap call; empty hides the button
     invoice_prefix: str = "CO"
     razorpay_key_id: str = ""  # Razorpay Checkout for invoices. Key id + secret both set = "Pay online" appears; use rzp_test_ keys until go-live

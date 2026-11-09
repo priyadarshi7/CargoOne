@@ -188,7 +188,6 @@ export async function download(path: string, fallbackName: string): Promise<void
 
 export interface Dashboard {
   window_days: number
-  includes_demo_data: boolean
   kpis: { within_24h_pct: number | null; pod_to_invoice_days: number | null; lost_pct: number | null; trips_in_window: number; eligible_trips: number }
   targets: { within_24h_pct: number; pod_to_invoice_days: number; baseline_pod_to_invoice_days: number; lost_pct: number; baseline_lost_pct: number }
   working_capital: { annual_freight: number; days_saved: number | null; released: number | null; interest_saved_per_year: number | null; interest_rate: number }

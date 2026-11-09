@@ -49,7 +49,7 @@ def build_digest_pdf(d: dict, *, company: str) -> bytes:
     as_of = datetime.fromisoformat(d["as_of"]).strftime("%d %b %Y")
     out = [Paragraph(f"{company}", small), Paragraph("POD digest", h1),
            Paragraph(f"Last {d['window_days']} days, as of {as_of}. {k['trips_in_window']} trips delivered"
-                     f"{' (includes demo data)' if d.get('includes_demo_data') else ''}.", small)]
+                     ".", small)]
 
     # Headline in a sentence a busy person can act on
     d24, days = k["within_24h_pct"], k["pod_to_invoice_days"]

@@ -12,6 +12,8 @@ import { useI18n } from '../lib/i18n'
 import { useLive } from '../lib/live'
 
 const FILTERS = { q: '', pod: '', client: '', fleet: '' }
+/** The same rule as the Today tab and the dashboard: delivered over a day ago and still no usable POD. */
+const isMissing = (t: Trip) => (t.pod_status === 'pending' || t.pod_status === 'retake_requested') && !!t.delivered_at && Date.now() - new Date(t.delivered_at).getTime() >= 86_400_000
 const POD_ORDER = ['pending', 'uploaded', 'needs_review', 'retake_requested', 'verified', 'billed', 'rejected'] as const
 const inr = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })
 const day = (iso: string | null) =>
@@ -50,7 +52,7 @@ export default function OfficeTrips() {
   const clients = [...new Set(trips.map((t) => t.client))].sort((a, b) => a.localeCompare(b))
   const rows = trips.filter((t) =>
     hit(f.q, t.trip_code, t.lr_no, t.eway_bill_no, t.client, t.vehicle, t.origin, t.destination, t.branch)
-    && (!f.pod || t.pod_status === f.pod) && (!f.client || t.client === f.client) && (!f.fleet || (f.fleet === 'hired') === t.is_hired))
+    && (!f.pod || (f.pod === 'missing' ? isMissing(t) : t.pod_status === f.pod)) && (!f.client || t.client === f.client) && (!f.fleet || (f.fleet === 'hired') === t.is_hired))
 
   return (
     <div className="space-y-8">
@@ -66,7 +68,7 @@ export default function OfficeTrips() {
         ))}
       </div>
       <FilterBar q={f.q} onQ={(v) => set('q', v)} placeholder={tx('filter.trips')} shown={rows.length} total={trips.length} active={active} onClear={clear} selects={[
-        { key: 'pod', label: tx('filter.status'), value: f.pod, onChange: (v) => set('pod', v), options: [['', tx('filter.allStatus')], ...POD_ORDER.map((s): [string, string] => [s, tx(`status.${s}` as const)])] },
+        { key: 'pod', label: tx('filter.status'), value: f.pod, onChange: (v) => set('pod', v), options: [['', tx('filter.allStatus')], ['missing', tx('filter.podMissing')], ...POD_ORDER.map((s): [string, string] => [s, tx(`status.${s}` as const)])] },
         { key: 'client', label: tx('filter.client'), value: f.client, onChange: (v) => set('client', v), options: [['', tx('filter.allClients')], ...clients.map((c): [string, string] => [c, c])] },
         { key: 'fleet', label: tx('trips.vehicle'), value: f.fleet, onChange: (v) => set('fleet', v), options: [['', tx('filter.anyVehicle')], ['own', tx('filter.own')], ['hired', tx('filter.hired')]] },
       ]} />

@@ -48,10 +48,10 @@ async def seed(session: AsyncSession) -> None:
 
     pw = hash_secret(DEV_PASSWORD)
     for email, name, role in [
-        ("ops@cargoone.dev", "Ops Head (demo)", Role.ops),
-        ("billing@cargoone.dev", "Billing Exec (demo)", Role.billing),
-        ("md@cargoone.dev", "Managing Director (demo)", Role.md),
-        ("admin@cargoone.dev", "Admin (demo)", Role.admin),
+        ("ops@cargoone.dev", "Prakash Kulkarni", Role.ops),
+        ("billing@cargoone.dev", "Neha Joshi", Role.billing),
+        ("md@cargoone.dev", "Rajiv Deshmukh", Role.md),
+        ("admin@cargoone.dev", "Sunita Admin", Role.admin),
     ]:
         await get_or_create(session, User, {"email": email}, name=name, role=role,
                             password_hash=pw, language="en", branch_id=hq.id)
