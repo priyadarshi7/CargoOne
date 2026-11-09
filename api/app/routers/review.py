@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
+from app.ai.locator import locate
 from app.billing.periods import IST
 from app.config import get_settings
 from app.db import get_session
@@ -20,6 +21,7 @@ from app.models import AuditLog, Client, PodStatus, PodSubmission, Role, Trip, U
 from app.notify.service import pod_retake_asked, safely
 from app.notify.shipment import tell_parties
 from app.security import require_roles
+from app.storage import get_storage
 
 router = APIRouter(prefix="/review", tags=["review"])
 Reviewer = Annotated[User, Depends(require_roles(Role.billing, Role.ops))]
@@ -106,6 +108,17 @@ async def detail(trip_id: uuid.UUID, _: Viewer, session: Session) -> ReviewItem:
     row = (await session.execute(_latest_per_trip().where(Trip.id == trip_id))).first()
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No POD for this trip")
+    trip, _client, sub = row
+    ai = sub.ai_result or {}
+    if ai.get("is_document") and not ai.get("boxes") and "_boxes_tried" not in ai:
+        # a reader that gave values but no places (Groq, Gemini): place them on the photo once and keep them, so the labels show on the picture
+        try:
+            boxes = await locate(await get_storage().get(sub.storage_key), ai, trip.lr_no, get_settings())
+        except Exception:  # noqa: BLE001 - the photo may be gone; the screen still works without labels on it
+            boxes = None
+        if boxes is not None:  # None = the reader failed this time: do not remember it, try again on the next open
+            sub.ai_result = {**ai, "boxes": [b.model_dump() for b in boxes], "_boxes_tried": True}
+            await session.commit()
     return _item(*row)
 
 
