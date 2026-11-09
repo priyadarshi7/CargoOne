@@ -51,7 +51,7 @@ A small, believable demo company, in this order (all fabricated, dev/test only, 
 cd api
 uv run python -m app.seed          # branches, the brief's sample trips, the demo logins
 uv run python -m app.seed_fleet    # 8 own + 8 hired trucks, 6 transporters (vendors), 12 drivers with licences, 5 clients, 9 office staff
-uv run python -m app.demo_data     # 140 illustrative trips over 75 days (coded DEMO-..., a banner says so); --remove deletes them
+uv run python -m app.demo_data     # about 140 trips over 75 days with photos, invoices and payments; --remove deletes them
 uv run python -m app.devtools.demo_video   # three trips ready for a screen recording of the driver flow (--reset to record again)
 ```
 `uv run python -m app.seed_fleet --wipe` clears the fleet again (remove the demo trips first). The numbers are not typed into any screen: the dashboard is worked out from these trips, so it moves as you add drivers, take photos and make invoices. It shows the targets met overall (80% of PODs in within a day, 4 days POD to invoice, 0.5% lost), with the Nagpur branch below target on purpose so a red flag is visible. Drivers sign in with their phone and PIN `1234` (the first is `9000000001`); hired drivers use their private link.
@@ -68,6 +68,7 @@ Public notice at `/privacy` (English, Hindi, Marathi) with a form for a person's
 Office → **Import**: upload a CSV/Excel (download the template there). It is checked first and only written when you confirm; re-uploading is safe.
 
 ## Docs
+- **[deployment.md](deployment.md)** (run it, demo logins, environment variable names) · **Technical design document:** [PDF](docs/CargoOne-TDD.pdf) · [Word](docs/CargoOne-TDD.docx)
 - [Product brief](docs/01-product-brief.md) · [Roadmap / to-do](docs/02-roadmap.md) · [Decisions](docs/03-decisions.md)
 - [Security and privacy](docs/04-security-privacy.md) · [DPDP: what is built, owner checklist, breach runbook](docs/16-dpdp.md)
 - [AI evaluation](docs/06-ai-evaluation.md) · [Benchmark sheets, results and the model decision](docs/15-benchmark-forms.md) · [Local AI setup](docs/09-local-ai-setup.md)
