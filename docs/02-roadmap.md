@@ -197,6 +197,11 @@ Priority: **P0** core slice (client's must-ship) · **P1** must-have depth · **
 - [x] CI (api, web, Playwright) is green. Fixed on 2026-11-09: tests on IST (`TZ` and the browser time zone), a numpy-only test skipped without OCR extras, the expenses advance form no longer resets the chosen driver, a slow trip list no longer flips a started trip back, and the planning test has its own truck.
 - [x] 73 end-to-end tests, about 460 backend tests and 49 front-end unit tests.
 
+## Ways out of dead ends (2026-11-09)
+- [x] A rejected POD can be reopened for a new decision (ops or admin, with a reason, in the audit log): `POST /review/{trip}/reopen`.
+- [x] An invoice made by mistake can be cancelled while it is not sent, not in Tally and not paid (ops or admin, with a reason): its trips go back to the billing queue; the number is not reused. `POST /billing/invoices/{id}/cancel`.
+- [x] A cancelled trip no longer accepts a POD photo.
+
 ## Phase 7 — "Out-of-scope" wow features (P2, after core is solid)
 **Live GPS tracking**
 - [x] Live tracking: driver agrees once (recorded, withdrawable); while a trip is on the road the phone sends GPS fixes (60 s / 100 m, batched, retried safely, screen kept awake); live map for ops and the MD with moving / stopped / no-signal states and stoppage + silent alerts; path per trip; client **tracking link** (position rounded to ~100 m, never the driver, stops once delivered); 30-day retention purge. English/Hindi/Marathi

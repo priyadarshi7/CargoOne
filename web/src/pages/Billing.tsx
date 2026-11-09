@@ -5,6 +5,7 @@ import { PaymentsDialog } from '../components/PaymentsDialog'
 import { api, ApiError, download, type Invoice, type QueueGroup, type TallyStatus } from '../lib/api'
 import { FilterBar, NoMatch } from '../components/FilterBar'
 import { hit, useFilters } from '../lib/filters'
+import { useAuth } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
 
 const inr = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })
@@ -139,6 +140,8 @@ function Invoices({ invoices, onExported }: { invoices: Invoice[]; onExported: (
   const [ask, setAsk] = useState<{ inv: Invoice; names: string } | null>(null)
   const [askDate, setAskDate] = useState<{ inv: Invoice; message: string; date: string; from: string; to: string } | null>(null)
   const [pushing, setPushing] = useState<string | null>(null)
+  const { user } = useAuth()
+  const [cancelling, setCancelling] = useState<{ inv: Invoice; why: string } | null>(null)
   const { values: f, set, clear, active } = useFilters({ q: '', st: '', tally: '' })
   useEffect(() => { api<TallyStatus>('/billing/tally/status').then(setTally).catch(() => setTally(null)) }, [])
   const push = async (inv: Invoice, createMissing = false, voucherDate?: string) => {
@@ -153,6 +156,14 @@ function Invoices({ invoices, onExported }: { invoices: Invoice[]; onExported: (
       else if (typeof d === 'object' && d?.code === 'voucher_date') setAskDate({ inv, message: d.message ?? '', date: voucherDate ?? d.period_end ?? '', from: d.period_start ?? '', to: d.period_end ?? '' })
       else setError(e instanceof ApiError ? e.message : t('bill.tallyFail'))
     } finally { setPushing(null) }
+  }
+  const cancel = async () => {
+    if (!cancelling || cancelling.why.trim().length < 3) return
+    setError(null)
+    try {
+      await api(`/billing/invoices/${cancelling.inv.id}/cancel`, { method: 'POST', body: JSON.stringify({ reason: cancelling.why.trim() }) })
+      setNote(t('bill.cancelled', { no: cancelling.inv.invoice_no })); setCancelling(null); await onExported()
+    } catch (e) { setError(e instanceof ApiError ? e.message : t('sh.failed')) }
   }
   const markSent = async (inv: Invoice) => {
     setError(null)
@@ -232,6 +243,7 @@ function Invoices({ invoices, onExported }: { invoices: Invoice[]; onExported: (
                         <button disabled={!i.client_has_email} className="rounded-lg bg-ink px-2.5 py-1 text-xs font-medium text-surface hover:opacity-90 disabled:opacity-50" title={i.client_has_email ? t('bill.sendHelp') : t('bill.noEmail')} onClick={() => void send(i)}>{t('bill.send')}</button>
                         <button className="text-xs font-medium underline hover:text-accent" title={t('bill.markSentHelp')} onClick={() => void markSent(i)}>{t('bill.markSent')}</button>
                         {!i.client_has_email && <span className="text-xs text-muted">{t('bill.noEmail')}</span>}
+                        {!i.tally_pushed_at && (user?.role === 'ops' || user?.role === 'admin') && <button className="text-xs text-muted underline hover:text-bad" title={t('bill.cancelHelp')} onClick={() => setCancelling({ inv: i, why: '' })}>{t('bill.cancel')}</button>}
                       </>
                     ) : (
                       <>
@@ -259,6 +271,18 @@ function Invoices({ invoices, onExported }: { invoices: Invoice[]; onExported: (
         </table>
       </div>
       <p className="text-xs text-muted">{t('bill.note')}</p>
+      {cancelling && (
+        <form role="alertdialog" aria-label={t('bill.cancel')} onSubmit={(e) => { e.preventDefault(); void cancel() }} className="space-y-2 rounded-xl border border-line bg-wash p-4 text-sm">
+          <p className="font-medium">{cancelling.inv.invoice_no}</p>
+          <p className="text-muted">{t('bill.cancelHelp')}</p>
+          <label className="block space-y-1"><span className="font-medium">{t('bill.cancelWhy')}</span>
+            <input autoFocus maxLength={300} className="h-10 w-full rounded-lg border border-line bg-surface px-3 outline-none focus:border-ink" value={cancelling.why} onChange={(e) => setCancelling({ ...cancelling, why: e.target.value })} /></label>
+          <div className="flex gap-2">
+            <button type="submit" disabled={cancelling.why.trim().length < 3} className="h-9 rounded-lg bg-bad px-3.5 font-medium text-on-solid hover:opacity-90 disabled:opacity-50">{t('bill.cancelConfirm')}</button>
+            <button type="button" className="h-9 rounded-lg border border-line px-3.5 font-medium hover:bg-line/60" onClick={() => setCancelling(null)}>{t('common.cancel')}</button>
+          </div>
+        </form>
+      )}
       {paying && <PaymentsDialog invoice={paying} onClose={() => setPaying(null)} onChanged={() => void onExported()} />}
     </div>
   )

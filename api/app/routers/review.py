@@ -109,6 +109,27 @@ async def detail(trip_id: uuid.UUID, _: Viewer, session: Session) -> ReviewItem:
     return _item(*row)
 
 
+class ReopenIn(BaseModel):
+    reason: str = Field(min_length=3, max_length=300)
+
+
+@router.post("/{trip_id}/reopen", response_model=ReviewItem)
+async def reopen(trip_id: uuid.UUID, body: ReopenIn, user: Annotated[User, Depends(require_roles(Role.admin, Role.ops))], session: Session) -> ReviewItem:
+    """A rejected POD is not the end: a photo rejected by mistake, or a better one found, goes back to a person to decide again."""
+    row = (await session.execute(_latest_per_trip().where(Trip.id == trip_id).with_for_update(of=Trip))).first()
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No POD for this trip")
+    trip, client, sub = row
+    if trip.pod_status != PodStatus.rejected:
+        raise HTTPException(status.HTTP_409_CONFLICT, f"POD is {trip.pod_status.value}, not rejected")
+    trip.pod_status = PodStatus.needs_review
+    sub.decision = PodStatus.needs_review
+    record(session, trip, "pod_reopened", actor=user.id, note=body.reason)
+    session.add(AuditLog(actor_id=user.id, action="review.reopen", entity="trip", entity_id=str(trip.id), meta={"submission": str(sub.id), "reason": body.reason.strip()}))
+    await session.commit()
+    return _item(trip, client, sub)
+
+
 @router.post("/{trip_id}/decision", response_model=ReviewItem)
 async def decide_review(trip_id: uuid.UUID, body: ReviewDecision, user: Reviewer, session: Session) -> ReviewItem:
     row = (await session.execute(_latest_per_trip().where(Trip.id == trip_id).with_for_update(of=Trip))).first()

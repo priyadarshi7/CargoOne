@@ -409,6 +409,32 @@ async def send_invoice(invoice_id: uuid.UUID, user: Biller, session: Session) ->
     return _out(inv, client.name, len(trips), await _paid_total(session, inv.id), has_email=True)
 
 
+class CancelIn(BaseModel):
+    reason: str = Field(min_length=3, max_length=300)
+
+
+@router.post("/invoices/{invoice_id}/cancel", status_code=status.HTTP_204_NO_CONTENT)
+async def cancel_invoice(invoice_id: uuid.UUID, body: CancelIn, user: Annotated[User, Depends(require_roles(Role.admin, Role.ops))], session: Session) -> None:
+    """Undo an invoice made by mistake, while nothing outside CargoOne knows about it: not sent, not in Tally, not paid.
+    Its trips go back to the billing queue. The number is not reused (the gap is in the audit log, with the reason)."""
+    inv = await session.get(Invoice, invoice_id, with_for_update=True)
+    if inv is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Invoice not found")
+    if inv.sent_at is not None or inv.paid_at is not None or inv.tally_pushed_at is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "This invoice was already sent, paid or put in Tally, so it cannot be cancelled here")
+    if await _paid_total(session, inv.id) > 0:
+        raise HTTPException(status.HTTP_409_CONFLICT, "This invoice has payments recorded")
+    trips = await _invoice_trips(session, inv.id)
+    for t in trips:
+        t.invoice_id, t.invoiced_at, t.pod_status = None, None, PodStatus.verified
+        record(session, t, "invoice_cancelled", actor=user.id, note=body.reason, meta={"invoice": inv.invoice_no})
+    session.add(AuditLog(actor_id=user.id, action="invoice.cancel", entity="invoice", entity_id=str(inv.id),
+                         meta={"invoice_no": inv.invoice_no, "trips": len(trips), "total": str(inv.total), "reason": body.reason.strip()}))
+    await session.flush()
+    await session.delete(inv)
+    await session.commit()
+
+
 @router.post("/invoices/{invoice_id}/payments/{payment_id}/void", response_model=InvoiceOut)
 async def void_payment(invoice_id: uuid.UUID, payment_id: uuid.UUID, body: VoidIn, user: Annotated[User, Depends(require_roles(Role.admin))], session: Session) -> InvoiceOut:
     """Only an admin can undo a recorded payment, and must say why. A paid invoice goes back to unpaid and its trips are reopened."""

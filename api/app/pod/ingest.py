@@ -71,6 +71,8 @@ async def ingest_pod(
             raise HTTPException(status.HTTP_409_CONFLICT, "Upload id already used")
         return result_of(prior, trip, duplicate=True)
 
+    if trip.state == TripState.cancelled:
+        raise HTTPException(status.HTTP_409_CONFLICT, "This trip is cancelled")
     if trip.pod_status not in OPEN_STATUSES:
         raise HTTPException(status.HTTP_409_CONFLICT, f"POD already {trip.pod_status.value}")
 

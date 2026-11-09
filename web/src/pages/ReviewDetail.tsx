@@ -5,6 +5,7 @@ import { FIELD_LABEL, ImageViewer, type FoundBox } from '../components/ImageView
 import { ReasonChips } from '../components/ReasonChips'
 import { StatusBadge } from '../components/StatusBadge'
 import { api, ApiError, type ReviewItem } from '../lib/api'
+import { useAuth } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
 
 type Form = { lr_no: string; delivery_date: string; quantity_received: string; remarks: string; shortage_or_damage: boolean }
@@ -25,6 +26,8 @@ export default function ReviewDetail() {
   const { tripId = '' } = useParams()
   const { t } = useI18n()
   const nav = useNavigate()
+  const { user } = useAuth()
+  const [why, setWhy] = useState('')
   const [item, setItem] = useState<ReviewItem | null>(null)
   const [form, setForm] = useState<Form | null>(null)
   const [note, setNote] = useState('')
@@ -60,6 +63,15 @@ export default function ReviewDetail() {
       setBusy(false)
     }
   }, [item, form, note, busy, confirmReject, nav, t])
+
+  const reopen = async () => {
+    if (!item || busy || why.trim().length < 3) return
+    setBusy(true); setError(null)
+    try {
+      const it = await api<ReviewItem>(`/review/${item.trip_id}/reopen`, { method: 'POST', body: JSON.stringify({ reason: why.trim() }) })
+      setItem(it); setForm(initial(it)); setWhy('')
+    } catch (e) { setError(e instanceof ApiError ? e.message : t('rd.saveFail')) } finally { setBusy(false) }
+  }
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -172,6 +184,14 @@ export default function ReviewDetail() {
             </button>
           </div>
           <p className="text-xs text-muted">{t('rd.footer', { n: item.retakes_left })}</p></>}
+          {item.pod_status === 'rejected' && (user?.role === 'ops' || user?.role === 'admin') && (
+            <div className="space-y-2 rounded-xl border border-line bg-wash p-4 text-sm">
+              <p className="text-muted">{t('rd.reopenHelp')}</p>
+              <label className="block space-y-1"><span className="font-medium">{t('rd.reopenWhy')}</span>
+                <input className={field} value={why} maxLength={300} onChange={(e) => setWhy(e.target.value)} /></label>
+              <button disabled={busy || why.trim().length < 3} onClick={() => void reopen()} className="h-10 rounded-lg bg-ink px-4 font-medium text-surface hover:opacity-90 disabled:opacity-50">{t('rd.reopen')}</button>
+            </div>
+          )}
         </div>
       </div>
     </div>
